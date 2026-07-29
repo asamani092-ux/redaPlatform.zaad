@@ -1,0 +1,66 @@
+name: CI and Deploy
+
+on:
+  push:
+    branches: [main, "cursor/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ridaa
+          POSTGRES_PASSWORD: ridaa
+          POSTGRES_DB: ridaa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ridaa -d ridaa"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://ridaa:ridaa@localhost:5432/ridaa?schema=public
+      AUTH_SECRET: ci-secret-ridaa-platform-32chars
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: http://localhost:3000
+      IDLE_TIMEOUT_MS: "3600000"
+      WHATSAPP_PROVIDER: stub
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Prisma generate and push
+        run: npx prisma generate && npx prisma db push
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  # Coolify webhook deploy (optional): set repository secret COOLIFY_WEBHOOK
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify
+        env:
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+        run: |
+          if [ -n "$COOLIFY_WEBHOOK" ]; then
+            curl -fsS -X POST "$COOLIFY_WEBHOOK"
+          else
+            echo "COOLIFY_WEBHOOK not set — skip remote deploy trigger"
+          fi

@@ -1,0 +1,306 @@
+// منصة معرض رداء — Prisma Schema
+// Relations: both sides defined. IDs: cuid. Timestamps: createdAt/updatedAt.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  REGISTRATION
+  RECEPTION
+  DISTRIBUTION
+  INVENTORY
+  REPORTS
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum AttendanceType {
+  NORMAL
+  EXCEPTION
+}
+
+enum StockMovementType {
+  ADD
+  DISPENSE
+  RETURN
+}
+
+enum OutboundMessageType {
+  INVITATION
+  THANK_YOU
+  SURVEY
+}
+
+enum OutboundMessageStatus {
+  PENDING
+  SENT
+  FAILED
+  STUBBED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  mobile       String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  active       Boolean  @default(true)
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs          AuditLog[]
+  attendances        Attendance[]        @relation("AttendanceBy")
+  dispenseOrders     DispenseOrder[]     @relation("DispenseBy")
+  stockMovements     StockMovement[]     @relation("StockBy")
+  invitesCreated     ExhibitionInvite[]  @relation("InviteBy")
+  outboundMessages   OutboundMessage[]   @relation("MessageBy")
+
+  @@index([role])
+  @@index([lastActiveAt])
+}
+
+model AssociationOption {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  beneficiaries Beneficiary[]
+}
+
+model Beneficiary {
+  id               String    @id @default(cuid())
+  name             String
+  nationalId       String    @unique
+  mobile           String
+  gender           Gender?
+  neighborhood     String?
+  city             String?
+  birthDate        DateTime?
+  notes            String?
+  associationId    String?
+  associationOther String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  association      AssociationOption?  @relation(fields: [associationId], references: [id])
+  invites          ExhibitionInvite[]
+  attendances      Attendance[]
+  dispenseOrders   DispenseOrder[]
+  surveyResponses  SurveyResponse[]
+  outboundMessages OutboundMessage[]
+
+  @@index([mobile])
+  @@index([name])
+  @@index([city])
+  @@index([associationId])
+}
+
+model Exhibition {
+  id          String    @id @default(cuid())
+  name        String
+  location    String?
+  startsAt    DateTime?
+  endsAt      DateTime?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  settings         ExhibitionSettings?
+  invites          ExhibitionInvite[]
+  attendances      Attendance[]
+  inventoryItems   InventoryItem[]
+  dispenseOrders   DispenseOrder[]
+  stockMovements   StockMovement[]
+  surveyResponses  SurveyResponse[]
+  outboundMessages OutboundMessage[]
+}
+
+model ExhibitionSettings {
+  id                   String   @id @default(cuid())
+  exhibitionId         String   @unique
+  entitledPieces       Int      @default(1)
+  lowStockThreshold    Int      @default(10)
+  /// مخطط سمات المخزون: [{key,label,type}] مثل نوع/صنف/لون/وحدة
+  inventorySchemaJson  Json
+  whatsappInviteTpl    String?
+  whatsappThanksTpl    String?
+  surveyQuestionsJson  Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  exhibition Exhibition @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+}
+
+model ExhibitionInvite {
+  id            String   @id @default(cuid())
+  exhibitionId  String
+  beneficiaryId String
+  qrToken       String   @unique @default(cuid())
+  invited       Boolean  @default(true)
+  invitedAt     DateTime @default(now())
+  invitedById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  exhibition  Exhibition  @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  invitedBy   User?       @relation("InviteBy", fields: [invitedById], references: [id])
+
+  @@unique([exhibitionId, beneficiaryId])
+  @@index([exhibitionId, invited])
+  @@index([qrToken])
+}
+
+model Attendance {
+  id            String         @id @default(cuid())
+  exhibitionId  String
+  beneficiaryId String
+  type          AttendanceType @default(NORMAL)
+  exceptionReason String?
+  checkedInAt   DateTime       @default(now())
+  checkedInById String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  exhibition  Exhibition  @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  checkedInBy User?       @relation("AttendanceBy", fields: [checkedInById], references: [id])
+
+  @@unique([exhibitionId, beneficiaryId])
+  @@index([exhibitionId, checkedInAt])
+  @@index([type])
+}
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  exhibitionId String
+  /// قيم السمات حسب مخطط الإعدادات
+  attributesJson Json
+  quantity     Decimal  @db.Decimal(12, 3)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  exhibition     Exhibition      @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+  dispenseLines  DispenseLine[]
+  stockMovements StockMovement[]
+
+  @@index([exhibitionId])
+}
+
+model StockMovement {
+  id             String            @id @default(cuid())
+  exhibitionId   String
+  inventoryItemId String
+  type           StockMovementType
+  quantity       Decimal           @db.Decimal(12, 3)
+  note           String?
+  createdById    String?
+  createdAt      DateTime          @default(now())
+
+  exhibition    Exhibition    @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  createdBy     User?         @relation("StockBy", fields: [createdById], references: [id])
+
+  @@index([exhibitionId, createdAt])
+  @@index([inventoryItemId])
+}
+
+model DispenseOrder {
+  id                  String   @id @default(cuid())
+  exhibitionId        String
+  beneficiaryId       String
+  piecesCount         Int
+  entitledOverride    Int?
+  overrideReason      String?
+  createdById         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  exhibition  Exhibition    @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+  beneficiary Beneficiary   @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  createdBy   User?         @relation("DispenseBy", fields: [createdById], references: [id])
+  lines       DispenseLine[]
+
+  @@unique([exhibitionId, beneficiaryId])
+  @@index([exhibitionId, createdAt])
+}
+
+model DispenseLine {
+  id              String  @id @default(cuid())
+  dispenseOrderId String
+  inventoryItemId String
+  quantity        Decimal @db.Decimal(12, 3)
+
+  dispenseOrder DispenseOrder @relation(fields: [dispenseOrderId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([dispenseOrderId])
+  @@index([inventoryItemId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  beforeJson Json?
+  afterJson  Json?
+  metaJson   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+model SurveyResponse {
+  id            String   @id @default(cuid())
+  exhibitionId  String
+  beneficiaryId String
+  answersJson   Json
+  createdAt     DateTime @default(now())
+
+  exhibition  Exhibition  @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+  beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+
+  @@unique([exhibitionId, beneficiaryId])
+  @@index([exhibitionId])
+}
+
+model OutboundMessage {
+  id            String                @id @default(cuid())
+  exhibitionId  String?
+  beneficiaryId String?
+  type          OutboundMessageType
+  status        OutboundMessageStatus @default(PENDING)
+  payloadJson   Json?
+  providerRef   String?
+  errorMessage  String?
+  createdById   String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  exhibition  Exhibition?  @relation(fields: [exhibitionId], references: [id])
+  beneficiary Beneficiary? @relation(fields: [beneficiaryId], references: [id])
+  createdBy   User?        @relation("MessageBy", fields: [createdById], references: [id])
+
+  @@index([status, type])
+  @@index([exhibitionId])
+}
