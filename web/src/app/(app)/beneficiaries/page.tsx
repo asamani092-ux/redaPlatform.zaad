@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 
 type Association = { id: string; name: string };
 type Beneficiary = {
@@ -77,13 +78,16 @@ export default function BeneficiariesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary mb-4">المستفيدون</h1>
-        <div className="flex gap-2 flex-wrap mb-4">
+    <div className="page-stack">
+      <PageHeader title="المستفيدون" description="تسجيل وبحث واستيراد بيانات المستفيدين" />
+      {msg ? <p className={`msg ${msg.includes("فشل") || msg.includes("غير") ? "msg-error" : ""}`}>{msg}</p> : null}
+
+      <section className="panel">
+        <h2 className="panel-title">بحث</h2>
+        <div className="toolbar">
           <input
-            className="input-field max-w-md"
-            placeholder="بحث بالاسم / الهوية / الجوال"
+            className="input-field"
+            placeholder="الاسم / الهوية / الجوال"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -91,90 +95,97 @@ export default function BeneficiariesPage() {
             بحث
           </button>
         </div>
-        {msg ? <p className="mb-3 text-sm font-semibold text-primary">{msg}</p> : null}
-        <form onSubmit={onCreate} className="grid md:grid-cols-2 gap-3">
-          <div>
-            <label className="label-field">الاسم</label>
-            <input name="name" className="input-field" required />
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">إضافة مستفيد</h2>
+        <form onSubmit={onCreate}>
+          <div className="form-grid">
+            <div>
+              <label className="label-field">الاسم</label>
+              <input name="name" className="input-field" required />
+            </div>
+            <div>
+              <label className="label-field">رقم الهوية</label>
+              <input name="nationalId" className="input-field" dir="ltr" required />
+            </div>
+            <div>
+              <label className="label-field">الجوال</label>
+              <input name="mobile" className="input-field" dir="ltr" required />
+            </div>
+            <div>
+              <label className="label-field">الجنس</label>
+              <select name="gender" className="input-field">
+                <option value="">—</option>
+                <option value="MALE">ذكر</option>
+                <option value="FEMALE">أنثى</option>
+              </select>
+            </div>
+            <div>
+              <label className="label-field">المدينة</label>
+              <input name="city" className="input-field" />
+            </div>
+            <div>
+              <label className="label-field">الحي</label>
+              <input name="neighborhood" className="input-field" />
+            </div>
+            <div>
+              <label className="label-field">تاريخ الميلاد</label>
+              <input name="birthDate" type="date" className="input-field" dir="ltr" />
+            </div>
+            <div>
+              <label className="label-field">الجمعية</label>
+              <select
+                name="associationId"
+                className="input-field"
+                disabled={useOther}
+                onChange={(e) => {
+                  if (e.target.value === "__other__") setUseOther(true);
+                }}
+              >
+                <option value="">—</option>
+                {associations.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+                <option value="__other__">أخرى</option>
+              </select>
+              {useOther ? (
+                <input
+                  name="associationOther"
+                  className="input-field"
+                  style={{ marginTop: "0.5rem" }}
+                  placeholder="اسم الجمعية"
+                  required
+                />
+              ) : null}
+            </div>
+            <div className="full">
+              <label className="label-field">ملاحظات</label>
+              <textarea name="notes" className="input-field" rows={2} />
+            </div>
           </div>
-          <div>
-            <label className="label-field">رقم الهوية</label>
-            <input name="nationalId" className="input-field" dir="ltr" required />
-          </div>
-          <div>
-            <label className="label-field">الجوال</label>
-            <input name="mobile" className="input-field" dir="ltr" required />
-          </div>
-          <div>
-            <label className="label-field">الجنس</label>
-            <select name="gender" className="input-field">
-              <option value="">—</option>
-              <option value="MALE">ذكر</option>
-              <option value="FEMALE">أنثى</option>
-            </select>
-          </div>
-          <div>
-            <label className="label-field">المدينة</label>
-            <input name="city" className="input-field" />
-          </div>
-          <div>
-            <label className="label-field">الحي</label>
-            <input name="neighborhood" className="input-field" />
-          </div>
-          <div>
-            <label className="label-field">تاريخ الميلاد</label>
-            <input name="birthDate" type="date" className="input-field" dir="ltr" />
-          </div>
-          <div>
-            <label className="label-field">الجمعية</label>
-            <select
-              name="associationId"
-              className="input-field"
-              disabled={useOther}
-              onChange={(e) => {
-                if (e.target.value === "__other__") setUseOther(true);
-              }}
-            >
-              <option value="">—</option>
-              {associations.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-              <option value="__other__">أخرى</option>
-            </select>
-            {useOther ? (
-              <input
-                name="associationOther"
-                className="input-field mt-2"
-                placeholder="اسم الجمعية"
-                required
-              />
-            ) : null}
-          </div>
-          <div className="md:col-span-2">
-            <label className="label-field">ملاحظات</label>
-            <textarea name="notes" className="input-field" rows={2} />
-          </div>
-          <div className="md:col-span-2">
+          <div className="form-actions">
             <button className="btn-primary" type="submit">
               إضافة مستفيد
             </button>
           </div>
         </form>
-      </div>
+      </section>
 
-      <div className="panel">
-        <h2 className="font-bold text-primary mb-3">استيراد Excel</h2>
-        <form onSubmit={onImport} className="flex gap-3 flex-wrap items-end">
-          <input type="file" name="file" accept=".xlsx,.xls,.csv" required className="input-field max-w-md" />
+      <section className="panel">
+        <h2 className="panel-title">استيراد Excel</h2>
+        <form onSubmit={onImport} className="toolbar">
+          <input type="file" name="file" accept=".xlsx,.xls,.csv" required className="input-field" />
           <button className="btn-secondary" type="submit">
             استيراد
           </button>
         </form>
-      </div>
+      </section>
 
-      <div className="panel">
+      <section className="panel">
+        <h2 className="panel-title">القائمة ({rows.length})</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -198,10 +209,17 @@ export default function BeneficiariesPage() {
                   </td>
                 </tr>
               ))}
+              {!rows.length ? (
+                <tr>
+                  <td colSpan={5} className="empty">
+                    لا توجد نتائج
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

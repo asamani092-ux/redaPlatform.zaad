@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 
 type Summary = {
   totalBeneficiaries: number;
@@ -28,19 +29,23 @@ export default function ReportsPage() {
   }, []);
 
   return (
-    <div className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary mb-3">التقارير والإحصاءات</h1>
-        <div className="flex gap-2 flex-wrap">
-          <a className="btn-primary" href="/api/reports?format=xlsx">
-            تصدير Excel
-          </a>
-          <a className="btn-secondary" href="/api/reports?format=pdf" target="_blank" rel="noreferrer">
-            تصدير PDF (طباعة)
-          </a>
-        </div>
-        {error ? <p className="mt-3 text-[var(--tmkeen-danger)]">{error}</p> : null}
-      </div>
+    <div className="page-stack">
+      <PageHeader
+        title="التقارير والإحصاءات"
+        description="ملخصات قابلة للتصدير مع تقسيم الصفحات عند الحجم الكبير"
+        actions={
+          <>
+            <a className="btn-primary" href="/api/reports?format=xlsx">
+              تصدير Excel
+            </a>
+            <a className="btn-secondary" href="/api/reports?format=pdf" target="_blank" rel="noreferrer">
+              تصدير PDF
+            </a>
+          </>
+        }
+      />
+      {error ? <p className="msg msg-error">{error}</p> : null}
+
       {summary ? (
         <>
           <div className="stat-grid">
@@ -57,14 +62,14 @@ export default function ReportsPage() {
               </div>
             ))}
           </div>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="split-2" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             <Breakdown title="حسب الجنس" data={summary.byGender} />
             <Breakdown title="حسب المدينة" data={summary.byCity} />
             <Breakdown title="حسب الحي" data={summary.byNeighborhood} />
           </div>
         </>
       ) : (
-        <div className="panel">جاري التحميل...</div>
+        <div className="panel empty">جاري التحميل...</div>
       )}
     </div>
   );
@@ -72,16 +77,26 @@ export default function ReportsPage() {
 
 function Breakdown({ title, data }: { title: string; data: Record<string, number> }) {
   return (
-    <div className="panel">
-      <h2 className="font-bold text-primary mb-2">{title}</h2>
-      <ul className="space-y-1">
+    <section className="panel">
+      <h2 className="panel-title">{title}</h2>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "0.55rem" }}>
         {Object.entries(data).map(([k, v]) => (
-          <li key={k} className="flex justify-between gap-2 border-b border-surface-border pb-1">
+          <li
+            key={k}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "0.75rem",
+              paddingBottom: "0.45rem",
+              borderBottom: "1px solid var(--tmkeen-surface-border)",
+            }}
+          >
             <span>{k}</span>
-            <strong>{v}</strong>
+            <strong style={{ color: "var(--tmkeen-primary)" }}>{v}</strong>
           </li>
         ))}
+        {!Object.keys(data).length ? <li className="empty">لا بيانات</li> : null}
       </ul>
-    </div>
+    </section>
   );
 }

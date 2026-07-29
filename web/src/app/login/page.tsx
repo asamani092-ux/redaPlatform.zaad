@@ -1,9 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 
 function LoginForm() {
   const router = useRouter();
@@ -31,15 +30,15 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md panel shadow-sm">
-        <div className="flex flex-col items-center gap-3 mb-6">
+    <div className="login-screen">
+      <div className="login-card">
+        <div className="login-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.webp" alt="رداء" width={72} height={72} />
-          <h1 className="text-3xl font-extrabold text-primary">منصة رداء</h1>
-          <p className="text-sm text-center">دخول الموظفين بالجوال وكلمة المرور</p>
+          <img src="/logo.webp" alt="رداء" width={80} height={80} />
+          <h1>منصة رداء</h1>
+          <p>دخول الموظفين بالجوال وكلمة المرور</p>
         </div>
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="login-form">
           <div>
             <label className="label-field" htmlFor="mobile">
               رقم الجوال
@@ -60,8 +59,8 @@ function LoginForm() {
             </label>
             <input id="password" name="password" type="password" className="input-field" dir="ltr" required />
           </div>
-          {error ? <p className="text-sm text-[var(--tmkeen-danger)]">{error}</p> : null}
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
+          {error ? <p className="msg msg-error">{error}</p> : null}
+          <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading}>
             {loading ? "جاري الدخول..." : "دخول"}
           </button>
         </form>
@@ -72,7 +71,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="page-shell">تحميل...</div>}>
+    <Suspense fallback={<div className="login-screen">تحميل...</div>}>
       <LoginForm />
     </Suspense>
   );

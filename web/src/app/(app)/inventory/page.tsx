@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
+import { AttrChips } from "@/components/AttrChips";
 
 type SchemaField = { key: string; label: string; type: string };
 type Item = {
@@ -68,80 +70,87 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary mb-3">المخزون</h1>
-        {msg ? <p className="mb-3 font-semibold text-primary">{msg}</p> : null}
-        <form onSubmit={onCreate} className="grid md:grid-cols-2 gap-3">
-          {schema.map((f) => (
-            <div key={f.key}>
-              <label className="label-field">{f.label}</label>
-              <input name={f.key} className="input-field" required type={f.type === "number" ? "number" : "text"} />
+    <div className="page-stack">
+      <PageHeader title="المخزون" description="إدخال الأصناف وتعديل الكميات فقط أثناء التشغيل" />
+      {msg ? <p className="msg">{msg}</p> : null}
+
+      <section className="panel">
+        <h2 className="panel-title">إدخال صنف</h2>
+        <form onSubmit={onCreate}>
+          <div className="form-grid">
+            {schema.map((f) => (
+              <div key={f.key}>
+                <label className="label-field">{f.label}</label>
+                <input name={f.key} className="input-field" required type={f.type === "number" ? "number" : "text"} />
+              </div>
+            ))}
+            <div>
+              <label className="label-field">الكمية</label>
+              <input name="quantity" className="input-field" type="number" min={0} step="0.001" required dir="ltr" />
             </div>
-          ))}
-          <div>
-            <label className="label-field">الكمية</label>
-            <input name="quantity" className="input-field" type="number" min={0} step="0.001" required dir="ltr" />
           </div>
-          <div className="md:col-span-2">
+          <div className="form-actions">
             <button className="btn-primary" type="submit">
               إدخال صنف
             </button>
           </div>
         </form>
-      </div>
+      </section>
 
-      <div className="panel">
-        <h2 className="font-bold text-primary mb-3">إضافة / استرجاع كمية</h2>
-        <form onSubmit={onMove} className="grid md:grid-cols-4 gap-3 items-end">
-          <div>
-            <label className="label-field">الصنف</label>
-            <select
-              className="input-field"
-              value={move.inventoryItemId}
-              onChange={(e) => setMove((m) => ({ ...m, inventoryItemId: e.target.value }))}
-              required
-            >
-              <option value="">—</option>
-              {items.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {JSON.stringify(i.attributes)}
-                </option>
-              ))}
-            </select>
+      <section className="panel">
+        <h2 className="panel-title">إضافة / استرجاع كمية</h2>
+        <form onSubmit={onMove}>
+          <div className="form-grid">
+            <div className="full">
+              <label className="label-field">الصنف</label>
+              <select
+                className="input-field"
+                value={move.inventoryItemId}
+                onChange={(e) => setMove((m) => ({ ...m, inventoryItemId: e.target.value }))}
+                required
+              >
+                <option value="">—</option>
+                {items.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {Object.values(i.attributes).join(" / ")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label-field">النوع</label>
+              <select
+                className="input-field"
+                value={move.type}
+                onChange={(e) => setMove((m) => ({ ...m, type: e.target.value }))}
+              >
+                <option value="ADD">إضافة</option>
+                <option value="RETURN">استرجاع</option>
+              </select>
+            </div>
+            <div>
+              <label className="label-field">الكمية</label>
+              <input
+                className="input-field"
+                dir="ltr"
+                type="number"
+                min={0.001}
+                step="0.001"
+                value={move.quantity}
+                onChange={(e) => setMove((m) => ({ ...m, quantity: e.target.value }))}
+              />
+            </div>
           </div>
-          <div>
-            <label className="label-field">النوع</label>
-            <select
-              className="input-field"
-              value={move.type}
-              onChange={(e) => setMove((m) => ({ ...m, type: e.target.value }))}
-            >
-              <option value="ADD">إضافة</option>
-              <option value="RETURN">استرجاع</option>
-            </select>
-          </div>
-          <div>
-            <label className="label-field">الكمية</label>
-            <input
-              className="input-field"
-              dir="ltr"
-              type="number"
-              min={0.001}
-              step="0.001"
-              value={move.quantity}
-              onChange={(e) => setMove((m) => ({ ...m, quantity: e.target.value }))}
-            />
-          </div>
-          <div>
-            <button className="btn-secondary w-full" type="submit">
-              تنفيذ
+          <div className="form-actions">
+            <button className="btn-secondary" type="submit">
+              تنفيذ الحركة
             </button>
           </div>
         </form>
-      </div>
+      </section>
 
-      <div className="panel">
+      <section className="panel">
+        <h2 className="panel-title">الأصناف الحالية</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -154,7 +163,9 @@ export default function InventoryPage() {
             <tbody>
               {items.map((i) => (
                 <tr key={i.id}>
-                  <td>{JSON.stringify(i.attributes)}</td>
+                  <td>
+                    <AttrChips attributes={i.attributes} />
+                  </td>
                   <td>{i.quantity}</td>
                   <td>
                     <span className={`badge ${i.lowStock ? "badge-warning" : "badge-success"}`}>
@@ -163,10 +174,17 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ))}
+              {!items.length ? (
+                <tr>
+                  <td colSpan={3} className="empty">
+                    لا أصناف بعد
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

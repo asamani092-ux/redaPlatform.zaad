@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 
 type Log = {
   id: string;
@@ -21,34 +22,43 @@ export default function AuditPage() {
   }, []);
 
   return (
-    <div className="panel">
-      <h1 className="text-2xl font-extrabold text-primary mb-3">سجل العمليات</h1>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>الوقت</th>
-              <th>المستخدم</th>
-              <th>الإجراء</th>
-              <th>الكيان</th>
-              <th>المعرف</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((l) => (
-              <tr key={l.id}>
-                <td>{new Date(l.createdAt).toLocaleString("ar-SA")}</td>
-                <td>{l.user?.name ?? "—"}</td>
-                <td>{l.action}</td>
-                <td>{l.entityType}</td>
-                <td dir="ltr" className="text-xs">
-                  {l.entityId}
-                </td>
+    <div className="page-stack">
+      <PageHeader title="سجل العمليات" description="تتبع تراكمي لكل التعديلات والحركات" />
+      <section className="panel">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>الوقت</th>
+                <th>المستخدم</th>
+                <th>الإجراء</th>
+                <th>الكيان</th>
+                <th>المعرف</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {logs.map((l) => (
+                <tr key={l.id}>
+                  <td>{new Date(l.createdAt).toLocaleString("ar-SA")}</td>
+                  <td>{l.user?.name ?? "—"}</td>
+                  <td>{l.action}</td>
+                  <td>{l.entityType}</td>
+                  <td dir="ltr" style={{ fontSize: "0.78rem" }}>
+                    {l.entityId}
+                  </td>
+                </tr>
+              ))}
+              {!logs.length ? (
+                <tr>
+                  <td colSpan={5} className="empty">
+                    لا سجلات بعد
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

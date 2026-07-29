@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { ROLE_LABELS } from "@/lib/rbac";
+import { PageHeader } from "@/components/PageHeader";
 
 type UserRow = {
   id: string;
@@ -47,41 +48,47 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary mb-3">المستخدمون</h1>
-        {msg ? <p className="mb-3 font-semibold text-primary">{msg}</p> : null}
-        <form onSubmit={onCreate} className="grid md:grid-cols-2 gap-3">
-          <div>
-            <label className="label-field">الاسم</label>
-            <input name="name" className="input-field" required />
+    <div className="page-stack">
+      <PageHeader title="المستخدمون" description="إدارة حسابات الموظفين والصلاحيات" />
+      {msg ? <p className="msg">{msg}</p> : null}
+
+      <section className="panel">
+        <h2 className="panel-title">إضافة مستخدم</h2>
+        <form onSubmit={onCreate}>
+          <div className="form-grid">
+            <div>
+              <label className="label-field">الاسم</label>
+              <input name="name" className="input-field" required />
+            </div>
+            <div>
+              <label className="label-field">الجوال</label>
+              <input name="mobile" className="input-field" dir="ltr" required />
+            </div>
+            <div>
+              <label className="label-field">كلمة المرور</label>
+              <input name="password" type="password" className="input-field" dir="ltr" required />
+            </div>
+            <div>
+              <label className="label-field">الدور</label>
+              <select name="role" className="input-field" required>
+                {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="label-field">الجوال</label>
-            <input name="mobile" className="input-field" dir="ltr" required />
-          </div>
-          <div>
-            <label className="label-field">كلمة المرور</label>
-            <input name="password" type="password" className="input-field" dir="ltr" required />
-          </div>
-          <div>
-            <label className="label-field">الدور</label>
-            <select name="role" className="input-field" required>
-              {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="md:col-span-2">
+          <div className="form-actions">
             <button className="btn-primary" type="submit">
               إضافة مستخدم
             </button>
           </div>
         </form>
-      </div>
-      <div className="panel">
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">الحسابات</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -108,7 +115,7 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

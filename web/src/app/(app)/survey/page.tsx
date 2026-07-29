@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 
 type Question = { id: string; text: string; type: string; min?: number; max?: number };
 type ResponseRow = {
@@ -56,46 +57,51 @@ export default function SurveyPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary mb-3">استبيان الرضا</h1>
-        {msg ? <p className="mb-3 font-semibold text-primary">{msg}</p> : null}
-        <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="label-field">معرف المستفيد</label>
-            <input
-              className="input-field"
-              dir="ltr"
-              value={beneficiaryId}
-              onChange={(e) => setBeneficiaryId(e.target.value)}
-              required
-            />
-          </div>
-          {questions.map((q) => (
-            <div key={q.id}>
-              <label className="label-field">{q.text}</label>
+    <div className="page-stack">
+      <PageHeader title="استبيان الرضا" description="تسجيل إجابات المستفيد أو إرسال رابط واتساب لاحقاً" />
+      {msg ? <p className="msg">{msg}</p> : null}
+
+      <section className="panel">
+        <h2 className="panel-title">إدخال إجابات</h2>
+        <form onSubmit={submit}>
+          <div className="form-grid">
+            <div className="full">
+              <label className="label-field">معرف المستفيد</label>
               <input
                 className="input-field"
-                type={q.type === "scale" ? "number" : "text"}
-                min={q.min}
-                max={q.max}
-                value={answers[q.id] ?? ""}
-                onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+                dir="ltr"
+                value={beneficiaryId}
+                onChange={(e) => setBeneficiaryId(e.target.value)}
+                required
               />
             </div>
-          ))}
-          <div className="flex gap-2 flex-wrap">
+            {questions.map((q) => (
+              <div key={q.id} className="full">
+                <label className="label-field">{q.text}</label>
+                <input
+                  className="input-field"
+                  type={q.type === "scale" ? "number" : "text"}
+                  min={q.min}
+                  max={q.max}
+                  value={answers[q.id] ?? ""}
+                  onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="form-actions">
             <button className="btn-primary" type="submit">
               حفظ الإجابات
             </button>
             <button className="btn-secondary" type="button" onClick={sendLink}>
-              إرسال رابط واتساب (stub)
+              إرسال رابط واتساب
             </button>
           </div>
         </form>
-      </div>
-      <div className="panel">
-        <h2 className="font-bold text-primary mb-3">الردود</h2>
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">الردود</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -110,18 +116,40 @@ export default function SurveyPage() {
                 <tr key={r.id}>
                   <td>
                     {r.beneficiary.name}
-                    <div dir="ltr" className="text-xs">
+                    <div dir="ltr" style={{ fontSize: "0.8rem", color: "var(--tmkeen-brand-gray)" }}>
                       {r.beneficiary.nationalId}
                     </div>
                   </td>
-                  <td>{JSON.stringify(r.answersJson)}</td>
+                  <td>
+                    <AttrAnswers answers={r.answersJson} />
+                  </td>
                   <td>{new Date(r.createdAt).toLocaleString("ar-SA")}</td>
                 </tr>
               ))}
+              {!responses.length ? (
+                <tr>
+                  <td colSpan={3} className="empty">
+                    لا ردود بعد
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
+    </div>
+  );
+}
+
+function AttrAnswers({ answers }: { answers: Record<string, unknown> }) {
+  return (
+    <div className="attr-chips">
+      {Object.entries(answers || {}).map(([k, v]) => (
+        <span key={k} className="attr-chip">
+          <b>{k}</b>
+          <span>{String(v)}</span>
+        </span>
+      ))}
     </div>
   );
 }

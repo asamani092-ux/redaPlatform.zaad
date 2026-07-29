@@ -1,10 +1,13 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
+import { AttrChips } from "@/components/AttrChips";
 
 type Item = {
   id: string;
-  attributesJson: Record<string, unknown>;
+  attributes?: Record<string, unknown>;
+  attributesJson?: Record<string, unknown>;
   quantity: number;
 };
 
@@ -30,7 +33,7 @@ export default function DispensePage() {
     fetch("/api/inventory")
       .then((r) => r.json())
       .then((j) => {
-        if (j.data) setItems(j.data.map((i: Item & { quantity: number }) => ({ ...i, quantity: Number(i.quantity) })));
+        if (j.data) setItems(j.data.map((i: Item) => ({ ...i, quantity: Number(i.quantity) })));
       })
       .catch(() => undefined);
   }, []);
@@ -75,12 +78,15 @@ export default function DispensePage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary mb-3">صرف القطع</h1>
-        <form onSubmit={search} className="flex gap-2 flex-wrap">
+    <div className="page-stack">
+      <PageHeader title="صرف القطع" description="يشترط تسجيل الحضور قبل الصرف" />
+      {msg ? <p className="msg">{msg}</p> : null}
+
+      <section className="panel">
+        <h2 className="panel-title">بحث المستفيد</h2>
+        <form onSubmit={search} className="toolbar">
           <input
-            className="input-field max-w-md"
+            className="input-field"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="هوية / جوال / اسم"
@@ -89,23 +95,25 @@ export default function DispensePage() {
             بحث
           </button>
         </form>
-        {msg ? <p className="mt-3 font-semibold text-primary">{msg}</p> : null}
-      </div>
+      </section>
 
       {beneficiary ? (
-        <div className="panel space-y-3">
-          <div>
-            <div className="text-xl font-bold">{beneficiary.name}</div>
-            <div dir="ltr">{beneficiary.nationalId}</div>
-            <div className="mt-2">
-              الحضور:{" "}
-              <span className={`badge ${beneficiary.attendances?.length ? "badge-success" : "badge-danger"}`}>
-                {beneficiary.attendances?.length ? "مسجل" : "غير مسجل"}
-              </span>
+        <section className="panel">
+          <h2 className="panel-title">بيانات الصرف</h2>
+          <div style={{ marginBottom: "1rem" }}>
+            <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--tmkeen-primary)" }}>
+              {beneficiary.name}
             </div>
-            <div className="mt-1">الاستحقاق الافتراضي: {entitled}</div>
+            <div dir="ltr">{beneficiary.nationalId}</div>
+            <div style={{ marginTop: "0.6rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <span className={`badge ${beneficiary.attendances?.length ? "badge-success" : "badge-danger"}`}>
+                الحضور: {beneficiary.attendances?.length ? "مسجل" : "غير مسجل"}
+              </span>
+              <span className="badge badge-muted">الاستحقاق: {entitled}</span>
+            </div>
           </div>
-          <div className="grid md:grid-cols-2 gap-3">
+
+          <div className="form-grid" style={{ marginBottom: "1rem" }}>
             <div>
               <label className="label-field">تعديل الاستحقاق (مشرف)</label>
               <input className="input-field" dir="ltr" value={override} onChange={(e) => setOverride(e.target.value)} />
@@ -115,6 +123,7 @@ export default function DispensePage() {
               <input className="input-field" value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} />
             </div>
           </div>
+
           <div className="table-wrap">
             <table>
               <thead>
@@ -127,9 +136,11 @@ export default function DispensePage() {
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td>{JSON.stringify(item.attributesJson ?? (item as unknown as { attributes: unknown }).attributes)}</td>
-                    <td>{item.quantity}</td>
                     <td>
+                      <AttrChips attributes={item.attributes ?? item.attributesJson} />
+                    </td>
+                    <td>{item.quantity}</td>
+                    <td style={{ maxWidth: 140 }}>
                       <input
                         type="number"
                         min={0}
@@ -147,10 +158,12 @@ export default function DispensePage() {
               </tbody>
             </table>
           </div>
-          <button className="btn-primary" type="button" onClick={submit}>
-            تأكيد الصرف
-          </button>
-        </div>
+          <div className="form-actions">
+            <button className="btn-primary" type="button" onClick={submit}>
+              تأكيد الصرف
+            </button>
+          </div>
+        </section>
       ) : null}
     </div>
   );
