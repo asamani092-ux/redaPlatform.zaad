@@ -1,0 +1,342 @@
+/**
+ * Tmkeen Design System — Component Classes (framework-agnostic)
+ * يتطلب tokens.css
+ */
+
+/* ── Base RTL ── */
+.tmkeen-root,
+[data-tmkeen] {
+  color: var(--tmkeen-foreground);
+  background: var(--tmkeen-background);
+  font-family: var(--tmkeen-font-sans);
+  direction: rtl;
+  text-align: start;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--tmkeen-radius-lg);
+  background: var(--tmkeen-primary);
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: #fff;
+  text-align: start;
+  transition: background-color 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary:hover {
+  background: var(--tmkeen-primary-dark);
+}
+.btn-primary:focus-visible {
+  outline: 2px solid var(--tmkeen-primary);
+  outline-offset: 2px;
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--tmkeen-radius-lg);
+  border: 1px solid var(--tmkeen-surface-border);
+  background: var(--tmkeen-surface);
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: var(--tmkeen-brand-gray);
+  text-align: start;
+  transition: background-color 0.15s ease;
+  cursor: pointer;
+}
+.btn-secondary:hover {
+  background: var(--tmkeen-surface-muted);
+}
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--tmkeen-surface-border);
+  outline-offset: 2px;
+}
+
+.btn-recommend {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--tmkeen-radius-lg);
+  background: var(--tmkeen-secondary);
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: var(--tmkeen-warning);
+  text-align: start;
+  transition: background-color 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+.btn-recommend:hover {
+  background: var(--tmkeen-secondary-light);
+}
+
+.btn-register {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--tmkeen-radius-lg);
+  background: rgb(250, 204, 21);
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  color: var(--tmkeen-warning);
+  text-align: start;
+  transition: background-color 0.15s ease;
+  border: none;
+  cursor: pointer;
+}
+.btn-register:hover {
+  background: var(--tmkeen-secondary);
+}
+
+/* ── Cards ── */
+.card {
+  border-radius: var(--tmkeen-radius-xl);
+  border: 2px solid var(--tmkeen-surface-border);
+  background: var(--tmkeen-surface);
+  padding: 1.5rem;
+  text-align: start;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.card-section {
+  border-radius: var(--tmkeen-radius-xl);
+  border: 2px solid color-mix(in srgb, var(--tmkeen-primary) 20%, transparent);
+  background: var(--tmkeen-surface);
+  padding: 1.25rem;
+  text-align: start;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* ── Forms ── */
+.input-field {
+  width: 100%;
+  border-radius: var(--tmkeen-radius-lg);
+  border: 1px solid var(--tmkeen-surface-border);
+  background: var(--tmkeen-surface);
+  padding: 0.75rem 1rem;
+  color: var(--tmkeen-brand-gray);
+  text-align: start;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.input-field:focus {
+  border-color: var(--tmkeen-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tmkeen-primary) 20%, transparent);
+}
+
+.label-field {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tmkeen-brand-gray);
+  text-align: start;
+}
+
+.field-cell {
+  border-radius: var(--tmkeen-radius-lg);
+  border: 2px solid color-mix(in srgb, var(--tmkeen-primary) 20%, transparent);
+  background: var(--tmkeen-surface);
+  padding: 0.75rem 1rem;
+  text-align: start;
+}
+
+.field-cell-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: start;
+}
+
+.field-cell-label {
+  flex-shrink: 0;
+  min-width: 7rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tmkeen-brand-gray);
+}
+
+.field-cell-value {
+  min-width: 0;
+  flex: 1;
+  font-weight: 500;
+  color: var(--tmkeen-primary);
+  word-break: break-word;
+}
+
+.field-cell-control {
+  min-width: 0;
+  flex: 1;
+}
+
+.field-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .field-cell-label {
+    min-width: 9rem;
+  }
+}
+
+/* LTR fields (email, phone, url, datetime) */
+input[type="email"],
+input[type="tel"],
+input[type="url"],
+input[type="datetime-local"],
+input[type="password"][dir="ltr"],
+.input-field[dir="ltr"] {
+  direction: ltr;
+  text-align: left;
+}
+
+/* ── Badges ── */
+.badge-primary {
+  display: inline-block;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--tmkeen-primary) 10%, transparent);
+  padding: 0.125rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tmkeen-primary);
+}
+
+.badge-warning {
+  display: inline-block;
+  border-radius: 0.25rem;
+  background: var(--tmkeen-warning-bg);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tmkeen-warning);
+}
+
+.badge-danger {
+  display: inline-block;
+  border-radius: 9999px;
+  background: var(--tmkeen-danger-bg);
+  padding: 0.125rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tmkeen-danger);
+}
+
+.badge-success {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tmkeen-success);
+}
+
+/* ── Layout helpers ── */
+.page-shell {
+  min-height: 100vh;
+  background: var(--tmkeen-surface-muted);
+}
+
+.page-container {
+  margin-inline: auto;
+  max-width: var(--tmkeen-page-max-width);
+  padding-inline: 1rem;
+  padding-block: 2rem;
+}
+
+.page-container-narrow {
+  margin-inline: auto;
+  max-width: 28rem;
+  padding-inline: 1rem;
+  padding-block: 3rem;
+}
+
+/* ── Tables ── */
+.tmkeen-table {
+  width: 100%;
+  font-size: 0.875rem;
+  text-align: start;
+}
+.tmkeen-table thead {
+  background: color-mix(in srgb, var(--tmkeen-primary) 5%, transparent);
+  color: var(--tmkeen-primary);
+}
+.tmkeen-table th,
+.tmkeen-table td {
+  padding: 0.75rem 1rem;
+}
+.tmkeen-table tbody tr {
+  border-top: 1px solid var(--tmkeen-surface-border);
+}
+.tmkeen-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--tmkeen-surface-muted) 40%, transparent);
+}
+.tmkeen-table tbody tr:hover {
+  background: color-mix(in srgb, var(--tmkeen-secondary) 10%, transparent);
+  cursor: pointer;
+}
+
+/* ── Tabs (segmented) ── */
+.tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-radius: var(--tmkeen-radius-xl);
+  background: var(--tmkeen-surface);
+  padding: 0.25rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.tab-bar button {
+  flex: 1;
+  min-width: 100px;
+  border-radius: var(--tmkeen-radius-lg);
+  padding: 0.75rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tmkeen-brand-gray);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.tab-bar button[data-active="true"],
+.tab-bar button.active {
+  background: var(--tmkeen-primary);
+  color: #fff;
+}
+
+/* ── Modal overlay ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tmkeen-overlay);
+  padding: 1rem;
+}
+.modal-panel {
+  max-height: 90vh;
+  width: 100%;
+  max-width: 32rem;
+  overflow-y: auto;
+}
+.modal-panel.wide {
+  max-width: 48rem;
+}

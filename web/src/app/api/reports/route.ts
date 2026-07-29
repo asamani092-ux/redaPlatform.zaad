@@ -1,0 +1,229 @@
+import { NextRequest, NextResponse } from "next/server";
+import ExcelJS from "exceljs";
+import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/session";
+import { requireActiveExhibition } from "@/lib/exhibition";
+import { STATUS_LABELS, resolveStatus } from "@/lib/status";
+
+export async function GET(req: NextRequest) {
+  const authz = await requirePermission("reports:view");
+  if ("error" in authz) return authz.error;
+
+  const format = req.nextUrl.searchParams.get("format") ?? "json";
+  const exhibition = await requireActiveExhibition();
+  const exhibitionId = exhibition.id;
+
+  const beneficiaries = await prisma.beneficiary.findMany({
+    include: {
+      association: true,
+      invites: { where: { exhibitionId }, take: 1 },
+      attendances: { where: { exhibitionId }, take: 1 },
+      dispenseOrders: { where: { exhibitionId }, take: 1 },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  const rows = beneficiaries.map((b) => {
+    const invite = b.invites[0];
+    const attendance = b.attendances[0];
+    const dispense = b.dispenseOrders[0];
+    const status = resolveStatus({
+      invited: invite?.invited,
+      attendanceType: attendance?.type ?? null,
+      received: !!dispense,
+    });
+    return {
+      name: b.name,
+      nationalId: b.nationalId,
+      mobile: b.mobile,
+      gender: b.gender === "MALE" ? "ذكر" : b.gender === "FEMALE" ? "أنثى" : "",
+      city: b.city ?? "",
+      neighborhood: b.neighborhood ?? "",
+      association: b.association?.name ?? b.associationOther ?? "",
+      status: STATUS_LABELS[status],
+      checkedInAt: attendance?.checkedInAt?.toISOString() ?? "",
+      receivedAt: dispense?.createdAt?.toISOString() ?? "",
+      pieces: dispense?.piecesCount ?? 0,
+      exceptionReason: attendance?.exceptionReason ?? "",
+    };
+  });
+
+  const byGender = groupCount(rows.map((r) => r.gender || "غير محدد"));
+  const byCity = groupCount(rows.map((r) => r.city || "غير محدد"));
+  const byNeighborhood = groupCount(rows.map((r) => r.neighborhood || "غير محدد"));
+
+  const summary = {
+    totalBeneficiaries: beneficiaries.length,
+    invited: await prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
+    attended: await prisma.attendance.count({ where: { exhibitionId } }),
+    received: await prisma.dispenseOrder.count({ where: { exhibitionId } }),
+    piecesDispensed:
+      (
+        await prisma.dispenseOrder.aggregate({
+          where: { exhibitionId },
+          _sum: { piecesCount: true },
+        })
+      )._sum.piecesCount ?? 0,
+    inventoryRemaining: (
+      await prisma.inventoryItem.findMany({ where: { exhibitionId } })
+    ).map((i) => ({ attributes: i.attributesJson, quantity: Number(i.quantity) })),
+    byGender,
+    byCity,
+    byNeighborhood,
+  };
+
+  if (format === "json") {
+    return NextResponse.json({ summary, rows });
+  }
+
+  if (format === "xlsx") {
+    const wb = new ExcelJS.Workbook();
+    const summarySheet = wb.addWorksheet("ملخص");
+    summarySheet.addRows([
+      ["المؤشر", "القيمة"],
+      ["إجمالي المستفيدين", summary.totalBeneficiaries],
+      ["المدعوون", summary.invited],
+      ["الحضور", summary.attended],
+      ["المستلمون", summary.received],
+      ["القطع المصروفة", summary.piecesDispensed],
+    ]);
+
+    const detail = wb.addWorksheet("التفاصيل");
+    detail.addRow([
+      "الاسم",
+      "الهوية",
+      "الجوال",
+      "الجنس",
+      "المدينة",
+      "الحي",
+      "الجمعية",
+      "الحالة",
+      "وقت الحضور",
+      "وقت الاستلام",
+      "القطع",
+      "سبب الاستثناء",
+    ]);
+
+    const MAX_ROWS_PER_SHEET = 5000;
+    let sheetIndex = 1;
+    let current = detail;
+    let countInSheet = 0;
+    for (const r of rows) {
+      if (countInSheet >= MAX_ROWS_PER_SHEET) {
+        sheetIndex++;
+        current = wb.addWorksheet(`التفاصيل_${sheetIndex}`);
+        current.addRow([
+          "الاسم",
+          "الهوية",
+          "الجوال",
+          "الجنس",
+          "المدينة",
+          "الحي",
+          "الجمعية",
+          "الحالة",
+          "وقت الحضور",
+          "وقت الاستلام",
+          "القطع",
+          "سبب الاستثناء",
+        ]);
+        countInSheet = 0;
+      }
+      current.addRow([
+        r.name,
+        r.nationalId,
+        r.mobile,
+        r.gender,
+        r.city,
+        r.neighborhood,
+        r.association,
+        r.status,
+        r.checkedInAt,
+        r.receivedAt,
+        r.pieces,
+        r.exceptionReason,
+      ]);
+      countInSheet++;
+    }
+
+    const genderSheet = wb.addWorksheet("حسب الجنس");
+    genderSheet.addRow(["الجنس", "العدد"]);
+    Object.entries(byGender).forEach(([k, v]) => genderSheet.addRow([k, v]));
+
+    const citySheet = wb.addWorksheet("حسب المدينة");
+    citySheet.addRow(["المدينة", "العدد"]);
+    Object.entries(byCity).forEach(([k, v]) => citySheet.addRow([k, v]));
+
+    const buf = await wb.xlsx.writeBuffer();
+    return new NextResponse(buf, {
+      headers: {
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="ridaa-report.xlsx"`,
+      },
+    });
+  }
+
+  if (format === "pdf") {
+    // PDF نصي بسيط متعدد الصفحات عبر HTML قابل للطباعة من المتصفح؛ هنا نُرجع HTML للطباعة/PDF
+    const pageSize = 40;
+    const pages: string[] = [];
+    for (let i = 0; i < rows.length; i += pageSize) {
+      const slice = rows.slice(i, i + pageSize);
+      pages.push(`
+        <section style="page-break-after: always; font-family: Tahoma, Arial; direction: rtl;">
+          <h1>تقرير معرض رداء — ${exhibition.name}</h1>
+          <p>صفحة ${Math.floor(i / pageSize) + 1}</p>
+          <table border="1" cellspacing="0" cellpadding="6" width="100%" style="border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr>
+                <th>الاسم</th><th>الهوية</th><th>الجوال</th><th>الحالة</th><th>القطع</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${slice
+                .map(
+                  (r) =>
+                    `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.nationalId)}</td><td>${escapeHtml(r.mobile)}</td><td>${escapeHtml(r.status)}</td><td>${r.pieces}</td></tr>`,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </section>
+      `);
+    }
+
+    const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/><title>تقرير رداء</title></head><body>
+      <h2>الملخص</h2>
+      <ul>
+        <li>المستفيدون: ${summary.totalBeneficiaries}</li>
+        <li>المدعوون: ${summary.invited}</li>
+        <li>الحضور: ${summary.attended}</li>
+        <li>المستلمون: ${summary.received}</li>
+        <li>القطع: ${summary.piecesDispensed}</li>
+      </ul>
+      ${pages.join("\n")}
+      <script>window.onload=()=>window.print()</script>
+    </body></html>`;
+
+    return new NextResponse(html, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  }
+
+  return NextResponse.json({ error: "صيغة غير مدعومة" }, { status: 400 });
+}
+
+function groupCount(values: string[]) {
+  return values.reduce<Record<string, number>>((acc, v) => {
+    acc[v] = (acc[v] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
+function escapeHtml(s: string) {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}

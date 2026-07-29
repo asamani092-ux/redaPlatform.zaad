@@ -1,0 +1,12 @@
+.DS_Store
+node_modules
+.env
+web/.env
+web/.next
+web/node_modules
+web/src/generated
+
+web/.agents/
+web/.claude/
+web/.windsurf/
+web/skills-lock.json
