@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 
 type Association = { id?: string; name: string; active?: boolean };
 type SchemaField = { key: string; label: string; type: "text" | "number" };
@@ -62,11 +63,21 @@ export default function SettingsPage() {
   }
 
   return (
-    <form onSubmit={save} className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary mb-3">الإعدادات</h1>
-        {msg ? <p className="mb-3 font-semibold text-primary">{msg}</p> : null}
-        <div className="grid md:grid-cols-2 gap-3">
+    <form onSubmit={save} className="page-stack">
+      <PageHeader
+        title="الإعدادات"
+        description="ضبط المعرض والاستحقاق ومخطط المخزون وقوائم الجمعيات"
+        actions={
+          <button className="btn-primary" type="submit">
+            حفظ الإعدادات
+          </button>
+        }
+      />
+      {msg ? <p className="msg">{msg}</p> : null}
+
+      <section className="panel">
+        <h2 className="panel-title">بيانات المعرض</h2>
+        <div className="form-grid">
           <div>
             <label className="label-field">اسم المعرض</label>
             <input className="input-field" value={exhibitionName} onChange={(e) => setExhibitionName(e.target.value)} />
@@ -98,90 +109,93 @@ export default function SettingsPage() {
             />
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="panel">
-        <h2 className="font-bold text-primary mb-3">مخطط سمات المخزون</h2>
-        {schema.map((f, idx) => (
-          <div key={idx} className="grid md:grid-cols-3 gap-2 mb-2">
+      <section className="panel">
+        <h2 className="panel-title">مخطط سمات المخزون</h2>
+        <div style={{ display: "grid", gap: "0.65rem" }}>
+          {schema.map((f, idx) => (
+            <div key={idx} className="form-grid" style={{ gridTemplateColumns: "1fr 1fr 140px" }}>
+              <input
+                className="input-field"
+                placeholder="المفتاح"
+                value={f.key}
+                onChange={(e) =>
+                  setSchema((s) => s.map((x, i) => (i === idx ? { ...x, key: e.target.value } : x)))
+                }
+              />
+              <input
+                className="input-field"
+                placeholder="التسمية"
+                value={f.label}
+                onChange={(e) =>
+                  setSchema((s) => s.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))
+                }
+              />
+              <select
+                className="input-field"
+                value={f.type}
+                onChange={(e) =>
+                  setSchema((s) =>
+                    s.map((x, i) =>
+                      i === idx ? { ...x, type: e.target.value as "text" | "number" } : x,
+                    ),
+                  )
+                }
+              >
+                <option value="text">نص</option>
+                <option value="number">رقم</option>
+              </select>
+            </div>
+          ))}
+        </div>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setSchema((s) => [...s, { key: "", label: "", type: "text" }])}
+          >
+            إضافة حقل
+          </button>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">قائمة الجمعيات</h2>
+        <div style={{ display: "grid", gap: "0.55rem" }}>
+          {associations.map((a, idx) => (
             <input
+              key={a.id ?? idx}
               className="input-field"
-              placeholder="المفتاح"
-              value={f.key}
+              value={a.name}
               onChange={(e) =>
-                setSchema((s) => s.map((x, i) => (i === idx ? { ...x, key: e.target.value } : x)))
-              }
-            />
-            <input
-              className="input-field"
-              placeholder="التسمية"
-              value={f.label}
-              onChange={(e) =>
-                setSchema((s) => s.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))
-              }
-            />
-            <select
-              className="input-field"
-              value={f.type}
-              onChange={(e) =>
-                setSchema((s) =>
-                  s.map((x, i) =>
-                    i === idx ? { ...x, type: e.target.value as "text" | "number" } : x,
-                  ),
+                setAssociations((list) =>
+                  list.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
                 )
               }
-            >
-              <option value="text">نص</option>
-              <option value="number">رقم</option>
-            </select>
+            />
+          ))}
+        </div>
+        <div className="form-actions">
+          <button type="button" className="btn-secondary" onClick={() => setAssociations((a) => [...a, { name: "" }])}>
+            إضافة جمعية
+          </button>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">قوالب واتساب</h2>
+        <div className="form-grid">
+          <div className="full">
+            <label className="label-field">قالب الدعوة</label>
+            <textarea className="input-field" rows={3} value={inviteTpl} onChange={(e) => setInviteTpl(e.target.value)} />
           </div>
-        ))}
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => setSchema((s) => [...s, { key: "", label: "", type: "text" }])}
-        >
-          إضافة حقل
-        </button>
-      </div>
-
-      <div className="panel">
-        <h2 className="font-bold text-primary mb-3">قائمة الجمعيات</h2>
-        {associations.map((a, idx) => (
-          <input
-            key={a.id ?? idx}
-            className="input-field mb-2"
-            value={a.name}
-            onChange={(e) =>
-              setAssociations((list) =>
-                list.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
-              )
-            }
-          />
-        ))}
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => setAssociations((a) => [...a, { name: "" }])}
-        >
-          إضافة جمعية
-        </button>
-      </div>
-
-      <div className="panel space-y-3">
-        <h2 className="font-bold text-primary">قوالب واتساب</h2>
-        <div>
-          <label className="label-field">قالب الدعوة</label>
-          <textarea className="input-field" rows={3} value={inviteTpl} onChange={(e) => setInviteTpl(e.target.value)} />
+          <div className="full">
+            <label className="label-field">قالب الشكر</label>
+            <textarea className="input-field" rows={3} value={thanksTpl} onChange={(e) => setThanksTpl(e.target.value)} />
+          </div>
         </div>
-        <div>
-          <label className="label-field">قالب الشكر</label>
-          <textarea className="input-field" rows={3} value={thanksTpl} onChange={(e) => setThanksTpl(e.target.value)} />
-        </div>
-        <button className="btn-primary" type="submit">
-          حفظ الإعدادات
-        </button>
-      </div>
+      </section>
     </form>
   );
 }

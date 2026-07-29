@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 
 type Row = {
   id: string;
@@ -51,22 +52,39 @@ export default function InvitesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary mb-3">الدعوات الجماعية</h1>
-        <div className="flex gap-2 flex-wrap mb-3">
-          <input className="input-field max-w-md" value={q} onChange={(e) => setQ(e.target.value)} placeholder="تصفية" />
+    <div className="page-stack">
+      <PageHeader
+        title="الدعوات الجماعية"
+        description="تحديد المستفيدين من قاعدة البيانات وإنشاء رمز QR داخلي"
+        actions={
+          <>
+            <button className="btn-primary" type="button" onClick={() => invite(false)}>
+              دعوة المحددين ({selectedIds.length})
+            </button>
+            <button className="btn-recommend" type="button" onClick={() => invite(true)}>
+              دعوة + واتساب
+            </button>
+          </>
+        }
+      />
+      {msg ? <p className="msg">{msg}</p> : null}
+
+      <section className="panel">
+        <div className="toolbar">
+          <input
+            className="input-field"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="تصفية بالاسم أو الهوية"
+          />
           <button className="btn-secondary" type="button" onClick={load}>
             تحديث
           </button>
-          <button className="btn-primary" type="button" onClick={() => invite(false)}>
-            دعوة المحددين
-          </button>
-          <button className="btn-recommend" type="button" onClick={() => invite(true)}>
-            دعوة + واتساب (stub)
-          </button>
         </div>
-        {msg ? <p className="text-sm font-semibold text-primary mb-3">{msg}</p> : null}
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">المستفيدون</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -99,21 +117,30 @@ export default function InvitesPage() {
                   </td>
                   <td>{r.name}</td>
                   <td dir="ltr">{r.nationalId}</td>
-                  <td>{r.statusLabel}</td>
+                  <td>
+                    <span className="badge badge-muted">{r.statusLabel}</span>
+                  </td>
                   <td>
                     {r.qrToken ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={`/api/qr/${r.qrToken}`} alt="QR" width={56} height={56} />
+                      <img src={`/api/qr/${r.qrToken}`} alt="QR" width={52} height={52} />
                     ) : (
                       "—"
                     )}
                   </td>
                 </tr>
               ))}
+              {!rows.length ? (
+                <tr>
+                  <td colSpan={5} className="empty">
+                    لا توجد بيانات
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

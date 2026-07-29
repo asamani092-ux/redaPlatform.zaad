@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { useState } from "react";
 import { IdleWarning } from "@/components/IdleWarning";
 import { ROLE_LABELS } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
@@ -31,47 +32,69 @@ export function AppShell({
   user: { name: string; role: Role; mobile: string };
 }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
   const items = NAV.filter((item) => !item.roles || item.roles.includes(user.role));
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-surface-border bg-white/90 backdrop-blur sticky top-0 z-40">
-        <div className="page-shell flex items-center justify-between gap-4 py-3">
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.webp" alt="رداء" width={44} height={44} className="rounded-lg" />
-            <div>
-              <div className="text-xl font-extrabold text-primary leading-none">منصة رداء</div>
-              <div className="text-xs mt-1">{ROLE_LABELS[user.role]} — {user.name}</div>
-            </div>
+    <div className="app-frame" data-tmkeen>
+      <aside className={`app-sidebar ${open ? "is-open" : ""}`}>
+        <div className="app-sidebar__brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.webp" alt="رداء" width={40} height={40} />
+          <div>
+            <div className="app-sidebar__title">منصة رداء</div>
+            <div className="app-sidebar__meta">{ROLE_LABELS[user.role]}</div>
           </div>
-          <button type="button" className="btn-secondary !py-2 !px-3 text-sm" onClick={() => signOut({ callbackUrl: "/login" })}>
-            خروج
+        </div>
+
+        <nav className="app-sidebar__nav" aria-label="القائمة الرئيسية">
+          {items.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`app-nav-link ${active ? "is-active" : ""}`}
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="app-sidebar__footer">
+          <div className="app-sidebar__user">
+            <strong>{user.name}</strong>
+            <span dir="ltr">{user.mobile}</span>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary app-sidebar__logout"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            تسجيل الخروج
           </button>
         </div>
-        <nav className="page-shell !pt-0 !pb-3 overflow-x-auto">
-          <ul className="flex gap-2 min-w-max">
-            {items.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={`inline-flex px-3 py-2 rounded-lg text-sm font-semibold transition ${
-                      active
-                        ? "bg-primary text-white"
-                        : "bg-surface-muted text-brand-gray hover:bg-primary/10"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-      </header>
-      <main className="page-shell">{children}</main>
+      </aside>
+
+      {open ? <button type="button" className="app-backdrop" aria-label="إغلاق القائمة" onClick={() => setOpen(false)} /> : null}
+
+      <div className="app-main">
+        <header className="app-topbar">
+          <button type="button" className="app-menu-btn btn-secondary" onClick={() => setOpen((v) => !v)}>
+            القائمة
+          </button>
+          <div className="app-topbar__brand">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.webp" alt="" width={28} height={28} />
+            <span>منصة رداء</span>
+          </div>
+          <div className="app-topbar__user">{user.name}</div>
+        </header>
+        <main className="app-content">{children}</main>
+      </div>
+
       <IdleWarning userName={user.name} />
     </div>
   );

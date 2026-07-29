@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 
 type Recent = {
   id: string;
@@ -73,51 +74,62 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary">تسجيل الحضور</h1>
-        <p className="mt-2 text-3xl font-extrabold text-secondary-dark">الحاضرون الآن: {count}</p>
+    <div className="page-stack">
+      <PageHeader title="تسجيل الحضور" description="مسح QR أو البحث برقم الهوية" />
+
+      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <div className="stat-tile">
+          <div className="value">{count}</div>
+          <div className="label">الحاضرون الآن</div>
+        </div>
       </div>
-      <div className="panel">
-        <form onSubmit={submit} className="grid md:grid-cols-2 gap-3">
-          <div>
-            <label className="label-field">رمز QR الداخلي</label>
-            <input name="qrToken" className="input-field" dir="ltr" placeholder="امسح أو الصق الرمز" />
-          </div>
-          <div>
-            <label className="label-field">أو رقم الهوية</label>
-            <input name="nationalId" className="input-field" dir="ltr" />
-          </div>
-          {(needsException || true) && (
-            <>
-              <div className="md:col-span-2 flex items-center gap-2">
-                <input id="exception" name="exception" type="checkbox" checked={needsException} onChange={(e) => setNeedsException(e.target.checked)} />
-                <label htmlFor="exception">تسجيل كاستثناء (بديل الحضور الاعتيادي)</label>
+
+      <section className="panel">
+        <h2 className="panel-title">تأكيد الدخول</h2>
+        <form onSubmit={submit}>
+          <div className="form-grid">
+            <div>
+              <label className="label-field">رمز QR الداخلي</label>
+              <input name="qrToken" className="input-field" dir="ltr" placeholder="امسح أو الصق الرمز" />
+            </div>
+            <div>
+              <label className="label-field">أو رقم الهوية</label>
+              <input name="nationalId" className="input-field" dir="ltr" />
+            </div>
+            <div className="full" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                id="exception"
+                name="exception"
+                type="checkbox"
+                checked={needsException}
+                onChange={(e) => setNeedsException(e.target.checked)}
+              />
+              <label htmlFor="exception">تسجيل كاستثناء (بديل الحضور الاعتيادي)</label>
+            </div>
+            {needsException ? (
+              <div className="full">
+                <label className="label-field">سبب الاستثناء</label>
+                <input name="exceptionReason" className="input-field" required={needsException} />
               </div>
-              {needsException ? (
-                <div className="md:col-span-2">
-                  <label className="label-field">سبب الاستثناء</label>
-                  <input name="exceptionReason" className="input-field" required={needsException} />
-                </div>
-              ) : null}
-            </>
-          )}
-          <div className="md:col-span-2">
+            ) : null}
+          </div>
+          <div className="form-actions">
             <button className="btn-primary" type="submit">
               تأكيد الحضور
             </button>
           </div>
         </form>
-        {msg ? <p className="mt-3 font-semibold text-primary">{msg}</p> : null}
+        {msg ? <p className="msg" style={{ marginTop: "1rem" }}>{msg}</p> : null}
         {preview ? (
-          <div className="mt-3 p-3 rounded-lg bg-surface-muted">
-            <div className="font-bold">{preview.name}</div>
+          <div className="panel" style={{ marginTop: "1rem", background: "var(--tmkeen-surface-muted)" }}>
+            <div style={{ fontWeight: 800, color: "var(--tmkeen-primary)" }}>{preview.name}</div>
             <div dir="ltr">{preview.nationalId}</div>
           </div>
         ) : null}
-      </div>
-      <div className="panel">
-        <h2 className="font-bold text-primary mb-3">آخر التسجيلات</h2>
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">آخر التسجيلات</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -137,10 +149,17 @@ export default function AttendancePage() {
                   <td>{new Date(r.checkedInAt).toLocaleString("ar-SA")}</td>
                 </tr>
               ))}
+              {!recent.length ? (
+                <tr>
+                  <td colSpan={4} className="empty">
+                    لا تسجيلات بعد
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

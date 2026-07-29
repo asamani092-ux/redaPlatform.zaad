@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
+import { AttrChips } from "@/components/AttrChips";
 
 type DashboardData = {
   exhibition: { name: string; location?: string | null };
@@ -42,8 +44,23 @@ export default function DashboardPage() {
     };
   }, []);
 
-  if (error) return <div className="panel text-[var(--tmkeen-danger)]">{error}</div>;
-  if (!data) return <div className="panel">جاري تحميل لوحة التحكم...</div>;
+  if (error) {
+    return (
+      <div className="page-stack">
+        <PageHeader title="لوحة التحكم" />
+        <p className="msg msg-error">{error}</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="page-stack">
+        <PageHeader title="لوحة التحكم" />
+        <div className="panel empty">جاري تحميل لوحة التحكم...</div>
+      </div>
+    );
+  }
 
   const tiles = [
     { label: "إجمالي المستفيدين", value: data.stats.totalBeneficiaries },
@@ -57,11 +74,12 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="panel">
-        <h1 className="text-2xl font-extrabold text-primary">{data.exhibition.name}</h1>
-        <p className="mt-1 text-sm">{data.exhibition.location || "—"}</p>
-      </div>
+    <div className="page-stack">
+      <PageHeader
+        title={data.exhibition.name}
+        description={data.exhibition.location || "لوحة متابعة لحظية أثناء تشغيل المعرض"}
+      />
+
       <div className="stat-grid">
         {tiles.map((t) => (
           <div key={t.label} className="stat-tile">
@@ -70,49 +88,67 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
-      <div className="panel">
-        <h2 className="font-bold text-primary mb-3">الكميات المتبقية</h2>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>الصنف</th>
-                <th>الكمية</th>
-                <th>الحالة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.inventory.map((i) => (
-                <tr key={i.id}>
-                  <td>{JSON.stringify(i.attributes)}</td>
-                  <td>{i.quantity}</td>
-                  <td>
-                    <span className={`badge ${i.lowStock ? "badge-warning" : "badge-success"}`}>
-                      {i.lowStock ? "قرب النفاد" : "متوفر"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {!data.inventory.length ? (
+
+      <div className="split-2">
+        <section className="panel">
+          <h2 className="panel-title">الكميات المتبقية</h2>
+          <div className="table-wrap">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={3}>لا توجد أصناف بعد</td>
+                  <th>الصنف</th>
+                  <th>الكمية</th>
+                  <th>الحالة</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div className="panel">
-        <h2 className="font-bold text-primary mb-3">الأصناف الأكثر صرفاً</h2>
-        <ul className="space-y-2">
-          {data.topItems.map((t) => (
-            <li key={t.inventoryItemId} className="flex justify-between gap-3 border-b border-surface-border pb-2">
-              <span>{JSON.stringify(t.attributes)}</span>
-              <strong>{t.quantity}</strong>
-            </li>
-          ))}
-          {!data.topItems.length ? <li>لا بيانات بعد</li> : null}
-        </ul>
+              </thead>
+              <tbody>
+                {data.inventory.map((i) => (
+                  <tr key={i.id}>
+                    <td>
+                      <AttrChips attributes={i.attributes} />
+                    </td>
+                    <td>{i.quantity}</td>
+                    <td>
+                      <span className={`badge ${i.lowStock ? "badge-warning" : "badge-success"}`}>
+                        {i.lowStock ? "قرب النفاد" : "متوفر"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {!data.inventory.length ? (
+                  <tr>
+                    <td colSpan={3} className="empty">
+                      لا توجد أصناف بعد
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="panel">
+          <h2 className="panel-title">الأصناف الأكثر صرفاً</h2>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "0.75rem" }}>
+            {data.topItems.map((t) => (
+              <li
+                key={t.inventoryItemId}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: "1rem",
+                  alignItems: "center",
+                  paddingBottom: "0.75rem",
+                  borderBottom: "1px solid var(--tmkeen-surface-border)",
+                }}
+              >
+                <AttrChips attributes={t.attributes} />
+                <strong style={{ color: "var(--tmkeen-primary)" }}>{t.quantity}</strong>
+              </li>
+            ))}
+            {!data.topItems.length ? <li className="empty">لا بيانات بعد</li> : null}
+          </ul>
+        </section>
       </div>
     </div>
   );
