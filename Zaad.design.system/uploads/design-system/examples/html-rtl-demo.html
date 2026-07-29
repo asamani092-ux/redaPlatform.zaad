@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tmkeen Design System — Demo</title>
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../components.css" />
+  </head>
+  <body class="tmkeen-root page-shell">
+    <header
+      style="
+        border-bottom: 1px solid var(--tmkeen-surface-border);
+        background: var(--tmkeen-surface);
+        padding: 0.75rem 1rem;
+      "
+    >
+      <div class="page-container" style="padding-block: 0.75rem">
+        <strong style="color: var(--tmkeen-primary); font-size: 1.25rem">نظام تصميم التمكين</strong>
+      </div>
+    </header>
+
+    <main class="page-container">
+      <h1 style="color: var(--tmkeen-primary); font-size: 2rem; font-weight: 800; margin-bottom: 1rem">
+        معاينة المكوّنات
+      </h1>
+      <p style="color: var(--tmkeen-brand-gray); margin-bottom: 2rem">
+        هذا الملف يعمل بدون React أو Tailwind — HTML + CSS فقط.
+      </p>
+
+      <section class="card" style="margin-bottom: 1.5rem">
+        <h2 style="color: var(--tmkeen-primary); font-weight: 700; margin-bottom: 1rem">الأزرار</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem">
+          <button type="button" class="btn-primary">أساسي</button>
+          <button type="button" class="btn-secondary">ثانوي</button>
+          <button type="button" class="btn-recommend">توصية</button>
+          <button type="button" class="btn-register">تسجيل</button>
+        </div>
+      </section>
+
+      <section class="card-section" style="margin-bottom: 1.5rem">
+        <h2 style="color: var(--tmkeen-primary); font-weight: 700; margin-bottom: 1rem">نموذج</h2>
+        <label class="label-field" for="email">البريد الإلكتروني</label>
+        <input id="email" type="email" class="input-field" dir="ltr" placeholder="email@example.com" />
+        <label class="label-field" for="name" style="margin-top: 1rem">الاسم</label>
+        <input id="name" type="text" class="input-field" placeholder="الاسم الكامل" />
+      </section>
+
+      <section class="card" style="margin-bottom: 1.5rem">
+        <h2 style="color: var(--tmkeen-primary); font-weight: 700; margin-bottom: 1rem">الشارات</h2>
+        <span class="badge-primary">نشط</span>
+        <span class="badge-warning" style="margin-inline: 0.5rem">طلب معلّق</span>
+        <span class="badge-danger">غير مرفق</span>
+        <span class="badge-success" style="margin-inline-start: 0.5rem">مرفق ✓</span>
+      </section>
+
+      <section class="card">
+        <h2 style="color: var(--tmkeen-primary); font-weight: 700; margin-bottom: 1rem">جدول</h2>
+        <table class="tmkeen-table">
+          <thead>
+            <tr>
+              <th>الاسم</th>
+              <th>الجوال</th>
+              <th>المرحلة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>أحمد محمد</td>
+              <td dir="ltr">0501234567</td>
+              <td><span class="badge-primary">إرشاد</span></td>
+            </tr>
+            <tr>
+              <td>سارة علي</td>
+              <td dir="ltr">0559876543</td>
+              <td><span class="badge-warning">طلب انتقال</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "@tmkeen/design-system",
+  "version": "1.0.0",
+  "description": "Design tokens and CSS components for Tmkeen platform (Arabic RTL)",
+  "private": true,
+  "files": [
+    "tokens.json",
+    "tokens.css",
+    "components.css",
+    "tailwind.preset.ts",
+    "README.md",
+    "examples/"
+  ],
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./components.css": "./components.css",
+    "./tokens.json": "./tokens.json",
+    "./tailwind.preset": "./tailwind.preset.ts"
+  }
+}
