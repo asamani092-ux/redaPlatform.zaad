@@ -25,7 +25,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 USER nextjs
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE 3100
+ENV PORT=3100
 ENV HOSTNAME=0.0.0.0
 CMD ["sh", "-c", "npx prisma db push && npx tsx prisma/seed.ts && node server.js"]
