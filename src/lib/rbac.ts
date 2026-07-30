@@ -101,6 +101,7 @@ export function homePathForRole(role: Role): string {
 
 export function canAccessPath(role: Role, pathname: string): boolean {
   if (pathname.startsWith("/login")) return true;
+  if (pathname.startsWith("/تقييم-التجربة")) return role === Role.ADMIN;
   if (role === Role.ADMIN) return true;
 
   const rules: Array<{ prefix: string; permission: AppPermission }> = [
