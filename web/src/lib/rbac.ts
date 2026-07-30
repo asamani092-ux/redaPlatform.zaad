@@ -20,6 +20,7 @@ export type AppPermission =
   | "dispense:override"
   | "inventory:manage"
   | "settings:manage"
+  | "exhibitions:manage"
   | "reports:view"
   | "reports:export"
   | "users:manage"
@@ -38,42 +39,64 @@ const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
     "dispense:override",
     "inventory:manage",
     "settings:manage",
+    "exhibitions:manage",
     "reports:view",
     "reports:export",
     "users:manage",
     "survey:manage",
     "audit:view",
   ],
-  REGISTRATION: [
-    "dashboard:view",
-    "beneficiaries:manage",
-    "beneficiaries:view",
-    "invites:manage",
-  ],
-  RECEPTION: [
-    "dashboard:view",
-    "beneficiaries:view",
-    "attendance:manage",
-  ],
-  DISTRIBUTION: [
-    "dashboard:view",
-    "beneficiaries:view",
-    "dispense:manage",
-  ],
-  INVENTORY: [
-    "dashboard:view",
-    "inventory:manage",
-  ],
-  REPORTS: [
-    "dashboard:view",
-    "reports:view",
-    "reports:export",
-    "survey:manage",
-  ],
+  REGISTRATION: ["beneficiaries:manage", "beneficiaries:view", "invites:manage"],
+  RECEPTION: ["beneficiaries:view", "attendance:manage"],
+  DISTRIBUTION: ["dispense:manage"],
+  INVENTORY: ["inventory:manage"],
+  REPORTS: ["dashboard:view", "reports:view", "reports:export", "survey:manage"],
 };
+
+export type NavItem = {
+  href: string;
+  label: string;
+  permission: AppPermission;
+};
+
+export const NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard", label: "لوحة التحكم", permission: "dashboard:view" },
+  { href: "/beneficiaries", label: "المستفيدون", permission: "beneficiaries:view" },
+  { href: "/invites", label: "الدعوات", permission: "invites:manage" },
+  { href: "/attendance", label: "الحضور", permission: "attendance:manage" },
+  { href: "/dispense", label: "صرف القطع", permission: "dispense:manage" },
+  { href: "/inventory", label: "المخزون", permission: "inventory:manage" },
+  { href: "/reports", label: "التقارير", permission: "reports:view" },
+  { href: "/survey", label: "الاستبيان", permission: "survey:manage" },
+  { href: "/exhibitions", label: "المعارض", permission: "exhibitions:manage" },
+  { href: "/settings", label: "الإعدادات", permission: "settings:manage" },
+  { href: "/users", label: "المستخدمون", permission: "users:manage" },
+  { href: "/audit", label: "سجل العمليات", permission: "audit:view" },
+];
 
 export function hasPermission(role: Role, permission: AppPermission): boolean {
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+}
+
+export function navItemsForRole(role: Role): NavItem[] {
+  return NAV_ITEMS.filter((item) => hasPermission(role, item.permission));
+}
+
+const ROLE_HOME: Partial<Record<Role, string>> = {
+  ADMIN: "/dashboard",
+  RECEPTION: "/attendance",
+  REGISTRATION: "/beneficiaries",
+  DISTRIBUTION: "/dispense",
+  INVENTORY: "/inventory",
+  REPORTS: "/reports",
+};
+
+/** الصفحة الرئيسية حسب الدور — O(1) */
+export function homePathForRole(role: Role): string {
+  const preferred = ROLE_HOME[role];
+  if (preferred && canAccessPath(role, preferred)) return preferred;
+  const first = navItemsForRole(role)[0];
+  return first?.href ?? "/login";
 }
 
 export function canAccessPath(role: Role, pathname: string): boolean {
@@ -87,6 +110,7 @@ export function canAccessPath(role: Role, pathname: string): boolean {
     { prefix: "/attendance", permission: "attendance:manage" },
     { prefix: "/dispense", permission: "dispense:manage" },
     { prefix: "/inventory", permission: "inventory:manage" },
+    { prefix: "/exhibitions", permission: "exhibitions:manage" },
     { prefix: "/settings", permission: "settings:manage" },
     { prefix: "/reports", permission: "reports:view" },
     { prefix: "/users", permission: "users:manage" },

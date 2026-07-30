@@ -111,11 +111,11 @@ model Beneficiary {
 
 model Exhibition {
   id          String    @id @default(cuid())
-  name        String
+  name        String    @unique
   location    String?
   startsAt    DateTime?
   endsAt      DateTime?
-  active      Boolean   @default(true)
+  active      Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -127,6 +127,8 @@ model Exhibition {
   stockMovements   StockMovement[]
   surveyResponses  SurveyResponse[]
   outboundMessages OutboundMessage[]
+
+  @@index([active])
 }
 
 model ExhibitionSettings {
@@ -134,7 +136,7 @@ model ExhibitionSettings {
   exhibitionId         String   @unique
   entitledPieces       Int      @default(1)
   lowStockThreshold    Int      @default(10)
-  /// مخطط سمات المخزون: [{key,label,type}] مثل نوع/صنف/لون/وحدة
+  /// مخطط سمات المخزون: [{key,label,options:string[]}] مثل نوع/صنف/لون/وحدة
   inventorySchemaJson  Json
   whatsappInviteTpl    String?
   whatsappThanksTpl    String?

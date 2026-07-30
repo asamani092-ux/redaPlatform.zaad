@@ -4,7 +4,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
-import { requireActiveExhibition, type InventorySchemaField } from "@/lib/exhibition";
+import { requireActiveExhibition } from "@/lib/exhibition";
+import { parseInventorySchema } from "@/lib/inventory-schema";
 import { StockMovementType } from "@/generated/prisma/enums";
 
 const createSchema = z.object({
@@ -29,7 +30,7 @@ export async function GET() {
     orderBy: { updatedAt: "desc" },
   });
 
-  const schema = (exhibition.settings?.inventorySchemaJson ?? []) as InventorySchemaField[];
+  const schema = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
   const withFlags = items.map((item) => ({
     id: item.id,
     attributes: item.attributesJson as Record<string, unknown>,
@@ -38,7 +39,12 @@ export async function GET() {
     lowStock: Number(item.quantity) <= threshold,
   }));
 
-  return NextResponse.json({ data: withFlags, schema, threshold });
+  return NextResponse.json({
+    data: withFlags,
+    schema,
+    threshold,
+    exhibitionName: exhibition.name,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -50,10 +56,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
 
-  const schema = (exhibition.settings?.inventorySchemaJson ?? []) as InventorySchemaField[];
+  const schema = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
   for (const field of schema) {
-    if (body.data.attributes[field.key] == null || body.data.attributes[field.key] === "") {
+    const value = String(body.data.attributes[field.key] ?? "").trim();
+    if (!value) {
       return NextResponse.json({ error: `الحقل مطلوب: ${field.label}` }, { status: 400 });
+    }
+    if (field.options.length && !field.options.includes(value)) {
+      return NextResponse.json(
+        { error: `قيمة غير مسموحة لحقل ${field.label}` },
+        { status: 400 },
+      );
     }
   }
 

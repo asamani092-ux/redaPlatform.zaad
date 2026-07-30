@@ -2,16 +2,10 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, Role } from "../src/generated/prisma/client";
+import { DEFAULT_INVENTORY_SCHEMA } from "../src/lib/inventory-schema";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
-
-const DEFAULT_SCHEMA = [
-  { key: "type", label: "النوع", type: "text" },
-  { key: "category", label: "الصنف", type: "text" },
-  { key: "color", label: "اللون", type: "text" },
-  { key: "unit", label: "الوحدة", type: "text" },
-];
 
 async function main() {
   const mobile = process.env.ADMIN_MOBILE ?? "0500000000";
@@ -40,6 +34,10 @@ async function main() {
 
   let exhibition = await prisma.exhibition.findFirst({ where: { active: true } });
   if (!exhibition) {
+    exhibition = await prisma.exhibition.findFirst({ where: { name: "معرض رداء الأول" } });
+  }
+  if (!exhibition) {
+    await prisma.exhibition.updateMany({ data: { active: false } });
     exhibition = await prisma.exhibition.create({
       data: {
         name: "معرض رداء الأول",
@@ -50,10 +48,10 @@ async function main() {
           create: {
             entitledPieces: 2,
             lowStockThreshold: 10,
-            inventorySchemaJson: DEFAULT_SCHEMA,
+            inventorySchemaJson: DEFAULT_INVENTORY_SCHEMA,
             whatsappInviteTpl:
-              "مرحباً {{name}}، أنت مدعو لمعرض رداء. الموعد: {{date}} — الموقع: {{location}}",
-            whatsappThanksTpl: "شكراً لزيارتك معرض رداء، {{name}}. نسعد بتقييمك عبر الاستبيان.",
+              "مرحباً {{name}}، أنت مدعو إلى {{exhibition}}. الموعد: {{date}} — الموقع: {{location}}",
+            whatsappThanksTpl: "شكراً لزيارتك {{exhibition}}، {{name}}.",
             surveyQuestionsJson: [
               { id: "q1", text: "كيف تقيّم تجربة الزيارة؟", type: "scale", min: 1, max: 5 },
               { id: "q2", text: "ملاحظات إضافية", type: "text" },
@@ -62,6 +60,26 @@ async function main() {
         },
       },
     });
+  } else if (!exhibition.active) {
+    await prisma.exhibition.updateMany({ data: { active: false } });
+    exhibition = await prisma.exhibition.update({
+      where: { id: exhibition.id },
+      data: { active: true },
+    });
+  }
+
+  // ترقية المخطط القديم إلى options إن لزم
+  const settings = await prisma.exhibitionSettings.findUnique({
+    where: { exhibitionId: exhibition.id },
+  });
+  if (settings) {
+    const raw = settings.inventorySchemaJson as Array<Record<string, unknown>>;
+    if (Array.isArray(raw) && raw.some((r) => !Array.isArray(r.options))) {
+      await prisma.exhibitionSettings.update({
+        where: { id: settings.id },
+        data: { inventorySchemaJson: DEFAULT_INVENTORY_SCHEMA },
+      });
+    }
   }
 
   const sampleId = "1100000007";

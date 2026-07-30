@@ -18,7 +18,15 @@ const checkInSchema = z.object({
 export async function GET() {
   const authz = await requirePermission("attendance:manage");
   if ("error" in authz) return authz.error;
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const count = await prisma.attendance.count({ where: { exhibitionId: exhibition.id } });
   const recent = await prisma.attendance.findMany({
     where: { exhibitionId: exhibition.id },
@@ -38,7 +46,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
 
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   let beneficiaryId = body.data.beneficiaryId;
 
   if (body.data.qrToken) {
@@ -46,8 +62,14 @@ export async function POST(req: NextRequest) {
       where: { qrToken: body.data.qrToken },
       include: { beneficiary: true },
     });
-    if (!invite || invite.exhibitionId !== exhibition.id) {
-      return NextResponse.json({ error: "رمز QR غير صالح لهذا المعرض" }, { status: 404 });
+    if (!invite) {
+      return NextResponse.json({ error: "رمز QR غير صالح" }, { status: 404 });
+    }
+    if (invite.exhibitionId !== exhibition.id) {
+      return NextResponse.json(
+        { error: "الرمز لا يتبع المعرض النشط" },
+        { status: 409 },
+      );
     }
     beneficiaryId = invite.beneficiaryId;
   } else if (body.data.nationalId) {

@@ -3,26 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IdleWarning } from "@/components/IdleWarning";
-import { ROLE_LABELS } from "@/lib/rbac";
+import { ROLE_LABELS, navItemsForRole } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
-
-type NavItem = { href: string; label: string; roles?: Role[] };
-
-const NAV: NavItem[] = [
-  { href: "/dashboard", label: "لوحة التحكم" },
-  { href: "/beneficiaries", label: "المستفيدون" },
-  { href: "/invites", label: "الدعوات" },
-  { href: "/attendance", label: "الحضور" },
-  { href: "/dispense", label: "صرف القطع" },
-  { href: "/inventory", label: "المخزون" },
-  { href: "/reports", label: "التقارير" },
-  { href: "/survey", label: "الاستبيان" },
-  { href: "/settings", label: "الإعدادات", roles: ["ADMIN"] },
-  { href: "/users", label: "المستخدمون", roles: ["ADMIN"] },
-  { href: "/audit", label: "سجل العمليات", roles: ["ADMIN"] },
-];
 
 export function AppShell({
   children,
@@ -33,7 +17,24 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const items = NAV.filter((item) => !item.roles || item.roles.includes(user.role));
+  const [activeExhibition, setActiveExhibition] = useState<{
+    name: string;
+    location?: string | null;
+  } | null>(null);
+  const items = navItemsForRole(user.role);
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/exhibitions/active")
+      .then((r) => r.json())
+      .then((j) => {
+        if (alive) setActiveExhibition(j.active ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [pathname]);
 
   return (
     <div className="app-frame" data-tmkeen>
@@ -45,6 +46,20 @@ export function AppShell({
             <div className="app-sidebar__title">منصة رداء</div>
             <div className="app-sidebar__meta">{ROLE_LABELS[user.role]}</div>
           </div>
+        </div>
+
+        <div className="app-exhibition-badge" title={activeExhibition?.name ?? "لا يوجد معرض نشط"}>
+          {activeExhibition ? (
+            <>
+              <span className="app-exhibition-badge__label">المعرض النشط</span>
+              <strong>{activeExhibition.name}</strong>
+              {activeExhibition.location ? (
+                <span className="app-exhibition-badge__loc">{activeExhibition.location}</span>
+              ) : null}
+            </>
+          ) : (
+            <span className="app-exhibition-badge__empty">لا يوجد معرض نشط</span>
+          )}
         </div>
 
         <nav className="app-sidebar__nav" aria-label="القائمة الرئيسية">
@@ -78,7 +93,9 @@ export function AppShell({
         </div>
       </aside>
 
-      {open ? <button type="button" className="app-backdrop" aria-label="إغلاق القائمة" onClick={() => setOpen(false)} /> : null}
+      {open ? (
+        <button type="button" className="app-backdrop" aria-label="إغلاق القائمة" onClick={() => setOpen(false)} />
+      ) : null}
 
       <div className="app-main">
         <header className="app-topbar">
@@ -88,7 +105,7 @@ export function AppShell({
           <div className="app-topbar__brand">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.webp" alt="" width={28} height={28} />
-            <span>منصة رداء</span>
+            <span>{activeExhibition ? activeExhibition.name : "منصة رداء"}</span>
           </div>
           <div className="app-topbar__user">{user.name}</div>
         </header>

@@ -26,7 +26,15 @@ const dispenseSchema = z.object({
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("dispense:manage");
   if ("error" in authz) return authz.error;
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const q = req.nextUrl.searchParams.get("q")?.trim();
 
   if (q) {
@@ -50,13 +58,28 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const recent = await prisma.dispenseOrder.findMany({
-    where: { exhibitionId: exhibition.id },
-    include: { beneficiary: true, lines: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
+  const [recent, items] = await Promise.all([
+    prisma.dispenseOrder.findMany({
+      where: { exhibitionId: exhibition.id },
+      include: { beneficiary: true, lines: true },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    prisma.inventoryItem.findMany({
+      where: { exhibitionId: exhibition.id, quantity: { gt: 0 } },
+      orderBy: { updatedAt: "desc" },
+    }),
+  ]);
+  return NextResponse.json({
+    recent,
+    entitledPieces: exhibition.settings?.entitledPieces ?? 1,
+    items: items.map((i) => ({
+      id: i.id,
+      attributes: i.attributesJson,
+      attributesJson: i.attributesJson,
+      quantity: Number(i.quantity),
+    })),
   });
-  return NextResponse.json({ recent, entitledPieces: exhibition.settings?.entitledPieces ?? 1 });
 }
 
 export async function POST(req: NextRequest) {
@@ -68,7 +91,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
 
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const settings = exhibition.settings;
   if (!settings) {
     return NextResponse.json({ error: "إعدادات المعرض غير موجودة" }, { status: 400 });

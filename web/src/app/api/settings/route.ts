@@ -3,13 +3,20 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
-import { getActiveExhibition } from "@/lib/exhibition";
+import {
+  getActiveExhibition,
+  normalizeExhibitionName,
+} from "@/lib/exhibition";
+import {
+  DEFAULT_INVENTORY_SCHEMA,
+  parseInventorySchema,
+} from "@/lib/inventory-schema";
 import { Prisma } from "@/generated/prisma/client";
 
 const schemaField = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
-  type: z.enum(["text", "number"]),
+  options: z.array(z.string()).default([]),
 });
 
 const settingsSchema = z.object({
@@ -26,13 +33,40 @@ const settingsSchema = z.object({
     .optional(),
 });
 
+function sameSchemaKeys(
+  a: Array<{ key: string }>,
+  b: Array<{ key: string }>,
+): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((f, i) => f.key === b[i]?.key);
+}
+
 export async function GET() {
   const authz = await requirePermission("settings:manage");
   if ("error" in authz) return authz.error;
 
   const exhibition = await getActiveExhibition();
   const associations = await prisma.associationOption.findMany({ orderBy: { sortOrder: "asc" } });
-  return NextResponse.json({ exhibition, associations });
+  const inventoryCount = exhibition
+    ? await prisma.inventoryItem.count({ where: { exhibitionId: exhibition.id } })
+    : 0;
+  return NextResponse.json({
+    exhibition: exhibition
+      ? {
+          ...exhibition,
+          settings: exhibition.settings
+            ? {
+                ...exhibition.settings,
+                inventorySchemaJson: parseInventorySchema(
+                  exhibition.settings.inventorySchemaJson,
+                ),
+              }
+            : null,
+        }
+      : null,
+    associations,
+    inventoryCount,
+  });
 }
 
 export async function PUT(req: NextRequest) {
@@ -44,77 +78,80 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
 
-  let exhibition = await getActiveExhibition();
+  const exhibition = await getActiveExhibition();
   if (!exhibition) {
-    exhibition = await prisma.exhibition.create({
-      data: {
-        name: body.data.exhibitionName || "معرض رداء",
-        location: body.data.location || null,
-        active: true,
-        settings: {
-          create: {
-            entitledPieces: body.data.entitledPieces ?? 2,
-            lowStockThreshold: body.data.lowStockThreshold ?? 10,
-            inventorySchemaJson: (body.data.inventorySchema ?? [
-              { key: "type", label: "النوع", type: "text" },
-              { key: "category", label: "الصنف", type: "text" },
-              { key: "color", label: "اللون", type: "text" },
-              { key: "unit", label: "الوحدة", type: "text" },
-            ]) as Prisma.InputJsonValue,
-          },
-        },
-      },
-      include: { settings: true },
+    return NextResponse.json(
+      { error: "لا يوجد معرض نشط — أنشئ أو فعّل معرضاً من إدارة المعارض" },
+      { status: 400 },
+    );
+  }
+
+  if (body.data.exhibitionName) {
+    const name = normalizeExhibitionName(body.data.exhibitionName);
+    const dup = await prisma.exhibition.findFirst({
+      where: { name, NOT: { id: exhibition.id } },
     });
-  } else {
+    if (dup) {
+      return NextResponse.json({ error: "يوجد معرض بنفس الاسم" }, { status: 409 });
+    }
     await prisma.exhibition.update({
       where: { id: exhibition.id },
       data: {
-        name: body.data.exhibitionName ?? exhibition.name,
+        name,
         location: body.data.location === undefined ? undefined : body.data.location,
       },
     });
-
-    const inventoryCount = await prisma.inventoryItem.count({
-      where: { exhibitionId: exhibition.id },
-    });
-
-    if (body.data.inventorySchema && inventoryCount > 0) {
-      // لا نغيّر مخطط السمات بعد إدخال أصناف — حسب القرار
-      const current = exhibition.settings?.inventorySchemaJson;
-      if (JSON.stringify(current) !== JSON.stringify(body.data.inventorySchema)) {
-        return NextResponse.json(
-          { error: "لا يمكن تغيير نوع/صنف مخطط المخزون بعد إدخال أصناف — الكمية فقط" },
-          { status: 400 },
-        );
-      }
-    }
-
-    await prisma.exhibitionSettings.upsert({
-      where: { exhibitionId: exhibition.id },
-      update: {
-        entitledPieces: body.data.entitledPieces,
-        lowStockThreshold: body.data.lowStockThreshold,
-        inventorySchemaJson: body.data.inventorySchema
-          ? (body.data.inventorySchema as Prisma.InputJsonValue)
-          : undefined,
-        whatsappInviteTpl: body.data.whatsappInviteTpl,
-        whatsappThanksTpl: body.data.whatsappThanksTpl,
-        surveyQuestionsJson: body.data.surveyQuestions
-          ? (body.data.surveyQuestions as Prisma.InputJsonValue)
-          : undefined,
-      },
-      create: {
-        exhibitionId: exhibition.id,
-        entitledPieces: body.data.entitledPieces ?? 2,
-        lowStockThreshold: body.data.lowStockThreshold ?? 10,
-        inventorySchemaJson: (body.data.inventorySchema ?? []) as Prisma.InputJsonValue,
-        whatsappInviteTpl: body.data.whatsappInviteTpl,
-        whatsappThanksTpl: body.data.whatsappThanksTpl,
-        surveyQuestionsJson: (body.data.surveyQuestions ?? []) as Prisma.InputJsonValue,
-      },
+  } else if (body.data.location !== undefined) {
+    await prisma.exhibition.update({
+      where: { id: exhibition.id },
+      data: { location: body.data.location },
     });
   }
+
+  const inventoryCount = await prisma.inventoryItem.count({
+    where: { exhibitionId: exhibition.id },
+  });
+
+  if (body.data.inventorySchema && inventoryCount > 0) {
+    const current = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
+    if (!sameSchemaKeys(current, body.data.inventorySchema)) {
+      return NextResponse.json(
+        { error: "لا يمكن تغيير مفاتيح مخطط المخزون بعد إدخال أصناف — يمكن إضافة خيارات فقط" },
+        { status: 400 },
+      );
+    }
+  }
+
+  const schemaPayload = body.data.inventorySchema?.map((f) => ({
+    key: f.key.trim(),
+    label: f.label.trim(),
+    options: [...new Set(f.options.map((o) => o.trim()).filter(Boolean))],
+  }));
+
+  await prisma.exhibitionSettings.upsert({
+    where: { exhibitionId: exhibition.id },
+    update: {
+      entitledPieces: body.data.entitledPieces,
+      lowStockThreshold: body.data.lowStockThreshold,
+      inventorySchemaJson: schemaPayload
+        ? (schemaPayload as unknown as Prisma.InputJsonValue)
+        : undefined,
+      whatsappInviteTpl: body.data.whatsappInviteTpl,
+      whatsappThanksTpl: body.data.whatsappThanksTpl,
+      surveyQuestionsJson: body.data.surveyQuestions
+        ? (body.data.surveyQuestions as Prisma.InputJsonValue)
+        : undefined,
+    },
+    create: {
+      exhibitionId: exhibition.id,
+      entitledPieces: body.data.entitledPieces ?? 2,
+      lowStockThreshold: body.data.lowStockThreshold ?? 10,
+      inventorySchemaJson: (schemaPayload ?? DEFAULT_INVENTORY_SCHEMA) as unknown as Prisma.InputJsonValue,
+      whatsappInviteTpl: body.data.whatsappInviteTpl,
+      whatsappThanksTpl: body.data.whatsappThanksTpl,
+      surveyQuestionsJson: (body.data.surveyQuestions ?? []) as Prisma.InputJsonValue,
+    },
+  });
 
   if (body.data.associations) {
     for (const [i, a] of body.data.associations.entries()) {
@@ -123,11 +160,11 @@ export async function PUT(req: NextRequest) {
           where: { id: a.id },
           data: { name: a.name, active: a.active ?? true, sortOrder: i },
         });
-      } else {
+      } else if (a.name.trim()) {
         await prisma.associationOption.upsert({
-          where: { name: a.name },
+          where: { name: a.name.trim() },
           update: { active: a.active ?? true, sortOrder: i },
-          create: { name: a.name, sortOrder: i, active: a.active ?? true },
+          create: { name: a.name.trim(), sortOrder: i, active: a.active ?? true },
         });
       }
     }
@@ -143,5 +180,18 @@ export async function PUT(req: NextRequest) {
 
   const fresh = await getActiveExhibition();
   const associations = await prisma.associationOption.findMany({ orderBy: { sortOrder: "asc" } });
-  return NextResponse.json({ exhibition: fresh, associations });
+  return NextResponse.json({
+    exhibition: fresh
+      ? {
+          ...fresh,
+          settings: fresh.settings
+            ? {
+                ...fresh.settings,
+                inventorySchemaJson: parseInventorySchema(fresh.settings.inventorySchemaJson),
+              }
+            : null,
+        }
+      : null,
+    associations,
+  });
 }
