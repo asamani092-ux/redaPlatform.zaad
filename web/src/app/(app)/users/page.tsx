@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { ROLE_LABELS } from "@/lib/rbac";
 import { PageHeader } from "@/components/PageHeader";
+import { Modal } from "@/components/Modal";
 
 type UserRow = {
   id: string;
@@ -15,6 +16,8 @@ type UserRow = {
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [msg, setMsg] = useState("");
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     const res = await fetch("/api/users");
@@ -23,11 +26,14 @@ export default function UsersPage() {
   }
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setMsg("");
     const fd = new FormData(e.currentTarget);
     const res = await fetch("/api/users", {
       method: "POST",
@@ -40,52 +46,27 @@ export default function UsersPage() {
       }),
     });
     const json = await res.json();
-    setMsg(res.ok ? "تم إنشاء المستخدم" : json.error);
+    setBusy(false);
+    setMsg(res.ok ? "تم إنشاء المستخدم" : json.error || "فشل الإنشاء");
     if (res.ok) {
       e.currentTarget.reset();
-      load();
+      setOpen(false);
+      await load();
     }
   }
 
   return (
     <div className="page-stack">
-      <PageHeader title="المستخدمون" description="إدارة حسابات الموظفين والصلاحيات" />
+      <PageHeader
+        title="المستخدمون"
+        description="إدارة حسابات الموظفين والصلاحيات"
+        actions={
+          <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
+            إضافة مستخدم
+          </button>
+        }
+      />
       {msg ? <p className="msg">{msg}</p> : null}
-
-      <section className="panel">
-        <h2 className="panel-title">إضافة مستخدم</h2>
-        <form onSubmit={onCreate}>
-          <div className="form-grid">
-            <div>
-              <label className="label-field">الاسم</label>
-              <input name="name" className="input-field" required />
-            </div>
-            <div>
-              <label className="label-field">الجوال</label>
-              <input name="mobile" className="input-field" dir="ltr" required />
-            </div>
-            <div>
-              <label className="label-field">كلمة المرور</label>
-              <input name="password" type="password" className="input-field" dir="ltr" required />
-            </div>
-            <div>
-              <label className="label-field">الدور</label>
-              <select name="role" className="input-field" required>
-                {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="form-actions">
-            <button className="btn-primary" type="submit">
-              إضافة مستخدم
-            </button>
-          </div>
-        </form>
-      </section>
 
       <section className="panel">
         <h2 className="panel-title">الحسابات</h2>
@@ -116,6 +97,43 @@ export default function UsersPage() {
           </table>
         </div>
       </section>
+
+      <Modal open={open} title="إضافة مستخدم" onClose={() => !busy && setOpen(false)}>
+        <form onSubmit={onCreate}>
+          <div className="form-grid">
+            <div>
+              <label className="label-field">الاسم</label>
+              <input name="name" className="input-field" required />
+            </div>
+            <div>
+              <label className="label-field">الجوال</label>
+              <input name="mobile" className="input-field" dir="ltr" required />
+            </div>
+            <div>
+              <label className="label-field">كلمة المرور</label>
+              <input name="password" type="password" className="input-field" dir="ltr" required />
+            </div>
+            <div>
+              <label className="label-field">الدور</label>
+              <select name="role" className="input-field" required defaultValue="RECEPTION">
+                {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="form-actions">
+            <button className="btn-primary" type="submit" disabled={busy}>
+              {busy ? "جاري الحفظ…" : "حفظ"}
+            </button>
+            <button type="button" className="btn-secondary" disabled={busy} onClick={() => setOpen(false)}>
+              إلغاء
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

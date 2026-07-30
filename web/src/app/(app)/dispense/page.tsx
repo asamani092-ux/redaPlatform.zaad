@@ -1,7 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { BeneficiaryCard } from "@/components/BeneficiaryCard";
 import { AttrChips } from "@/components/AttrChips";
 
 type Item = {
@@ -11,49 +13,67 @@ type Item = {
   quantity: number;
 };
 
-type BeneficiaryInfo = {
-  id: string;
-  name: string;
-  nationalId: string;
-  attendances: unknown[];
-  dispenseOrders: unknown[];
+type Lookup = {
+  beneficiary: {
+    id: string;
+    name: string;
+    nationalId: string;
+    mobile: string;
+    association?: string | null;
+  };
+  statusLabel: string;
+  attendance: { type: string } | null;
+  dispensed: boolean;
+  entitledPieces: number;
 };
 
 export default function DispensePage() {
   const [q, setQ] = useState("");
-  const [beneficiary, setBeneficiary] = useState<BeneficiaryInfo | null>(null);
-  const [entitled, setEntitled] = useState(1);
+  const [lookup, setLookup] = useState<Lookup | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [lines, setLines] = useState<Record<string, number>>({});
   const [override, setOverride] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
   const [msg, setMsg] = useState("");
+  const [scanOn, setScanOn] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    fetch("/api/inventory")
+    fetch("/api/dispense")
       .then((r) => r.json())
       .then((j) => {
-        if (j.data) setItems(j.data.map((i: Item) => ({ ...i, quantity: Number(i.quantity) })));
+        if (j.items) setItems(j.items.map((i: Item) => ({ ...i, quantity: Number(i.quantity) })));
       })
       .catch(() => undefined);
   }, []);
 
-  async function search(e: FormEvent) {
-    e.preventDefault();
+  const preview = useCallback(async (params: { qrToken?: string; q?: string }) => {
     setMsg("");
-    const res = await fetch(`/api/dispense?q=${encodeURIComponent(q)}`);
+    const qs = new URLSearchParams();
+    if (params.qrToken) qs.set("qrToken", params.qrToken);
+    if (params.q) qs.set("q", params.q);
+    const res = await fetch(`/api/lookup?${qs}`);
     const json = await res.json();
     if (!res.ok) {
-      setMsg(json.error || "فشل البحث");
+      setLookup(null);
+      setMsg(json.error || "تعذر الجلب");
       return;
     }
-    setBeneficiary(json.beneficiary);
-    setEntitled(json.entitledPieces ?? 1);
-    if (!json.beneficiary) setMsg("لم يُعثر على مستفيد");
-  }
+    setLookup(json);
+  }, []);
+
+  const onScan = useCallback(
+    (value: string) => {
+      setScanOn(false);
+      preview({ qrToken: value });
+    },
+    [preview],
+  );
 
   async function submit() {
-    if (!beneficiary) return;
+    if (!lookup || busy) return;
+    setBusy(true);
+    setMsg("");
     const selected = Object.entries(lines)
       .filter(([, qty]) => qty > 0)
       .map(([inventoryItemId, quantity]) => ({ inventoryItemId, quantity }));
@@ -61,7 +81,7 @@ export default function DispensePage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        beneficiaryId: beneficiary.id,
+        beneficiaryId: lookup.beneficiary.id,
         lines: selected,
         entitledOverride: override ? Number(override) : undefined,
         overrideReason: overrideReason || undefined,
@@ -69,51 +89,67 @@ export default function DispensePage() {
       }),
     });
     const json = await res.json();
+    setBusy(false);
     setMsg(res.ok ? "تم الصرف بنجاح" : json.error || "فشل الصرف");
     if (res.ok) {
       setLines({});
-      setBeneficiary(null);
+      setLookup(null);
       setQ("");
+      setOverride("");
+      setOverrideReason("");
     }
   }
 
   return (
     <div className="page-stack">
-      <PageHeader title="صرف القطع" description="يشترط تسجيل الحضور قبل الصرف" />
+      <PageHeader
+        title="صرف القطع"
+        description="يشترط الحضور — امسح أو ابحث ثم أكّد بعد المعاينة"
+        actions={
+          <button type="button" className="btn-recommend" onClick={() => setScanOn((v) => !v)}>
+            {scanOn ? "إيقاف الكاميرا" : "مسح بالكاميرا"}
+          </button>
+        }
+      />
       {msg ? <p className="msg">{msg}</p> : null}
 
       <section className="panel">
         <h2 className="panel-title">بحث المستفيد</h2>
-        <form onSubmit={search} className="toolbar">
+        {scanOn ? <BarcodeScanner active={scanOn} onScan={onScan} /> : null}
+        <div className="toolbar" style={{ marginTop: scanOn ? "1rem" : 0 }}>
           <input
             className="input-field"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="هوية / جوال / اسم"
           />
-          <button className="btn-primary" type="submit">
-            بحث
+          <button type="button" className="btn-primary" onClick={() => preview({ q })}>
+            معاينة
           </button>
-        </form>
+        </div>
       </section>
 
-      {beneficiary ? (
+      {lookup ? (
         <section className="panel">
           <h2 className="panel-title">بيانات الصرف</h2>
-          <div style={{ marginBottom: "1rem" }}>
-            <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--tmkeen-primary)" }}>
-              {beneficiary.name}
-            </div>
-            <div dir="ltr">{beneficiary.nationalId}</div>
-            <div style={{ marginTop: "0.6rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              <span className={`badge ${beneficiary.attendances?.length ? "badge-success" : "badge-danger"}`}>
-                الحضور: {beneficiary.attendances?.length ? "مسجل" : "غير مسجل"}
-              </span>
-              <span className="badge badge-muted">الاستحقاق: {entitled}</span>
-            </div>
-          </div>
+          <BeneficiaryCard
+            name={lookup.beneficiary.name}
+            nationalId={lookup.beneficiary.nationalId}
+            mobile={lookup.beneficiary.mobile}
+            association={lookup.beneficiary.association}
+            statusLabel={lookup.statusLabel}
+            extra={
+              <>
+                <span className={`badge ${lookup.attendance ? "badge-success" : "badge-danger"}`}>
+                  الحضور: {lookup.attendance ? "مسجل" : "غير مسجل"}
+                </span>
+                <span className="badge badge-muted">الاستحقاق: {lookup.entitledPieces}</span>
+                {lookup.dispensed ? <span className="badge badge-warning">تم الصرف سابقاً</span> : null}
+              </>
+            }
+          />
 
-          <div className="form-grid" style={{ marginBottom: "1rem" }}>
+          <div className="form-grid" style={{ marginTop: "1rem" }}>
             <div>
               <label className="label-field">تعديل الاستحقاق (مشرف)</label>
               <input className="input-field" dir="ltr" value={override} onChange={(e) => setOverride(e.target.value)} />
@@ -124,13 +160,13 @@ export default function DispensePage() {
             </div>
           </div>
 
-          <div className="table-wrap">
+          <div className="table-wrap" style={{ marginTop: "1rem" }}>
             <table>
               <thead>
                 <tr>
                   <th>الصنف</th>
                   <th>المتاح</th>
-                  <th>الكمية للصرف</th>
+                  <th>الكمية</th>
                 </tr>
               </thead>
               <tbody>
@@ -159,8 +195,13 @@ export default function DispensePage() {
             </table>
           </div>
           <div className="form-actions">
-            <button className="btn-primary" type="button" onClick={submit}>
-              تأكيد الصرف
+            <button
+              className="btn-primary"
+              type="button"
+              disabled={busy || !lookup.attendance || lookup.dispensed}
+              onClick={submit}
+            >
+              {busy ? "جاري..." : "تأكيد الصرف"}
             </button>
           </div>
         </section>

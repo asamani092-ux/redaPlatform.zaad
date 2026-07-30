@@ -2,25 +2,23 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import type { InventorySchemaField } from "@/lib/inventory-schema";
+import { DEFAULT_INVENTORY_SCHEMA } from "@/lib/inventory-schema";
 
 type Association = { id?: string; name: string; active?: boolean };
-type SchemaField = { key: string; label: string; type: "text" | "number" };
 
 export default function SettingsPage() {
   const [exhibitionName, setExhibitionName] = useState("");
   const [location, setLocation] = useState("");
   const [entitledPieces, setEntitledPieces] = useState(2);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
-  const [schema, setSchema] = useState<SchemaField[]>([
-    { key: "type", label: "النوع", type: "text" },
-    { key: "category", label: "الصنف", type: "text" },
-    { key: "color", label: "اللون", type: "text" },
-    { key: "unit", label: "الوحدة", type: "text" },
-  ]);
+  const [schema, setSchema] = useState<InventorySchemaField[]>(DEFAULT_INVENTORY_SCHEMA);
   const [associations, setAssociations] = useState<Association[]>([]);
   const [inviteTpl, setInviteTpl] = useState("");
   const [thanksTpl, setThanksTpl] = useState("");
   const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [hasItems, setHasItems] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -39,11 +37,15 @@ export default function SettingsPage() {
           }
         }
         if (j.associations) setAssociations(j.associations);
+        setHasItems(Number(j.inventoryCount ?? 0) > 0);
       });
   }, []);
 
   async function save(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setMsg("");
     const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -59,17 +61,30 @@ export default function SettingsPage() {
       }),
     });
     const json = await res.json();
+    setBusy(false);
     setMsg(res.ok ? "تم حفظ الإعدادات" : json.error || "فشل الحفظ");
+  }
+
+  function updateField(idx: number, patch: Partial<InventorySchemaField>) {
+    setSchema((s) => s.map((x, i) => (i === idx ? { ...x, ...patch } : x)));
+  }
+
+  function setOptionsText(idx: number, text: string) {
+    const options = text
+      .split("\n")
+      .map((o) => o.trim())
+      .filter(Boolean);
+    updateField(idx, { options });
   }
 
   return (
     <form onSubmit={save} className="page-stack">
       <PageHeader
-        title="الإعدادات"
+        title={exhibitionName ? `إعدادات المعرض: ${exhibitionName}` : "الإعدادات"}
         description="ضبط المعرض والاستحقاق ومخطط المخزون وقوائم الجمعيات"
         actions={
-          <button className="btn-primary" type="submit">
-            حفظ الإعدادات
+          <button className="btn-primary" type="submit" disabled={busy}>
+            {busy ? "جاري الحفظ…" : "حفظ الإعدادات"}
           </button>
         }
       />
@@ -80,7 +95,11 @@ export default function SettingsPage() {
         <div className="form-grid">
           <div>
             <label className="label-field">اسم المعرض</label>
-            <input className="input-field" value={exhibitionName} onChange={(e) => setExhibitionName(e.target.value)} />
+            <input
+              className="input-field"
+              value={exhibitionName}
+              onChange={(e) => setExhibitionName(e.target.value)}
+            />
           </div>
           <div>
             <label className="label-field">الموقع</label>
@@ -113,39 +132,40 @@ export default function SettingsPage() {
 
       <section className="panel">
         <h2 className="panel-title">مخطط سمات المخزون</h2>
-        <div style={{ display: "grid", gap: "0.65rem" }}>
+        <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
+          كل سمة لها قائمة خيارات (سطر لكل خيار). بعد إدخال أصناف لا تُغيَّر المفاتيح — يُسمح بإضافة خيارات فقط.
+        </p>
+        <div style={{ display: "grid", gap: "0.85rem" }}>
           {schema.map((f, idx) => (
-            <div key={idx} className="form-grid" style={{ gridTemplateColumns: "1fr 1fr 140px" }}>
-              <input
-                className="input-field"
-                placeholder="المفتاح"
-                value={f.key}
-                onChange={(e) =>
-                  setSchema((s) => s.map((x, i) => (i === idx ? { ...x, key: e.target.value } : x)))
-                }
-              />
-              <input
-                className="input-field"
-                placeholder="التسمية"
-                value={f.label}
-                onChange={(e) =>
-                  setSchema((s) => s.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))
-                }
-              />
-              <select
-                className="input-field"
-                value={f.type}
-                onChange={(e) =>
-                  setSchema((s) =>
-                    s.map((x, i) =>
-                      i === idx ? { ...x, type: e.target.value as "text" | "number" } : x,
-                    ),
-                  )
-                }
-              >
-                <option value="text">نص</option>
-                <option value="number">رقم</option>
-              </select>
+            <div key={idx} className="form-grid" style={{ gridTemplateColumns: "1fr 1fr 1.2fr" }}>
+              <div>
+                <label className="label-field">المفتاح</label>
+                <input
+                  className="input-field"
+                  placeholder="color"
+                  value={f.key}
+                  disabled={hasItems}
+                  onChange={(e) => updateField(idx, { key: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label-field">التسمية</label>
+                <input
+                  className="input-field"
+                  placeholder="اللون"
+                  value={f.label}
+                  onChange={(e) => updateField(idx, { label: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="label-field">الخيارات (سطر لكل خيار)</label>
+                <textarea
+                  className="input-field"
+                  rows={3}
+                  value={f.options.join("\n")}
+                  onChange={(e) => setOptionsText(idx, e.target.value)}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -153,9 +173,10 @@ export default function SettingsPage() {
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => setSchema((s) => [...s, { key: "", label: "", type: "text" }])}
+            disabled={hasItems}
+            onClick={() => setSchema((s) => [...s, { key: "", label: "", options: [] }])}
           >
-            إضافة حقل
+            إضافة سمة
           </button>
         </div>
       </section>
@@ -188,11 +209,21 @@ export default function SettingsPage() {
         <div className="form-grid">
           <div className="full">
             <label className="label-field">قالب الدعوة</label>
-            <textarea className="input-field" rows={3} value={inviteTpl} onChange={(e) => setInviteTpl(e.target.value)} />
+            <textarea
+              className="input-field"
+              rows={3}
+              value={inviteTpl}
+              onChange={(e) => setInviteTpl(e.target.value)}
+            />
           </div>
           <div className="full">
             <label className="label-field">قالب الشكر</label>
-            <textarea className="input-field" rows={3} value={thanksTpl} onChange={(e) => setThanksTpl(e.target.value)} />
+            <textarea
+              className="input-field"
+              rows={3}
+              value={thanksTpl}
+              onChange={(e) => setThanksTpl(e.target.value)}
+            />
           </div>
         </div>
       </section>

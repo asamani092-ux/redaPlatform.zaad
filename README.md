@@ -22,6 +22,10 @@ npm run db:seed
 npm run dev
 ```
 
+التطبيق يعمل على المنفذ **3100** لتفادي التعارض مع مشاريع أخرى على 3000:
+
+`http://localhost:3100`
+
 أو عبر Docker Compose من مجلد `web`:
 
 ```bash

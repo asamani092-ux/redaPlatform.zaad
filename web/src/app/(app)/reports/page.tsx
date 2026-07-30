@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
+import { hasPermission } from "@/lib/rbac";
+import type { Role } from "@/generated/prisma/enums";
 
 type Summary = {
+  exhibitionId: string;
+  exhibitionName: string;
+  exhibitionActive: boolean;
   totalBeneficiaries: number;
   invited: number;
   attended: number;
@@ -14,37 +20,102 @@ type Summary = {
   byNeighborhood: Record<string, number>;
 };
 
+type ExhibitionOpt = { id: string; name: string; active: boolean };
+
 export default function ReportsPage() {
+  const { data: session } = useSession();
+  const role = session?.user?.role as Role | undefined;
+  const canPickExhibition = role
+    ? hasPermission(role, "exhibitions:manage") || role === "ADMIN"
+    : false;
+
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [exhibitions, setExhibitions] = useState<ExhibitionOpt[]>([]);
+  const [exhibitionId, setExhibitionId] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetch("/api/reports?format=json")
-      .then(async (r) => {
-        const j = await r.json();
-        if (!r.ok) throw new Error(j.error || "فشل");
-        setSummary(j.summary);
-      })
-      .catch((e) => setError(e.message));
+  const load = useCallback(async (id?: string) => {
+    setError("");
+    const qs = new URLSearchParams({ format: "json" });
+    if (id) qs.set("exhibitionId", id);
+    const res = await fetch(`/api/reports?${qs}`);
+    const j = await res.json();
+    if (!res.ok) {
+      setSummary(null);
+      setError(j.error || "فشل التحميل");
+      return;
+    }
+    setSummary(j.summary);
+    if (!id && j.summary?.exhibitionId) setExhibitionId(j.summary.exhibitionId);
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!canPickExhibition) return;
+    fetch("/api/exhibitions")
+      .then((r) => r.json())
+      .then((j) => {
+        if (Array.isArray(j.data)) setExhibitions(j.data);
+      })
+      .catch(() => undefined);
+  }, [canPickExhibition]);
+
+  const exportQs = exhibitionId ? `&exhibitionId=${encodeURIComponent(exhibitionId)}` : "";
 
   return (
     <div className="page-stack">
       <PageHeader
         title="التقارير والإحصاءات"
-        description="ملخصات قابلة للتصدير مع تقسيم الصفحات عند الحجم الكبير"
+        description="ملخصات قابلة للتصدير — التشغيل يبقى على المعرض النشط"
         actions={
           <>
-            <a className="btn-primary" href="/api/reports?format=xlsx">
+            <a className="btn-primary" href={`/api/reports?format=xlsx${exportQs}`}>
               تصدير Excel
             </a>
-            <a className="btn-secondary" href="/api/reports?format=pdf" target="_blank" rel="noreferrer">
+            <a
+              className="btn-secondary"
+              href={`/api/reports?format=pdf${exportQs}`}
+              target="_blank"
+              rel="noreferrer"
+            >
               تصدير PDF
             </a>
           </>
         }
       />
       {error ? <p className="msg msg-error">{error}</p> : null}
+
+      {canPickExhibition ? (
+        <section className="panel">
+          <h2 className="panel-title">عرض تقارير معرض</h2>
+          <div className="toolbar">
+            <select
+              className="input-field"
+              value={exhibitionId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setExhibitionId(id);
+                void load(id);
+              }}
+            >
+              {exhibitions.map((ex) => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.name} — {ex.active ? "نشط" : "غير نشط"}
+                </option>
+              ))}
+            </select>
+          </div>
+          {summary ? (
+            <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
+              المعروض: {summary.exhibitionName}
+              {summary.exhibitionActive ? " (التشغيل الحالي)" : ""}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       {summary ? (
         <>
@@ -69,7 +140,7 @@ export default function ReportsPage() {
           </div>
         </>
       ) : (
-        <div className="panel empty">جاري التحميل...</div>
+        !error && <div className="panel empty">جاري التحميل...</div>
       )}
     </div>
   );

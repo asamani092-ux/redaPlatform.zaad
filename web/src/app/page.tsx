@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { homePathForRole } from "@/lib/rbac";
+import type { Role } from "@/generated/prisma/enums";
 
 export default async function HomePage() {
   const session = await auth();
-  redirect(session ? "/dashboard" : "/login");
+  if (!session?.user) redirect("/login");
+  redirect(homePathForRole(session.user.role as Role));
 }

@@ -1,7 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { BeneficiaryCard } from "@/components/BeneficiaryCard";
 
 type Recent = {
   id: string;
@@ -11,12 +13,30 @@ type Recent = {
   beneficiary: { name: string; nationalId: string };
 };
 
+type Lookup = {
+  beneficiary: {
+    id: string;
+    name: string;
+    nationalId: string;
+    mobile: string;
+    association?: string | null;
+  };
+  statusLabel: string;
+  invite: { invited: boolean; qrToken: string } | null;
+  attendance: { type: string } | null;
+};
+
 export default function AttendancePage() {
   const [count, setCount] = useState(0);
   const [recent, setRecent] = useState<Recent[]>([]);
   const [msg, setMsg] = useState("");
-  const [preview, setPreview] = useState<{ name: string; nationalId: string } | null>(null);
+  const [scanOn, setScanOn] = useState(false);
+  const [lookup, setLookup] = useState<Lookup | null>(null);
+  const [qrToken, setQrToken] = useState("");
+  const [nationalId, setNationalId] = useState("");
   const [needsException, setNeedsException] = useState(false);
+  const [exceptionReason, setExceptionReason] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function refresh() {
     const res = await fetch("/api/attendance");
@@ -33,49 +53,79 @@ export default function AttendancePage() {
     return () => clearInterval(t);
   }, []);
 
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  const preview = useCallback(async (params: { qrToken?: string; q?: string }) => {
     setMsg("");
-    setPreview(null);
-    const fd = new FormData(e.currentTarget);
-    const payload = {
-      qrToken: String(fd.get("qrToken") || "") || undefined,
-      nationalId: String(fd.get("nationalId") || "") || undefined,
-      exception: needsException || fd.get("exception") === "on",
-      exceptionReason: String(fd.get("exceptionReason") || "") || undefined,
-    };
+    const qs = new URLSearchParams();
+    if (params.qrToken) qs.set("qrToken", params.qrToken);
+    if (params.q) qs.set("q", params.q);
+    const res = await fetch(`/api/lookup?${qs}`);
+    const json = await res.json();
+    if (!res.ok) {
+      setLookup(null);
+      setMsg(json.error || "تعذر الجلب");
+      return;
+    }
+    setLookup(json);
+    setQrToken(json.invite?.qrToken || params.qrToken || "");
+    setNationalId(json.beneficiary.nationalId);
+    setNeedsException(!json.invite?.invited);
+  }, []);
+
+  const onScan = useCallback(
+    (value: string) => {
+      setScanOn(false);
+      setQrToken(value);
+      preview({ qrToken: value });
+    },
+    [preview],
+  );
+
+  async function confirmCheckIn() {
+    if (busy || !lookup) return;
+    setBusy(true);
+    setMsg("");
     const res = await fetch("/api/attendance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        qrToken: qrToken || undefined,
+        beneficiaryId: lookup.beneficiary.id,
+        nationalId: nationalId || undefined,
+        exception: needsException,
+        exceptionReason: needsException ? exceptionReason : undefined,
+      }),
     });
     const json = await res.json();
-    if (res.status === 403 && json.beneficiary) {
+    setBusy(false);
+    if (res.status === 403) {
       setNeedsException(true);
-      setPreview({ name: json.beneficiary.name, nationalId: json.beneficiary.nationalId });
       setMsg(json.error);
       return;
     }
     if (!res.ok) {
       setMsg(json.error || "فشل التسجيل");
-      if (json.data?.beneficiary) {
-        setPreview({
-          name: json.data.beneficiary.name,
-          nationalId: json.data.beneficiary.nationalId,
-        });
-      }
       return;
     }
     setMsg("تم تسجيل الحضور");
-    setPreview(json.data.beneficiary);
+    setLookup(null);
+    setQrToken("");
+    setNationalId("");
     setNeedsException(false);
-    e.currentTarget.reset();
+    setExceptionReason("");
     refresh();
   }
 
   return (
     <div className="page-stack">
-      <PageHeader title="تسجيل الحضور" description="مسح QR أو البحث برقم الهوية" />
+      <PageHeader
+        title="تسجيل الحضور"
+        description="امسح الرمز أو ابحث ثم أكّد بعد ظهور بيانات المستفيد"
+        actions={
+          <button type="button" className="btn-recommend" onClick={() => setScanOn((v) => !v)}>
+            {scanOn ? "إيقاف الكاميرا" : "مسح بالكاميرا"}
+          </button>
+        }
+      />
 
       <div className="stat-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
         <div className="stat-tile">
@@ -84,49 +134,96 @@ export default function AttendancePage() {
         </div>
       </div>
 
+      {msg ? <p className="msg">{msg}</p> : null}
+
       <section className="panel">
-        <h2 className="panel-title">تأكيد الدخول</h2>
-        <form onSubmit={submit}>
-          <div className="form-grid">
-            <div>
-              <label className="label-field">رمز QR الداخلي</label>
-              <input name="qrToken" className="input-field" dir="ltr" placeholder="امسح أو الصق الرمز" />
-            </div>
-            <div>
-              <label className="label-field">أو رقم الهوية</label>
-              <input name="nationalId" className="input-field" dir="ltr" />
-            </div>
+        <h2 className="panel-title">المسح / البحث</h2>
+        {scanOn ? <BarcodeScanner active={scanOn} onScan={onScan} /> : null}
+        <div className="form-grid" style={{ marginTop: scanOn ? "1rem" : 0 }}>
+          <div>
+            <label className="label-field">رمز QR</label>
+            <input
+              className="input-field"
+              dir="ltr"
+              value={qrToken}
+              onChange={(e) => setQrToken(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="label-field">أو رقم الهوية</label>
+            <input
+              className="input-field"
+              dir="ltr"
+              value={nationalId}
+              onChange={(e) => setNationalId(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() =>
+              preview({
+                qrToken: qrToken || undefined,
+                q: !qrToken ? nationalId || undefined : undefined,
+              })
+            }
+          >
+            معاينة المستفيد
+          </button>
+        </div>
+      </section>
+
+      {lookup ? (
+        <section className="panel">
+          <h2 className="panel-title">تأكيد التسجيل</h2>
+          <BeneficiaryCard
+            name={lookup.beneficiary.name}
+            nationalId={lookup.beneficiary.nationalId}
+            mobile={lookup.beneficiary.mobile}
+            association={lookup.beneficiary.association}
+            statusLabel={lookup.statusLabel}
+            extra={
+              lookup.attendance ? (
+                <span className="badge badge-warning">سبق الحضور</span>
+              ) : null
+            }
+          />
+          <div className="form-grid" style={{ marginTop: "1rem" }}>
             <div className="full" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <input
                 id="exception"
-                name="exception"
                 type="checkbox"
                 checked={needsException}
                 onChange={(e) => setNeedsException(e.target.checked)}
               />
-              <label htmlFor="exception">تسجيل كاستثناء (بديل الحضور الاعتيادي)</label>
+              <label htmlFor="exception">تسجيل كاستثناء</label>
             </div>
             {needsException ? (
               <div className="full">
                 <label className="label-field">سبب الاستثناء</label>
-                <input name="exceptionReason" className="input-field" required={needsException} />
+                <input
+                  className="input-field"
+                  value={exceptionReason}
+                  onChange={(e) => setExceptionReason(e.target.value)}
+                  required
+                />
               </div>
             ) : null}
           </div>
           <div className="form-actions">
-            <button className="btn-primary" type="submit">
-              تأكيد الحضور
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy || !!lookup.attendance}
+              onClick={confirmCheckIn}
+            >
+              {busy ? "جاري..." : "تأكيد الحضور"}
             </button>
           </div>
-        </form>
-        {msg ? <p className="msg" style={{ marginTop: "1rem" }}>{msg}</p> : null}
-        {preview ? (
-          <div className="panel" style={{ marginTop: "1rem", background: "var(--tmkeen-surface-muted)" }}>
-            <div style={{ fontWeight: 800, color: "var(--tmkeen-primary)" }}>{preview.name}</div>
-            <div dir="ltr">{preview.nationalId}</div>
-          </div>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
       <section className="panel">
         <h2 className="panel-title">آخر التسجيلات</h2>
@@ -149,13 +246,6 @@ export default function AttendancePage() {
                   <td>{new Date(r.checkedInAt).toLocaleString("ar-SA")}</td>
                 </tr>
               ))}
-              {!recent.length ? (
-                <tr>
-                  <td colSpan={4} className="empty">
-                    لا تسجيلات بعد
-                  </td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
         </div>

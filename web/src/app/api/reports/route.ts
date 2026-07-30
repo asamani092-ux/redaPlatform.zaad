@@ -2,15 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
-import { requireActiveExhibition } from "@/lib/exhibition";
+import { getActiveExhibition } from "@/lib/exhibition";
 import { STATUS_LABELS, resolveStatus } from "@/lib/status";
+import { hasPermission } from "@/lib/rbac";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
   if ("error" in authz) return authz.error;
 
   const format = req.nextUrl.searchParams.get("format") ?? "json";
-  const exhibition = await requireActiveExhibition();
+  const requestedId = req.nextUrl.searchParams.get("exhibitionId");
+  const active = await getActiveExhibition();
+
+  let exhibition = active;
+  if (requestedId) {
+    if (!hasPermission(authz.role, "exhibitions:manage") && authz.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "اختيار معرض للتقارير متاح للمدير فقط" },
+        { status: 403 },
+      );
+    }
+    exhibition = await prisma.exhibition.findUnique({
+      where: { id: requestedId },
+      include: { settings: true },
+    });
+    if (!exhibition) {
+      return NextResponse.json({ error: "المعرض غير موجود" }, { status: 404 });
+    }
+  }
+
+  if (!exhibition) {
+    return NextResponse.json(
+      { error: "لا يوجد معرض نشط — أنشئ أو فعّل معرضاً من إدارة المعارض" },
+      { status: 400 },
+    );
+  }
+
   const exhibitionId = exhibition.id;
 
   const beneficiaries = await prisma.beneficiary.findMany({
@@ -53,6 +80,9 @@ export async function GET(req: NextRequest) {
   const byNeighborhood = groupCount(rows.map((r) => r.neighborhood || "غير محدد"));
 
   const summary = {
+    exhibitionId: exhibition.id,
+    exhibitionName: exhibition.name,
+    exhibitionActive: exhibition.active,
     totalBeneficiaries: beneficiaries.length,
     invited: await prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     attended: await prisma.attendance.count({ where: { exhibitionId } }),
@@ -81,6 +111,7 @@ export async function GET(req: NextRequest) {
     const summarySheet = wb.addWorksheet("ملخص");
     summarySheet.addRows([
       ["المؤشر", "القيمة"],
+      ["المعرض", exhibition.name],
       ["إجمالي المستفيدين", summary.totalBeneficiaries],
       ["المدعوون", summary.invited],
       ["الحضور", summary.attended],
@@ -164,14 +195,13 @@ export async function GET(req: NextRequest) {
   }
 
   if (format === "pdf") {
-    // PDF نصي بسيط متعدد الصفحات عبر HTML قابل للطباعة من المتصفح؛ هنا نُرجع HTML للطباعة/PDF
     const pageSize = 40;
     const pages: string[] = [];
     for (let i = 0; i < rows.length; i += pageSize) {
       const slice = rows.slice(i, i + pageSize);
       pages.push(`
         <section style="page-break-after: always; font-family: Tahoma, Arial; direction: rtl;">
-          <h1>تقرير معرض رداء — ${exhibition.name}</h1>
+          <h1>تقرير معرض رداء — ${escapeHtml(exhibition.name)}</h1>
           <p>صفحة ${Math.floor(i / pageSize) + 1}</p>
           <table border="1" cellspacing="0" cellpadding="6" width="100%" style="border-collapse:collapse;font-size:12px;">
             <thead>
@@ -193,7 +223,7 @@ export async function GET(req: NextRequest) {
     }
 
     const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/><title>تقرير رداء</title></head><body>
-      <h2>الملخص</h2>
+      <h2>الملخص — ${escapeHtml(exhibition.name)}</h2>
       <ul>
         <li>المستفيدون: ${summary.totalBeneficiaries}</li>
         <li>المدعوون: ${summary.invited}</li>

@@ -1,7 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
+import { Modal } from "@/components/Modal";
+import { hasPermission } from "@/lib/rbac";
+import type { Role } from "@/generated/prisma/enums";
 
 type Association = { id: string; name: string };
 type Beneficiary = {
@@ -9,20 +13,24 @@ type Beneficiary = {
   name: string;
   nationalId: string;
   mobile: string;
-  gender?: string | null;
-  city?: string | null;
-  neighborhood?: string | null;
   statusLabel?: string;
   association?: Association | null;
   associationOther?: string | null;
 };
 
 export default function BeneficiariesPage() {
+  const { data: session } = useSession();
+  const role = session?.user?.role as Role | undefined;
+  const canManage = role ? hasPermission(role, "beneficiaries:manage") : false;
+
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Beneficiary[]>([]);
   const [associations, setAssociations] = useState<Association[]>([]);
   const [msg, setMsg] = useState("");
   const [useOther, setUseOther] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   async function load(search = q) {
     const res = await fetch(`/api/beneficiaries?q=${encodeURIComponent(search)}`);
@@ -40,6 +48,8 @@ export default function BeneficiariesPage() {
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy) return;
+    setBusy(true);
     setMsg("");
     const fd = new FormData(e.currentTarget);
     const payload = {
@@ -60,30 +70,52 @@ export default function BeneficiariesPage() {
       body: JSON.stringify(payload),
     });
     const json = await res.json();
+    setBusy(false);
     setMsg(res.ok ? "تم الحفظ" : json.error || "فشل الحفظ");
     if (res.ok) {
       e.currentTarget.reset();
       setUseOther(false);
+      setOpen(false);
       load();
     }
   }
 
   async function onImport(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy) return;
+    setBusy(true);
     const fd = new FormData(e.currentTarget);
     const res = await fetch("/api/beneficiaries/import", { method: "POST", body: fd });
     const json = await res.json();
+    setBusy(false);
     setMsg(res.ok ? `استيراد: ${json.created} ناجح / ${json.skipped} متجاوز` : json.error);
-    if (res.ok) load();
+    if (res.ok) {
+      setImportOpen(false);
+      load();
+    }
   }
 
   return (
     <div className="page-stack">
-      <PageHeader title="المستفيدون" description="تسجيل وبحث واستيراد بيانات المستفيدين" />
-      {msg ? <p className={`msg ${msg.includes("فشل") || msg.includes("غير") ? "msg-error" : ""}`}>{msg}</p> : null}
+      <PageHeader
+        title="المستفيدون"
+        description={canManage ? "بحث وإضافة واستيراد" : "بحث وعرض فقط"}
+        actions={
+          canManage ? (
+            <>
+              <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
+                إضافة مستفيد
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setImportOpen(true)}>
+                استيراد Excel
+              </button>
+            </>
+          ) : null
+        }
+      />
+      {msg ? <p className="msg">{msg}</p> : null}
 
       <section className="panel">
-        <h2 className="panel-title">بحث</h2>
         <div className="toolbar">
           <input
             className="input-field"
@@ -98,7 +130,43 @@ export default function BeneficiariesPage() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">إضافة مستفيد</h2>
+        <h2 className="panel-title">القائمة ({rows.length})</h2>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>الهوية</th>
+                <th>الجوال</th>
+                <th>الجمعية</th>
+                <th>الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.name}</td>
+                  <td dir="ltr">{r.nationalId}</td>
+                  <td dir="ltr">{r.mobile}</td>
+                  <td>{r.association?.name ?? r.associationOther ?? "—"}</td>
+                  <td>
+                    <span className="badge badge-muted">{r.statusLabel}</span>
+                  </td>
+                </tr>
+              ))}
+              {!rows.length ? (
+                <tr>
+                  <td colSpan={5} className="empty">
+                    لا توجد نتائج
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <Modal open={open} title="إضافة مستفيد" onClose={() => setOpen(false)} wide>
         <form onSubmit={onCreate}>
           <div className="form-grid">
             <div>
@@ -167,59 +235,21 @@ export default function BeneficiariesPage() {
             </div>
           </div>
           <div className="form-actions">
-            <button className="btn-primary" type="submit">
-              إضافة مستفيد
+            <button className="btn-primary" type="submit" disabled={busy}>
+              {busy ? "جاري الحفظ..." : "حفظ"}
             </button>
           </div>
         </form>
-      </section>
+      </Modal>
 
-      <section className="panel">
-        <h2 className="panel-title">استيراد Excel</h2>
+      <Modal open={importOpen} title="استيراد Excel" onClose={() => setImportOpen(false)}>
         <form onSubmit={onImport} className="toolbar">
           <input type="file" name="file" accept=".xlsx,.xls,.csv" required className="input-field" />
-          <button className="btn-secondary" type="submit">
-            استيراد
+          <button className="btn-primary" type="submit" disabled={busy}>
+            {busy ? "جاري..." : "استيراد"}
           </button>
         </form>
-      </section>
-
-      <section className="panel">
-        <h2 className="panel-title">القائمة ({rows.length})</h2>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>الاسم</th>
-                <th>الهوية</th>
-                <th>الجوال</th>
-                <th>الجمعية</th>
-                <th>الحالة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.name}</td>
-                  <td dir="ltr">{r.nationalId}</td>
-                  <td dir="ltr">{r.mobile}</td>
-                  <td>{r.association?.name ?? r.associationOther ?? "—"}</td>
-                  <td>
-                    <span className="badge badge-muted">{r.statusLabel}</span>
-                  </td>
-                </tr>
-              ))}
-              {!rows.length ? (
-                <tr>
-                  <td colSpan={5} className="empty">
-                    لا توجد نتائج
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      </Modal>
     </div>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { AttrChips } from "@/components/AttrChips";
+import { Modal } from "@/components/Modal";
+import type { InventorySchemaField } from "@/lib/inventory-schema";
 
-type SchemaField = { key: string; label: string; type: string };
 type Item = {
   id: string;
   attributes: Record<string, unknown>;
@@ -13,9 +14,14 @@ type Item = {
 };
 
 export default function InventoryPage() {
-  const [schema, setSchema] = useState<SchemaField[]>([]);
+  const [schema, setSchema] = useState<InventorySchemaField[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [msg, setMsg] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [attrs, setAttrs] = useState<Record<string, string>>({});
+  const [quantity, setQuantity] = useState("0");
   const [move, setMove] = useState({ inventoryItemId: "", type: "ADD", quantity: "1", note: "" });
 
   async function load() {
@@ -28,32 +34,57 @@ export default function InventoryPage() {
   }
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
-  async function onCreate(e: FormEvent<HTMLFormElement>) {
+  const defaultAttrs = useMemo(() => {
+    const next: Record<string, string> = {};
+    for (const f of schema) next[f.key] = f.options[0] ?? "";
+    return next;
+  }, [schema]);
+
+  function openAdd() {
+    setAttrs({ ...defaultAttrs });
+    setQuantity("0");
+    setMsg("");
+    setAddOpen(true);
+  }
+
+  function openMove(itemId?: string) {
+    setMove({
+      inventoryItemId: itemId ?? items[0]?.id ?? "",
+      type: "ADD",
+      quantity: "1",
+      note: "",
+    });
+    setMsg("");
+    setMoveOpen(true);
+  }
+
+  async function onCreate(e: FormEvent) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const attributes: Record<string, string | number> = {};
-    for (const field of schema) {
-      const v = String(fd.get(field.key) ?? "");
-      attributes[field.key] = field.type === "number" ? Number(v) : v;
-    }
+    if (busy) return;
+    setBusy(true);
+    setMsg("");
     const res = await fetch("/api/inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attributes, quantity: Number(fd.get("quantity") || 0) }),
+      body: JSON.stringify({ attributes: attrs, quantity: Number(quantity || 0) }),
     });
     const json = await res.json();
-    setMsg(res.ok ? "تمت إضافة الصنف" : json.error);
+    setBusy(false);
+    setMsg(res.ok ? "تمت إضافة الصنف" : json.error || "فشل الإضافة");
     if (res.ok) {
-      e.currentTarget.reset();
-      load();
+      setAddOpen(false);
+      await load();
     }
   }
 
   async function onMove(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setMsg("");
     const res = await fetch("/api/inventory", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -65,40 +96,126 @@ export default function InventoryPage() {
       }),
     });
     const json = await res.json();
-    setMsg(res.ok ? "تم تحديث الكمية" : json.error);
-    if (res.ok) load();
+    setBusy(false);
+    setMsg(res.ok ? "تم تحديث الكمية" : json.error || "فشل التحديث");
+    if (res.ok) {
+      setMoveOpen(false);
+      await load();
+    }
   }
 
   return (
     <div className="page-stack">
-      <PageHeader title="المخزون" description="إدخال الأصناف وتعديل الكميات فقط أثناء التشغيل" />
+      <PageHeader
+        title="المخزون"
+        description="إدخال الأصناف وتعديل الكميات فقط أثناء التشغيل"
+        actions={
+          <>
+            <button type="button" className="btn-primary" onClick={openAdd}>
+              إضافة صنف
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => openMove()}
+              disabled={!items.length}
+            >
+              حركة كمية
+            </button>
+          </>
+        }
+      />
       {msg ? <p className="msg">{msg}</p> : null}
 
       <section className="panel">
-        <h2 className="panel-title">إدخال صنف</h2>
+        <h2 className="panel-title">الأصناف الحالية</h2>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>السمات</th>
+                <th>الكمية</th>
+                <th>تنبيه</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((i) => (
+                <tr key={i.id}>
+                  <td>
+                    <AttrChips attributes={i.attributes} />
+                  </td>
+                  <td>{i.quantity}</td>
+                  <td>
+                    <span className={`badge ${i.lowStock ? "badge-warning" : "badge-success"}`}>
+                      {i.lowStock ? "قرب النفاد" : "متوفر"}
+                    </span>
+                  </td>
+                  <td>
+                    <button type="button" className="btn-secondary" onClick={() => openMove(i.id)}>
+                      حركة
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!items.length ? (
+                <tr>
+                  <td colSpan={4} className="empty">
+                    لا أصناف بعد
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <Modal open={addOpen} title="إضافة صنف" onClose={() => !busy && setAddOpen(false)} wide>
         <form onSubmit={onCreate}>
           <div className="form-grid">
             {schema.map((f) => (
               <div key={f.key}>
                 <label className="label-field">{f.label}</label>
-                <input name={f.key} className="input-field" required type={f.type === "number" ? "number" : "text"} />
+                <select
+                  className="input-field"
+                  value={attrs[f.key] ?? ""}
+                  onChange={(e) => setAttrs((a) => ({ ...a, [f.key]: e.target.value }))}
+                  required
+                >
+                  {f.options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
               </div>
             ))}
             <div>
               <label className="label-field">الكمية</label>
-              <input name="quantity" className="input-field" type="number" min={0} step="0.001" required dir="ltr" />
+              <input
+                className="input-field"
+                type="number"
+                min={0}
+                step="0.001"
+                required
+                dir="ltr"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
             </div>
           </div>
           <div className="form-actions">
-            <button className="btn-primary" type="submit">
-              إدخال صنف
+            <button className="btn-primary" type="submit" disabled={busy}>
+              {busy ? "جاري الحفظ…" : "حفظ"}
+            </button>
+            <button type="button" className="btn-secondary" disabled={busy} onClick={() => setAddOpen(false)}>
+              إلغاء
             </button>
           </div>
         </form>
-      </section>
+      </Modal>
 
-      <section className="panel">
-        <h2 className="panel-title">إضافة / استرجاع كمية</h2>
+      <Modal open={moveOpen} title="حركة كمية" onClose={() => !busy && setMoveOpen(false)}>
         <form onSubmit={onMove}>
           <div className="form-grid">
             <div className="full">
@@ -112,7 +229,7 @@ export default function InventoryPage() {
                 <option value="">—</option>
                 {items.map((i) => (
                   <option key={i.id} value={i.id}>
-                    {Object.values(i.attributes).join(" / ")}
+                    {Object.values(i.attributes).join(" / ")} — {i.quantity}
                   </option>
                 ))}
               </select>
@@ -138,53 +255,28 @@ export default function InventoryPage() {
                 step="0.001"
                 value={move.quantity}
                 onChange={(e) => setMove((m) => ({ ...m, quantity: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <label className="label-field">ملاحظة</label>
+              <input
+                className="input-field"
+                value={move.note}
+                onChange={(e) => setMove((m) => ({ ...m, note: e.target.value }))}
               />
             </div>
           </div>
           <div className="form-actions">
-            <button className="btn-secondary" type="submit">
-              تنفيذ الحركة
+            <button className="btn-primary" type="submit" disabled={busy}>
+              {busy ? "جاري التنفيذ…" : "تنفيذ"}
+            </button>
+            <button type="button" className="btn-secondary" disabled={busy} onClick={() => setMoveOpen(false)}>
+              إلغاء
             </button>
           </div>
         </form>
-      </section>
-
-      <section className="panel">
-        <h2 className="panel-title">الأصناف الحالية</h2>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>السمات</th>
-                <th>الكمية</th>
-                <th>تنبيه</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((i) => (
-                <tr key={i.id}>
-                  <td>
-                    <AttrChips attributes={i.attributes} />
-                  </td>
-                  <td>{i.quantity}</td>
-                  <td>
-                    <span className={`badge ${i.lowStock ? "badge-warning" : "badge-success"}`}>
-                      {i.lowStock ? "قرب النفاد" : "متوفر"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {!items.length ? (
-                <tr>
-                  <td colSpan={3} className="empty">
-                    لا أصناف بعد
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      </Modal>
     </div>
   );
 }

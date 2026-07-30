@@ -25,7 +25,7 @@ function LoginForm() {
       setError("بيانات الدخول غير صحيحة");
       return;
     }
-    router.replace(search.get("callbackUrl") || "/dashboard");
+    router.replace(search.get("callbackUrl") || "/");
     router.refresh();
   }
 
