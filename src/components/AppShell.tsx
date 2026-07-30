@@ -11,9 +11,11 @@ import type { Role } from "@/generated/prisma/enums";
 export function AppShell({
   children,
   user,
+  showTrialEval = false,
 }: {
   children: React.ReactNode;
   user: { name: string; role: Role; mobile: string };
+  showTrialEval?: boolean;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -76,6 +78,15 @@ export function AppShell({
               </Link>
             );
           })}
+          {showTrialEval ? (
+            <Link
+              href="/تقييم-التجربة"
+              className={`app-nav-link ${pathname.startsWith("/تقييم-التجربة") ? "is-active" : ""}`}
+              onClick={() => setOpen(false)}
+            >
+              تقييم التجربة
+            </Link>
+          ) : null}
         </nav>
 
         <div className="app-sidebar__footer">
