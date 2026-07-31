@@ -9,8 +9,10 @@
     "lint": "eslint .",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
+    "db:apply-pending": "./scripts/apply-pending.sh",
     "db:seed": "tsx prisma/seed.ts",
     "db:generate": "prisma generate",
+    "test:entitlement": "tsx tests/entitlement.integration.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

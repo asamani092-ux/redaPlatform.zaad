@@ -18,6 +18,7 @@ type Summary = {
   byGender: Record<string, number>;
   byCity: Record<string, number>;
   byNeighborhood: Record<string, number>;
+  byFamilySize?: Record<string, number>;
 };
 
 type ExhibitionOpt = { id: string; name: string; active: boolean };
@@ -133,10 +134,11 @@ export default function ReportsPage() {
               </div>
             ))}
           </div>
-          <div className="split-2" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+          <div className="split-2" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
             <Breakdown title="حسب الجنس" data={summary.byGender} />
             <Breakdown title="حسب المدينة" data={summary.byCity} />
             <Breakdown title="حسب الحي" data={summary.byNeighborhood} />
+            <Breakdown title="حسب حجم الأسرة (عدد التابعين)" data={summary.byFamilySize ?? {}} />
           </div>
         </>
       ) : (

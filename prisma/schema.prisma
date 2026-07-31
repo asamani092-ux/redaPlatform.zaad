@@ -91,6 +91,8 @@ model Beneficiary {
   city             String?
   birthDate        DateTime?
   notes            String?
+  /// عدد التابعين / حجم الأسرة المستخدم في حساب الاستحقاق الفعلي
+  dependentsCount  Int       @default(0)
   associationId    String?
   associationOther String?
   createdAt        DateTime  @default(now())
@@ -107,6 +109,7 @@ model Beneficiary {
   @@index([name])
   @@index([city])
   @@index([associationId])
+  @@index([dependentsCount])
 }
 
 model Exhibition {
@@ -134,7 +137,8 @@ model Exhibition {
 model ExhibitionSettings {
   id                   String   @id @default(cuid())
   exhibitionId         String   @unique
-  entitledPieces       Int      @default(1)
+  /// الاستحقاق الأساسي لكل معرض (قابل للتعديل من الإعدادات)
+  baseEntitlement      Int      @default(1)
   lowStockThreshold    Int      @default(10)
   /// مخطط سمات المخزون: [{key,label,options:string[]}] مثل نوع/صنف/لون/وحدة
   inventorySchemaJson  Json

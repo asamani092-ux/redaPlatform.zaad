@@ -13,6 +13,7 @@ const createSchema = z.object({
   startsAt: z.string().optional().nullable(),
   endsAt: z.string().optional().nullable(),
   activate: z.boolean().optional(),
+  baseEntitlement: z.number().int().positive().optional(),
   entitledPieces: z.number().int().positive().optional(),
   lowStockThreshold: z.number().int().nonnegative().optional(),
 });
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
         active: shouldActivate,
         settings: {
           create: {
-            entitledPieces: body.data.entitledPieces ?? 2,
+            baseEntitlement: body.data.baseEntitlement ?? body.data.entitledPieces ?? 2,
             lowStockThreshold: body.data.lowStockThreshold ?? 10,
             inventorySchemaJson: DEFAULT_INVENTORY_SCHEMA as unknown as Prisma.InputJsonValue,
             whatsappInviteTpl:

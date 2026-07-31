@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/session";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { resolveStatus, STATUS_LABELS } from "@/lib/status";
 import { hasPermission } from "@/lib/rbac";
+import { effectiveEntitlement } from "@/lib/entitlement";
 
 /** بحث مستفيد للمعاينة قبل الحضور/الصرف — O(1) بالفهارس */
 export async function GET(req: NextRequest) {
@@ -98,14 +99,25 @@ export async function GET(req: NextRequest) {
     received: !!dispense,
   });
 
+  const base = exhibition.settings?.baseEntitlement ?? 1;
+  const deps = beneficiary.dependentsCount ?? 0;
+  const effective = effectiveEntitlement(base, deps);
+  const override = dispense?.entitledOverride ?? null;
+
   return NextResponse.json({
     exhibition: { id: exhibition.id, name: exhibition.name },
-    entitledPieces: exhibition.settings?.entitledPieces ?? 1,
+    baseEntitlement: base,
+    dependentsCount: deps,
+    effectiveEntitlement: effectiveEntitlement(base, deps, override),
+    entitledPieces: effectiveEntitlement(base, deps, override),
+    entitledOverride: override,
+    overrideReason: dispense?.overrideReason ?? null,
     beneficiary: {
       id: beneficiary.id,
       name: beneficiary.name,
       nationalId: beneficiary.nationalId,
       mobile: beneficiary.mobile,
+      dependentsCount: deps,
       association: beneficiary.association?.name ?? beneficiary.associationOther ?? null,
     },
     invite: invite
@@ -117,5 +129,6 @@ export async function GET(req: NextRequest) {
     dispensed: !!dispense,
     status,
     statusLabel: STATUS_LABELS[status],
+    computedEntitlement: effective,
   });
 }

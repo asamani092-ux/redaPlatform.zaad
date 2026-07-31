@@ -10,7 +10,7 @@ type Association = { id?: string; name: string; active?: boolean };
 export default function SettingsPage() {
   const [exhibitionName, setExhibitionName] = useState("");
   const [location, setLocation] = useState("");
-  const [entitledPieces, setEntitledPieces] = useState(2);
+  const [baseEntitlement, setBaseEntitlement] = useState(2);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [schema, setSchema] = useState<InventorySchemaField[]>(DEFAULT_INVENTORY_SCHEMA);
   const [associations, setAssociations] = useState<Association[]>([]);
@@ -29,7 +29,7 @@ export default function SettingsPage() {
           setLocation(j.exhibition.location ?? "");
           const s = j.exhibition.settings;
           if (s) {
-            setEntitledPieces(s.entitledPieces);
+            setBaseEntitlement(s.baseEntitlement ?? s.entitledPieces ?? 2);
             setLowStockThreshold(s.lowStockThreshold);
             if (Array.isArray(s.inventorySchemaJson)) setSchema(s.inventorySchemaJson);
             setInviteTpl(s.whatsappInviteTpl ?? "");
@@ -52,7 +52,7 @@ export default function SettingsPage() {
       body: JSON.stringify({
         exhibitionName,
         location,
-        entitledPieces,
+        baseEntitlement,
         lowStockThreshold,
         inventorySchema: schema,
         associations,
@@ -106,14 +106,14 @@ export default function SettingsPage() {
             <input className="input-field" value={location} onChange={(e) => setLocation(e.target.value)} />
           </div>
           <div>
-            <label className="label-field">عدد القطع المستحقة</label>
+            <label className="label-field">الاستحقاق الأساسي (قطع)</label>
             <input
               className="input-field"
               type="number"
               min={1}
               dir="ltr"
-              value={entitledPieces}
-              onChange={(e) => setEntitledPieces(Number(e.target.value))}
+              value={baseEntitlement}
+              onChange={(e) => setBaseEntitlement(Number(e.target.value))}
             />
           </div>
           <div>

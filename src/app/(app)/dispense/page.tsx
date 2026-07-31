@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { BeneficiaryCard } from "@/components/BeneficiaryCard";
@@ -20,11 +20,18 @@ type Lookup = {
     nationalId: string;
     mobile: string;
     association?: string | null;
+    dependentsCount?: number;
   };
   statusLabel: string;
   attendance: { type: string } | null;
   dispensed: boolean;
   entitledPieces: number;
+  baseEntitlement?: number;
+  dependentsCount?: number;
+  computedEntitlement?: number;
+  effectiveEntitlement?: number;
+  entitledOverride?: number | null;
+  overrideReason?: string | null;
 };
 
 export default function DispensePage() {
@@ -60,6 +67,8 @@ export default function DispensePage() {
       return;
     }
     setLookup(json);
+    setOverride("");
+    setOverrideReason("");
   }, []);
 
   const onScan = useCallback(
@@ -70,8 +79,21 @@ export default function DispensePage() {
     [preview],
   );
 
+  const raising = useMemo(() => {
+    if (!lookup || !override) return false;
+    const n = Number(override);
+    const computed = lookup.computedEntitlement ?? lookup.entitledPieces;
+    return Number.isFinite(n) && n > 0 && n !== computed;
+  }, [lookup, override]);
+
+  const reasonOk = !raising || overrideReason.trim().length > 0;
+
   async function submit() {
     if (!lookup || busy) return;
+    if (raising && !reasonOk) {
+      setMsg("سبب رفع الاستحقاق مطلوب");
+      return;
+    }
     setBusy(true);
     setMsg("");
     const selected = Object.entries(lines)
@@ -83,8 +105,8 @@ export default function DispensePage() {
       body: JSON.stringify({
         beneficiaryId: lookup.beneficiary.id,
         lines: selected,
-        entitledOverride: override ? Number(override) : undefined,
-        overrideReason: overrideReason || undefined,
+        entitledOverride: raising ? Number(override) : undefined,
+        overrideReason: raising ? overrideReason.trim() : undefined,
         sendThanks: true,
       }),
     });
@@ -99,6 +121,12 @@ export default function DispensePage() {
       setOverrideReason("");
     }
   }
+
+  const effective =
+    lookup?.effectiveEntitlement ??
+    lookup?.computedEntitlement ??
+    lookup?.entitledPieces ??
+    0;
 
   return (
     <div className="page-stack">
@@ -143,7 +171,19 @@ export default function DispensePage() {
                 <span className={`badge ${lookup.attendance ? "badge-success" : "badge-danger"}`}>
                   الحضور: {lookup.attendance ? "مسجل" : "غير مسجل"}
                 </span>
-                <span className="badge badge-muted">الاستحقاق: {lookup.entitledPieces}</span>
+                <span className="badge badge-muted">
+                  الاستحقاق الفعلي: {effective}
+                </span>
+                <span className="badge badge-muted">
+                  أساسي: {lookup.baseEntitlement ?? "—"} / تابعون:{" "}
+                  {lookup.dependentsCount ?? lookup.beneficiary.dependentsCount ?? 0}
+                </span>
+                {lookup.entitledOverride != null ? (
+                  <span className="badge badge-warning">
+                    استثناء معتمد: {lookup.entitledOverride}
+                    {lookup.overrideReason ? ` — ${lookup.overrideReason}` : ""}
+                  </span>
+                ) : null}
                 {lookup.dispensed ? <span className="badge badge-warning">تم الصرف سابقاً</span> : null}
               </>
             }
@@ -151,14 +191,31 @@ export default function DispensePage() {
 
           <div className="form-grid" style={{ marginTop: "1rem" }}>
             <div>
-              <label className="label-field">تعديل الاستحقاق (مشرف)</label>
-              <input className="input-field" dir="ltr" value={override} onChange={(e) => setOverride(e.target.value)} />
+              <label className="label-field">رفع الاستحقاق (موظف التوزيع / المدير)</label>
+              <input
+                className="input-field"
+                dir="ltr"
+                type="number"
+                min={1}
+                placeholder={String(lookup.computedEntitlement ?? lookup.entitledPieces)}
+                value={override}
+                onChange={(e) => setOverride(e.target.value)}
+              />
             </div>
             <div>
-              <label className="label-field">سبب التعديل</label>
-              <input className="input-field" value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} />
+              <label className="label-field">سبب الرفع (إلزامي عند الرفع)</label>
+              <input
+                className="input-field"
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                required={raising}
+                placeholder="لا يُقبل الإرسال وسبب فارغ"
+              />
             </div>
           </div>
+          {raising && !reasonOk ? (
+            <p className="msg msg-error">أدخل سبباً حقيقياً قبل تأكيد الصرف مع رفع الاستحقاق</p>
+          ) : null}
 
           <div className="table-wrap" style={{ marginTop: "1rem" }}>
             <table>
@@ -198,7 +255,7 @@ export default function DispensePage() {
             <button
               className="btn-primary"
               type="button"
-              disabled={busy || !lookup.attendance || lookup.dispensed}
+              disabled={busy || !lookup.attendance || lookup.dispensed || !reasonOk}
               onClick={submit}
             >
               {busy ? "جاري..." : "تأكيد الصرف"}

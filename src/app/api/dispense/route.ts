@@ -9,6 +9,7 @@ import { StockMovementType } from "@/generated/prisma/enums";
 import { hasPermission } from "@/lib/rbac";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
+import { effectiveEntitlement, isNonEmptyReason } from "@/lib/entitlement";
 
 const lineSchema = z.object({
   inventoryItemId: z.string(),
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
     );
   }
   const q = req.nextUrl.searchParams.get("q")?.trim();
+  const base = exhibition.settings?.baseEntitlement ?? 1;
 
   if (q) {
     const beneficiary = await prisma.beneficiary.findFirst({
@@ -52,9 +54,14 @@ export async function GET(req: NextRequest) {
         invites: { where: { exhibitionId: exhibition.id }, take: 1 },
       },
     });
+    const deps = beneficiary?.dependentsCount ?? 0;
+    const effective = effectiveEntitlement(base, deps);
     return NextResponse.json({
       beneficiary,
-      entitledPieces: exhibition.settings?.entitledPieces ?? 1,
+      baseEntitlement: base,
+      dependentsCount: deps,
+      effectiveEntitlement: effective,
+      entitledPieces: effective,
     });
   }
 
@@ -72,7 +79,8 @@ export async function GET(req: NextRequest) {
   ]);
   return NextResponse.json({
     recent,
-    entitledPieces: exhibition.settings?.entitledPieces ?? 1,
+    baseEntitlement: base,
+    entitledPieces: base,
     items: items.map((i) => ({
       id: i.id,
       attributes: i.attributesJson,
@@ -105,6 +113,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "إعدادات المعرض غير موجودة" }, { status: 400 });
   }
 
+  const beneficiary = await prisma.beneficiary.findUnique({
+    where: { id: body.data.beneficiaryId },
+  });
+  if (!beneficiary) {
+    return NextResponse.json({ error: "المستفيد غير موجود" }, { status: 404 });
+  }
+
   const attendance = await prisma.attendance.findUnique({
     where: {
       exhibitionId_beneficiaryId: {
@@ -132,15 +147,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "تم الصرف مسبقاً لهذا المستفيد" }, { status: 409 });
   }
 
-  let entitled = settings.entitledPieces;
-  if (body.data.entitledOverride != null && body.data.entitledOverride !== entitled) {
+  const base = settings.baseEntitlement;
+  const deps = beneficiary.dependentsCount;
+  const computed = effectiveEntitlement(base, deps);
+  let entitled = computed;
+  let entitledOverride: number | null = null;
+  let overrideReason: string | null = null;
+
+  if (
+    body.data.entitledOverride != null &&
+    body.data.entitledOverride !== computed
+  ) {
     if (!hasPermission(authz.role, "dispense:override")) {
-      return NextResponse.json({ error: "تعديل الاستحقاق يتطلب صلاحية مشرف" }, { status: 403 });
+      return NextResponse.json(
+        { error: "رفع الاستحقاق يتطلب صلاحية اعتماد الاستثناء (توزيع أو مدير)" },
+        { status: 403 },
+      );
     }
-    if (!body.data.overrideReason?.trim()) {
+    if (!isNonEmptyReason(body.data.overrideReason)) {
       return NextResponse.json({ error: "سبب تعديل الاستحقاق مطلوب" }, { status: 400 });
     }
-    entitled = body.data.entitledOverride;
+    entitledOverride = body.data.entitledOverride;
+    overrideReason = body.data.overrideReason!.trim();
+    entitled = entitledOverride;
   }
 
   const totalQty = body.data.lines.reduce((s, l) => s + l.quantity, 0);
@@ -184,8 +213,8 @@ export async function POST(req: NextRequest) {
           exhibitionId: exhibition.id,
           beneficiaryId: body.data.beneficiaryId,
           piecesCount: totalQty,
-          entitledOverride: body.data.entitledOverride ?? null,
-          overrideReason: body.data.overrideReason?.trim() || null,
+          entitledOverride,
+          overrideReason,
           createdById: authz.userId,
           lines: {
             create: body.data.lines.map((l) => ({
@@ -198,12 +227,37 @@ export async function POST(req: NextRequest) {
       });
     });
 
+    if (entitledOverride != null) {
+      await writeAuditLog({
+        userId: authz.userId,
+        action: "ENTITLEMENT_OVERRIDE",
+        entityType: "DispenseOrder",
+        entityId: order.id,
+        before: {
+          effectiveEntitlement: computed,
+          baseEntitlement: base,
+          dependentsCount: deps,
+        },
+        after: {
+          effectiveEntitlement: entitledOverride,
+          entitledOverride,
+        },
+        meta: { reason: overrideReason, beneficiaryId: beneficiary.id },
+      });
+    }
+
     await writeAuditLog({
       userId: authz.userId,
       action: "DISPENSE",
       entityType: "DispenseOrder",
       entityId: order.id,
       after: order,
+      meta: {
+        effectiveEntitlement: entitled,
+        baseEntitlement: base,
+        dependentsCount: deps,
+        overrideReason,
+      },
     });
 
     if (body.data.sendThanks) {
