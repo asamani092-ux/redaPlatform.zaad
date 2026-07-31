@@ -49,3 +49,9 @@ next-env.d.ts
 .windsurf/
 skills-lock.json
 web/
+
+# backups / restore drills (keep directory)
+/backups/*.sql
+/backups/*.pdf
+/backups/latest.sql
+!/backups/.gitkeep

@@ -5,6 +5,8 @@ import { requirePermission } from "@/lib/session";
 import { getActiveExhibition } from "@/lib/exhibition";
 import { STATUS_LABELS, resolveStatus } from "@/lib/status";
 import { hasPermission } from "@/lib/rbac";
+import { canExportFullIdentity, redactIdentityFields } from "@/lib/pii";
+import { Role } from "@/generated/prisma/enums";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -13,6 +15,18 @@ export async function GET(req: NextRequest) {
   const format = req.nextUrl.searchParams.get("format") ?? "json";
   const requestedId = req.nextUrl.searchParams.get("exhibitionId");
   const active = await getActiveExhibition();
+  const exportFullIdentity = canExportFullIdentity(authz.role as Role);
+
+  if (
+    (format === "xlsx" || format === "pdf") &&
+    !exportFullIdentity &&
+    req.nextUrl.searchParams.get("fullIdentity") === "1"
+  ) {
+    return NextResponse.json(
+      { error: "تصدير الهوية والجوال الكامل مقصور على المدير" },
+      { status: 403 },
+    );
+  }
 
   let exhibition = active;
   if (requestedId) {
@@ -84,6 +98,15 @@ export async function GET(req: NextRequest) {
   const byNeighborhood = groupCount(rows.map((r) => r.neighborhood || "غير محدد"));
   const byFamilySize = groupCount(rows.map((r) => String(r.familySize ?? 0)));
 
+  if ((format === "xlsx" || format === "pdf") && !exportFullIdentity) {
+    return NextResponse.json(
+      { error: "تصدير الهوية والجوال الكامل مقصور على المدير" },
+      { status: 403 },
+    );
+  }
+
+  const safeRows = redactIdentityFields(rows, exportFullIdentity);
+
   const summary = {
     exhibitionId: exhibition.id,
     exhibitionName: exhibition.name,
@@ -109,7 +132,11 @@ export async function GET(req: NextRequest) {
   };
 
   if (format === "json") {
-    return NextResponse.json({ summary, rows });
+    return NextResponse.json({
+      summary,
+      rows: safeRows,
+      identityFieldsRedacted: !exportFullIdentity,
+    });
   }
 
   if (format === "xlsx") {
@@ -148,7 +175,7 @@ export async function GET(req: NextRequest) {
     let sheetIndex = 1;
     let current = detail;
     let countInSheet = 0;
-    for (const r of rows) {
+    for (const r of safeRows) {
       if (countInSheet >= MAX_ROWS_PER_SHEET) {
         sheetIndex++;
         current = wb.addWorksheet(`التفاصيل_${sheetIndex}`);
@@ -216,8 +243,8 @@ export async function GET(req: NextRequest) {
   if (format === "pdf") {
     const pageSize = 40;
     const pages: string[] = [];
-    for (let i = 0; i < rows.length; i += pageSize) {
-      const slice = rows.slice(i, i + pageSize);
+    for (let i = 0; i < safeRows.length; i += pageSize) {
+      const slice = safeRows.slice(i, i + pageSize);
       pages.push(`
         <section style="page-break-after: always; font-family: Tahoma, Arial; direction: rtl;">
           <h1>تقرير معرض رداء — ${escapeHtml(exhibition.name)}</h1>
