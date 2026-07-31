@@ -63,6 +63,7 @@ export default function BeneficiariesPage() {
       notes: String(fd.get("notes") || "") || null,
       associationId: useOther ? null : String(fd.get("associationId") || "") || null,
       associationOther: useOther ? String(fd.get("associationOther") || "") || null : null,
+      dependentsCount: Number(fd.get("dependentsCount") || 0),
     };
     const res = await fetch("/api/beneficiaries", {
       method: "POST",
@@ -200,6 +201,17 @@ export default function BeneficiariesPage() {
             <div>
               <label className="label-field">تاريخ الميلاد</label>
               <input name="birthDate" type="date" className="input-field" dir="ltr" />
+            </div>
+            <div>
+              <label className="label-field">عدد التابعين / حجم الأسرة</label>
+              <input
+                name="dependentsCount"
+                type="number"
+                min={0}
+                defaultValue={0}
+                className="input-field"
+                dir="ltr"
+              />
             </div>
             <div>
               <label className="label-field">الجمعية</label>

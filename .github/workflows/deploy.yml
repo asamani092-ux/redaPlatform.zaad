@@ -39,14 +39,19 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install
         run: npm ci
-      - name: Prisma generate and push
-        run: npx prisma generate && npx prisma db push
+      - name: Prisma generate
+        run: npx prisma generate
+      - name: Apply pending migrations
+        run: ./scripts/apply-pending.sh
       - name: Lint
         run: npm run lint
       - name: Build
         run: npm run build
+      - name: Entitlement & concurrency tests
+        run: npm run test:entitlement
 
   # Coolify webhook deploy (optional): set repository secret COOLIFY_WEBHOOK
+  # Migrations MUST apply before API serves traffic (also in container CMD).
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build

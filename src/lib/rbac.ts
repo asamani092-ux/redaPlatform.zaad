@@ -48,7 +48,7 @@ const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
   ],
   REGISTRATION: ["beneficiaries:manage", "beneficiaries:view", "invites:manage"],
   RECEPTION: ["beneficiaries:view", "attendance:manage"],
-  DISTRIBUTION: ["dispense:manage"],
+  DISTRIBUTION: ["dispense:manage", "dispense:override"],
   INVENTORY: ["inventory:manage"],
   REPORTS: ["dashboard:view", "reports:view", "reports:export", "survey:manage"],
 };

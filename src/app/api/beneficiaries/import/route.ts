@@ -59,6 +59,16 @@ export async function POST(req: NextRequest) {
   const neighborhoodCol = col(["neighborhood", "الحي"]);
   const associationCol = col(["association", "الجمعية", "اسم الجمعية"]);
   const notesCol = col(["notes", "ملاحظات"]);
+  const dependentsCol = col([
+    "dependents",
+    "dependents_count",
+    "dependentscount",
+    "التابعون",
+    "عدد التابعين",
+    "حجم الأسرة",
+    "افراد الاسرة",
+    "أفراد الأسرة",
+  ]);
 
   let created = 0;
   let skipped = 0;
@@ -102,6 +112,9 @@ export async function POST(req: NextRequest) {
     if (["MALE", "ذكر", "م"].includes(genderRaw)) gender = Gender.MALE;
     if (["FEMALE", "أنثى", "انثى", "ف"].includes(genderRaw)) gender = Gender.FEMALE;
 
+    const depsRaw = dependentsCol ? cellStr(row.getCell(dependentsCol).value) : "0";
+    const dependentsCount = Math.max(0, Number.parseInt(depsRaw || "0", 10) || 0);
+
     await prisma.beneficiary.create({
       data: {
         name,
@@ -115,6 +128,7 @@ export async function POST(req: NextRequest) {
         notes: notesCol ? cellStr(row.getCell(notesCol).value) || null : null,
         associationId,
         associationOther,
+        dependentsCount,
       },
     });
     created++;

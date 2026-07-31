@@ -67,17 +67,22 @@ export async function GET(req: NextRequest) {
       city: b.city ?? "",
       neighborhood: b.neighborhood ?? "",
       association: b.association?.name ?? b.associationOther ?? "",
+      dependentsCount: b.dependentsCount,
+      familySize: b.dependentsCount,
       status: STATUS_LABELS[status],
       checkedInAt: attendance?.checkedInAt?.toISOString() ?? "",
       receivedAt: dispense?.createdAt?.toISOString() ?? "",
       pieces: dispense?.piecesCount ?? 0,
       exceptionReason: attendance?.exceptionReason ?? "",
+      entitlementOverride: dispense?.entitledOverride ?? null,
+      overrideReason: dispense?.overrideReason ?? "",
     };
   });
 
   const byGender = groupCount(rows.map((r) => r.gender || "غير محدد"));
   const byCity = groupCount(rows.map((r) => r.city || "غير محدد"));
   const byNeighborhood = groupCount(rows.map((r) => r.neighborhood || "غير محدد"));
+  const byFamilySize = groupCount(rows.map((r) => String(r.familySize ?? 0)));
 
   const summary = {
     exhibitionId: exhibition.id,
@@ -100,6 +105,7 @@ export async function GET(req: NextRequest) {
     byGender,
     byCity,
     byNeighborhood,
+    byFamilySize,
   };
 
   if (format === "json") {
@@ -128,11 +134,14 @@ export async function GET(req: NextRequest) {
       "المدينة",
       "الحي",
       "الجمعية",
+      "عدد التابعين",
       "الحالة",
       "وقت الحضور",
       "وقت الاستلام",
       "القطع",
       "سبب الاستثناء",
+      "استثناء الاستحقاق",
+      "سبب رفع الاستحقاق",
     ]);
 
     const MAX_ROWS_PER_SHEET = 5000;
@@ -151,11 +160,14 @@ export async function GET(req: NextRequest) {
           "المدينة",
           "الحي",
           "الجمعية",
+          "عدد التابعين",
           "الحالة",
           "وقت الحضور",
           "وقت الاستلام",
           "القطع",
           "سبب الاستثناء",
+          "استثناء الاستحقاق",
+          "سبب رفع الاستحقاق",
         ]);
         countInSheet = 0;
       }
@@ -167,14 +179,21 @@ export async function GET(req: NextRequest) {
         r.city,
         r.neighborhood,
         r.association,
+        r.dependentsCount,
         r.status,
         r.checkedInAt,
         r.receivedAt,
         r.pieces,
         r.exceptionReason,
+        r.entitlementOverride ?? "",
+        r.overrideReason,
       ]);
       countInSheet++;
     }
+
+    const familySheet = wb.addWorksheet("حسب حجم الأسرة");
+    familySheet.addRow(["عدد التابعين", "العدد"]);
+    Object.entries(byFamilySize).forEach(([k, v]) => familySheet.addRow([k, v]));
 
     const genderSheet = wb.addWorksheet("حسب الجنس");
     genderSheet.addRow(["الجنس", "العدد"]);

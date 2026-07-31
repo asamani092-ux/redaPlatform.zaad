@@ -22,6 +22,8 @@ const schemaField = z.object({
 const settingsSchema = z.object({
   exhibitionName: z.string().optional(),
   location: z.string().optional().nullable(),
+  baseEntitlement: z.number().int().positive().optional(),
+  /** توافق خلفي مع الحقل السابق */
   entitledPieces: z.number().int().positive().optional(),
   lowStockThreshold: z.number().int().nonnegative().optional(),
   inventorySchema: z.array(schemaField).optional(),
@@ -131,7 +133,7 @@ export async function PUT(req: NextRequest) {
   await prisma.exhibitionSettings.upsert({
     where: { exhibitionId: exhibition.id },
     update: {
-      entitledPieces: body.data.entitledPieces,
+      baseEntitlement: body.data.baseEntitlement ?? body.data.entitledPieces,
       lowStockThreshold: body.data.lowStockThreshold,
       inventorySchemaJson: schemaPayload
         ? (schemaPayload as unknown as Prisma.InputJsonValue)
@@ -144,7 +146,7 @@ export async function PUT(req: NextRequest) {
     },
     create: {
       exhibitionId: exhibition.id,
-      entitledPieces: body.data.entitledPieces ?? 2,
+      baseEntitlement: body.data.baseEntitlement ?? body.data.entitledPieces ?? 2,
       lowStockThreshold: body.data.lowStockThreshold ?? 10,
       inventorySchemaJson: (schemaPayload ?? DEFAULT_INVENTORY_SCHEMA) as unknown as Prisma.InputJsonValue,
       whatsappInviteTpl: body.data.whatsappInviteTpl,

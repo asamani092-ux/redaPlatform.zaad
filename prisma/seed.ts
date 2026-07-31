@@ -46,7 +46,7 @@ async function main() {
         active: true,
         settings: {
           create: {
-            entitledPieces: 2,
+            baseEntitlement: 2,
             lowStockThreshold: 10,
             inventorySchemaJson: DEFAULT_INVENTORY_SCHEMA,
             whatsappInviteTpl:

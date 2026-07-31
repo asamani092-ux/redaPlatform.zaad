@@ -19,6 +19,7 @@ const createSchema = z.object({
   notes: z.string().optional().nullable(),
   associationId: z.string().optional().nullable(),
   associationOther: z.string().optional().nullable(),
+  dependentsCount: z.number().int().nonnegative().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -105,6 +106,7 @@ export async function POST(req: NextRequest) {
       notes: body.data.notes || null,
       associationId: body.data.associationId || null,
       associationOther: body.data.associationOther || null,
+      dependentsCount: body.data.dependentsCount ?? 0,
     },
   });
 

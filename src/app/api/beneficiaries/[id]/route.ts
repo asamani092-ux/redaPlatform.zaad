@@ -17,6 +17,7 @@ const updateSchema = z.object({
   notes: z.string().optional().nullable(),
   associationId: z.string().optional().nullable(),
   associationOther: z.string().optional().nullable(),
+  dependentsCount: z.number().int().nonnegative().optional(),
 });
 
 export async function PATCH(
@@ -72,6 +73,7 @@ export async function PATCH(
       notes: body.data.notes,
       associationId: body.data.associationId,
       associationOther: body.data.associationOther,
+      dependentsCount: body.data.dependentsCount,
     },
   });
 
