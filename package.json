@@ -12,7 +12,10 @@
     "db:apply-pending": "./scripts/apply-pending.sh",
     "db:seed": "tsx prisma/seed.ts",
     "db:generate": "prisma generate",
+    "test": "tsx tests/run-all.ts",
     "test:entitlement": "tsx tests/entitlement.integration.ts",
+    "backup": "./scripts/backup.sh",
+    "restore-drill": "./scripts/restore-drill.sh",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -25,6 +28,7 @@
     "html5-qrcode": "^2.3.8",
     "next": "15.5.22",
     "next-auth": "^5.0.0-beta.32",
+    "pdfkit": "^0.19.1",
     "pg": "^8.16.3",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
@@ -37,6 +41,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.20.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",

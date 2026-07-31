@@ -61,8 +61,11 @@ export default function InvitesPage() {
             <button className="btn-primary" type="button" onClick={() => invite(false)}>
               دعوة المحددين ({selectedIds.length})
             </button>
+            <a className="btn-secondary" href="/api/invites/qr-cards">
+              طباعة بطاقات QR
+            </a>
             <button className="btn-recommend" type="button" onClick={() => invite(true)}>
-              دعوة + واتساب
+              دعوة + واتساب (تجريبي)
             </button>
           </>
         }

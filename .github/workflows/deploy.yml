@@ -39,6 +39,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install
         run: npm ci
+      - name: Install PostgreSQL client (backup/restore drill)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Prisma generate
         run: npx prisma generate
       - name: Apply pending migrations
@@ -47,11 +49,12 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
-      - name: Entitlement & concurrency tests
-        run: npm run test:entitlement
+      - name: Integration tests (blocks deploy on failure)
+        run: npm test
 
   # Coolify webhook deploy (optional): set repository secret COOLIFY_WEBHOOK
   # Migrations MUST apply before API serves traffic (also in container CMD).
+  # `deploy` needs `build` — failed npm test prevents deploy.
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
