@@ -33,7 +33,7 @@ export default function AttendancePage() {
   const [scanOn, setScanOn] = useState(false);
   const [lookup, setLookup] = useState<Lookup | null>(null);
   const [qrToken, setQrToken] = useState("");
-  const [nationalId, setNationalId] = useState("");
+  const [q, setQ] = useState("");
   const [needsException, setNeedsException] = useState(false);
   const [exceptionReason, setExceptionReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -67,13 +67,13 @@ export default function AttendancePage() {
     }
     setLookup(json);
     setQrToken(json.invite?.qrToken || params.qrToken || "");
-    setNationalId(json.beneficiary.nationalId);
+    setQ(json.beneficiary.nationalId);
     setNeedsException(!json.invite?.invited);
   }, []);
 
+  // الكاميرا تبقى تعمل للمسح المتتابع — لا تُغلق بعد كل قراءة
   const onScan = useCallback(
     (value: string) => {
-      setScanOn(false);
       setQrToken(value);
       preview({ qrToken: value });
     },
@@ -90,7 +90,6 @@ export default function AttendancePage() {
       body: JSON.stringify({
         qrToken: qrToken || undefined,
         beneficiaryId: lookup.beneficiary.id,
-        nationalId: nationalId || undefined,
         exception: needsException,
         exceptionReason: needsException ? exceptionReason : undefined,
       }),
@@ -109,7 +108,7 @@ export default function AttendancePage() {
     setMsg("تم تسجيل الحضور");
     setLookup(null);
     setQrToken("");
-    setNationalId("");
+    setQ("");
     setNeedsException(false);
     setExceptionReason("");
     refresh();
@@ -119,7 +118,7 @@ export default function AttendancePage() {
     <div className="page-stack">
       <PageHeader
         title="تسجيل الحضور"
-        description="امسح الرمز أو ابحث ثم أكّد بعد ظهور بيانات المستفيد"
+        description="امسح بالكاميرا أو ابحث بالهوية أو الجوال ثم أكّد بعد ظهور بيانات المستفيد"
         actions={
           <button type="button" className="btn-recommend" onClick={() => setScanOn((v) => !v)}>
             {scanOn ? "إيقاف الكاميرا" : "مسح بالكاميرا"}
@@ -139,36 +138,26 @@ export default function AttendancePage() {
       <section className="panel">
         <h2 className="panel-title">المسح / البحث</h2>
         {scanOn ? <BarcodeScanner active={scanOn} onScan={onScan} /> : null}
-        <div className="form-grid" style={{ marginTop: scanOn ? "1rem" : 0 }}>
-          <div>
-            <label className="label-field">رمز QR</label>
-            <input
-              className="input-field"
-              dir="ltr"
-              value={qrToken}
-              onChange={(e) => setQrToken(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label-field">أو رقم الهوية</label>
-            <input
-              className="input-field"
-              dir="ltr"
-              value={nationalId}
-              onChange={(e) => setNationalId(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="form-actions">
+        <div className="toolbar" style={{ marginTop: scanOn ? "1rem" : 0 }}>
+          <input
+            className="input-field"
+            placeholder="رقم الهوية / الجوال / الاسم"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setQrToken("");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (q.trim()) void preview({ q: q.trim() });
+              }
+            }}
+          />
           <button
             type="button"
-            className="btn-secondary"
-            onClick={() =>
-              preview({
-                qrToken: qrToken || undefined,
-                q: !qrToken ? nationalId || undefined : undefined,
-              })
-            }
+            className="btn-primary"
+            onClick={() => q.trim() && preview({ q: q.trim() })}
           >
             معاينة المستفيد
           </button>

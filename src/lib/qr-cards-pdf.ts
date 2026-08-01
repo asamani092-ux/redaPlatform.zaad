@@ -23,10 +23,12 @@ export async function buildInviteQrCardsPdf(
     throw new Error("خط عربي غير موجود: assets/fonts/NotoNaskhArabic-Regular.ttf");
   }
 
+  // تمرير الخط في الإنشاء يمنع pdfkit من تحميل Helvetica الافتراضي (غير مضمّن في حزمة Next)
   const doc = new PDFDocument({
     size: "A4",
     margin: 36,
     autoFirstPage: false,
+    font,
   });
 
   const chunks: Buffer[] = [];

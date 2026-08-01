@@ -14,6 +14,7 @@ type DashboardData = {
     remainingToReceive: number;
     piecesDispensed: number;
     exceptions: number;
+    overrideDispenses?: number;
     completionRate: number;
   };
   inventory: Array<{ id: string; attributes: Record<string, unknown>; quantity: number; lowStock: boolean }>;
@@ -69,7 +70,8 @@ export default function DashboardPage() {
     { label: "استلموا", value: data.stats.received },
     { label: "متبقون للاستلام", value: data.stats.remainingToReceive },
     { label: "القطع المصروفة", value: data.stats.piecesDispensed },
-    { label: "حالات استثنائية", value: data.stats.exceptions },
+    { label: "حضور استثنائي", value: data.stats.exceptions },
+    { label: "صرف استثنائي", value: data.stats.overrideDispenses ?? 0 },
     { label: "نسبة الإنجاز %", value: data.stats.completionRate },
   ];
 

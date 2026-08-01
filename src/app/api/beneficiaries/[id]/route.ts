@@ -88,3 +88,52 @@ export async function PATCH(
 
   return NextResponse.json({ data: updated });
 }
+
+/**
+ * حذف مستفيد بتأكيد ثنائي من الواجهة.
+ * يُمنع الحذف إذا وُجد حضور أو صرف — حفاظاً على التاريخ التشغيلي (مبدأ التراكم).
+ * O(1) استعلامات بالفهارس.
+ */
+export async function DELETE(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  const authz = await requirePermission("beneficiaries:manage");
+  if ("error" in authz) return authz.error;
+  const { id } = await ctx.params;
+
+  const before = await prisma.beneficiary.findUnique({
+    where: { id },
+    include: {
+      _count: { select: { attendances: true, dispenseOrders: true, surveyResponses: true } },
+    },
+  });
+  if (!before) return NextResponse.json({ error: "غير موجود" }, { status: 404 });
+
+  if (before._count.attendances > 0 || before._count.dispenseOrders > 0) {
+    return NextResponse.json(
+      { error: "لا يمكن الحذف — للمستفيد حضور أو صرف مسجل، والتاريخ التشغيلي محفوظ" },
+      { status: 409 },
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.outboundMessage.updateMany({
+      where: { beneficiaryId: id },
+      data: { beneficiaryId: null },
+    });
+    await tx.beneficiary.delete({ where: { id } });
+  });
+
+  const { _count, ...snapshot } = before;
+  void _count;
+  await writeAuditLog({
+    userId: authz.userId,
+    action: "DELETE",
+    entityType: "Beneficiary",
+    entityId: id,
+    before: snapshot,
+  });
+
+  return NextResponse.json({ ok: true });
+}

@@ -7,6 +7,8 @@ import { writeAuditLog } from "@/lib/audit";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
+import { parseSurveyConfig } from "@/lib/survey-questions";
+import { buildSurveyMessage } from "@/lib/survey-message";
 
 const submitSchema = z.object({
   beneficiaryId: z.string(),
@@ -24,8 +26,10 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 200,
   });
+  const config = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
   return NextResponse.json({
-    questions: exhibition.settings?.surveyQuestionsJson ?? [],
+    questions: config.questions,
+    externalUrl: config.externalUrl,
     responses,
   });
 }
@@ -47,11 +51,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.data.sendLink) {
+    const config = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
     const msg = await sendWhatsAppMessage({
       exhibitionId: exhibition.id,
       beneficiaryId: beneficiary.id,
       mobile: beneficiary.mobile,
-      body: `مرحباً ${beneficiary.name}، نرجو تقييم زيارتك لمعرض رداء عبر المنصة.`,
+      body: buildSurveyMessage(beneficiary.name, exhibition.name, config.externalUrl),
       type: OutboundMessageType.SURVEY,
       createdById: authz.userId,
     });

@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
+import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 
 type Association = { id: string; name: string };
 type Beneficiary = {
@@ -13,8 +14,15 @@ type Beneficiary = {
   name: string;
   nationalId: string;
   mobile: string;
+  gender?: "MALE" | "FEMALE" | null;
+  city?: string | null;
+  neighborhood?: string | null;
+  birthDate?: string | null;
+  notes?: string | null;
+  dependentsCount?: number;
   statusLabel?: string;
   association?: Association | null;
+  associationId?: string | null;
   associationOther?: string | null;
 };
 
@@ -30,6 +38,9 @@ export default function BeneficiariesPage() {
   const [useOther, setUseOther] = useState(false);
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [editing, setEditing] = useState<Beneficiary | null>(null);
+  const [deleting, setDeleting] = useState<Beneficiary | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function load(search = q) {
@@ -46,13 +57,8 @@ export default function BeneficiariesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function onCreate(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setMsg("");
-    const fd = new FormData(e.currentTarget);
-    const payload = {
+  function payloadFromForm(fd: FormData) {
+    return {
       name: String(fd.get("name") ?? ""),
       nationalId: String(fd.get("nationalId") ?? ""),
       mobile: String(fd.get("mobile") ?? ""),
@@ -63,12 +69,20 @@ export default function BeneficiariesPage() {
       notes: String(fd.get("notes") || "") || null,
       associationId: useOther ? null : String(fd.get("associationId") || "") || null,
       associationOther: useOther ? String(fd.get("associationOther") || "") || null : null,
-      dependentsCount: Number(fd.get("dependentsCount") || 0),
+      dependentsCount:
+        toIntOrNull(String(fd.get("dependentsCount") ?? "")) ?? 0,
     };
+  }
+
+  async function onCreate(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setMsg("");
     const res = await fetch("/api/beneficiaries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payloadFromForm(new FormData(e.currentTarget))),
     });
     const json = await res.json();
     setBusy(false);
@@ -77,6 +91,41 @@ export default function BeneficiariesPage() {
       e.currentTarget.reset();
       setUseOther(false);
       setOpen(false);
+      load();
+    }
+  }
+
+  async function onEdit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy || !editing) return;
+    setBusy(true);
+    setMsg("");
+    const res = await fetch(`/api/beneficiaries/${editing.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payloadFromForm(new FormData(e.currentTarget))),
+    });
+    const json = await res.json();
+    setBusy(false);
+    setMsg(res.ok ? "تم تحديث البيانات" : json.error || "فشل التحديث");
+    if (res.ok) {
+      setEditing(null);
+      setUseOther(false);
+      load();
+    }
+  }
+
+  async function onDelete() {
+    if (busy || !deleting || deleteConfirmText.trim() !== "حذف") return;
+    setBusy(true);
+    setMsg("");
+    const res = await fetch(`/api/beneficiaries/${deleting.id}`, { method: "DELETE" });
+    const json = await res.json();
+    setBusy(false);
+    setMsg(res.ok ? "تم حذف المستفيد" : json.error || "فشل الحذف");
+    if (res.ok) {
+      setDeleting(null);
+      setDeleteConfirmText("");
       load();
     }
   }
@@ -96,11 +145,119 @@ export default function BeneficiariesPage() {
     }
   }
 
+  function openEdit(row: Beneficiary) {
+    setUseOther(!!row.associationOther);
+    setEditing(row);
+  }
+
+  const formFields = (b?: Beneficiary | null) => (
+    <div className="form-grid">
+      <div>
+        <label className="label-field">الاسم</label>
+        <input name="name" className="input-field" required defaultValue={b?.name ?? ""} />
+      </div>
+      <div>
+        <label className="label-field">رقم الهوية</label>
+        <input
+          name="nationalId"
+          className="input-field"
+          dir="ltr"
+          required
+          defaultValue={b?.nationalId ?? ""}
+        />
+      </div>
+      <div>
+        <label className="label-field">الجوال</label>
+        <input
+          name="mobile"
+          className="input-field"
+          dir="ltr"
+          required
+          defaultValue={b?.mobile ?? ""}
+        />
+      </div>
+      <div>
+        <label className="label-field">الجنس</label>
+        <select name="gender" className="input-field" defaultValue={b?.gender ?? ""}>
+          <option value="">—</option>
+          <option value="MALE">ذكر</option>
+          <option value="FEMALE">أنثى</option>
+        </select>
+      </div>
+      <div>
+        <label className="label-field">المدينة</label>
+        <input name="city" className="input-field" defaultValue={b?.city ?? ""} />
+      </div>
+      <div>
+        <label className="label-field">الحي</label>
+        <input name="neighborhood" className="input-field" defaultValue={b?.neighborhood ?? ""} />
+      </div>
+      <div>
+        <label className="label-field">تاريخ الميلاد</label>
+        <input
+          name="birthDate"
+          type="date"
+          className="input-field"
+          dir="ltr"
+          defaultValue={b?.birthDate ? b.birthDate.slice(0, 10) : ""}
+        />
+      </div>
+      <div>
+        <label className="label-field">عدد التابعين / حجم الأسرة</label>
+        <input
+          name="dependentsCount"
+          type="text"
+          inputMode="numeric"
+          defaultValue={String(b?.dependentsCount ?? 0)}
+          className="input-field"
+          dir="ltr"
+          onChange={(e) => {
+            e.target.value = sanitizeNumericInput(e.target.value, false);
+          }}
+        />
+      </div>
+      <div>
+        <label className="label-field">الجمعية</label>
+        <select
+          name="associationId"
+          className="input-field"
+          disabled={useOther}
+          defaultValue={b?.associationId ?? ""}
+          onChange={(e) => {
+            if (e.target.value === "__other__") setUseOther(true);
+          }}
+        >
+          <option value="">—</option>
+          {associations.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+          <option value="__other__">أخرى</option>
+        </select>
+        {useOther ? (
+          <input
+            name="associationOther"
+            className="input-field"
+            style={{ marginTop: "0.5rem" }}
+            placeholder="اسم الجمعية"
+            defaultValue={b?.associationOther ?? ""}
+            required
+          />
+        ) : null}
+      </div>
+      <div className="full">
+        <label className="label-field">ملاحظات</label>
+        <textarea name="notes" className="input-field" rows={2} defaultValue={b?.notes ?? ""} />
+      </div>
+    </div>
+  );
+
   return (
     <div className="page-stack">
       <PageHeader
         title="المستفيدون"
-        description={canManage ? "بحث وإضافة واستيراد" : "بحث وعرض فقط"}
+        description={canManage ? "بحث وإضافة وتعديل واستيراد" : "بحث وعرض فقط"}
         actions={
           canManage ? (
             <>
@@ -123,6 +280,12 @@ export default function BeneficiariesPage() {
             placeholder="الاسم / الهوية / الجوال"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void load(q);
+              }
+            }}
           />
           <button type="button" className="btn-primary" onClick={() => load(q)}>
             بحث
@@ -139,8 +302,10 @@ export default function BeneficiariesPage() {
                 <th>الاسم</th>
                 <th>الهوية</th>
                 <th>الجوال</th>
+                <th>التابعون</th>
                 <th>الجمعية</th>
                 <th>الحالة</th>
+                {canManage ? <th>إجراءات</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -149,15 +314,39 @@ export default function BeneficiariesPage() {
                   <td>{r.name}</td>
                   <td dir="ltr">{r.nationalId}</td>
                   <td dir="ltr">{r.mobile}</td>
+                  <td>{r.dependentsCount ?? 0}</td>
                   <td>{r.association?.name ?? r.associationOther ?? "—"}</td>
                   <td>
                     <span className="badge badge-muted">{r.statusLabel}</span>
                   </td>
+                  {canManage ? (
+                    <td>
+                      <div className="toolbar" style={{ gap: "0.4rem" }}>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => openEdit(r)}
+                        >
+                          تعديل
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-danger"
+                          onClick={() => {
+                            setDeleteConfirmText("");
+                            setDeleting(r);
+                          }}
+                        >
+                          حذف
+                        </button>
+                      </div>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={5} className="empty">
+                  <td colSpan={canManage ? 7 : 6} className="empty">
                     لا توجد نتائج
                   </td>
                 </tr>
@@ -169,89 +358,61 @@ export default function BeneficiariesPage() {
 
       <Modal open={open} title="إضافة مستفيد" onClose={() => setOpen(false)} wide>
         <form onSubmit={onCreate}>
-          <div className="form-grid">
-            <div>
-              <label className="label-field">الاسم</label>
-              <input name="name" className="input-field" required />
-            </div>
-            <div>
-              <label className="label-field">رقم الهوية</label>
-              <input name="nationalId" className="input-field" dir="ltr" required />
-            </div>
-            <div>
-              <label className="label-field">الجوال</label>
-              <input name="mobile" className="input-field" dir="ltr" required />
-            </div>
-            <div>
-              <label className="label-field">الجنس</label>
-              <select name="gender" className="input-field">
-                <option value="">—</option>
-                <option value="MALE">ذكر</option>
-                <option value="FEMALE">أنثى</option>
-              </select>
-            </div>
-            <div>
-              <label className="label-field">المدينة</label>
-              <input name="city" className="input-field" />
-            </div>
-            <div>
-              <label className="label-field">الحي</label>
-              <input name="neighborhood" className="input-field" />
-            </div>
-            <div>
-              <label className="label-field">تاريخ الميلاد</label>
-              <input name="birthDate" type="date" className="input-field" dir="ltr" />
-            </div>
-            <div>
-              <label className="label-field">عدد التابعين / حجم الأسرة</label>
-              <input
-                name="dependentsCount"
-                type="number"
-                min={0}
-                defaultValue={0}
-                className="input-field"
-                dir="ltr"
-              />
-            </div>
-            <div>
-              <label className="label-field">الجمعية</label>
-              <select
-                name="associationId"
-                className="input-field"
-                disabled={useOther}
-                onChange={(e) => {
-                  if (e.target.value === "__other__") setUseOther(true);
-                }}
-              >
-                <option value="">—</option>
-                {associations.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-                <option value="__other__">أخرى</option>
-              </select>
-              {useOther ? (
-                <input
-                  name="associationOther"
-                  className="input-field"
-                  style={{ marginTop: "0.5rem" }}
-                  placeholder="اسم الجمعية"
-                  required
-                />
-              ) : null}
-            </div>
-            <div className="full">
-              <label className="label-field">ملاحظات</label>
-              <textarea name="notes" className="input-field" rows={2} />
-            </div>
-          </div>
+          {formFields(null)}
           <div className="form-actions">
             <button className="btn-primary" type="submit" disabled={busy}>
               {busy ? "جاري الحفظ..." : "حفظ"}
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={!!editing}
+        title={`تعديل بيانات: ${editing?.name ?? ""}`}
+        onClose={() => {
+          setEditing(null);
+          setUseOther(false);
+        }}
+        wide
+      >
+        <form onSubmit={onEdit} key={editing?.id ?? "none"}>
+          {formFields(editing)}
+          <div className="form-actions">
+            <button className="btn-primary" type="submit" disabled={busy}>
+              {busy ? "جاري الحفظ..." : "حفظ التعديلات"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={!!deleting}
+        title={`حذف المستفيد: ${deleting?.name ?? ""}`}
+        onClose={() => setDeleting(null)}
+      >
+        <p className="msg msg-error">
+          تأكيد ثنائي: الحذف نهائي ولا يشمل من له حضور أو صرف مسجل. اكتب «حذف» ثم أكّد.
+        </p>
+        <input
+          className="input-field"
+          value={deleteConfirmText}
+          onChange={(e) => setDeleteConfirmText(e.target.value)}
+          placeholder="اكتب: حذف"
+        />
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn-danger"
+            disabled={busy || deleteConfirmText.trim() !== "حذف"}
+            onClick={onDelete}
+          >
+            {busy ? "جاري الحذف..." : "تأكيد الحذف النهائي"}
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => setDeleting(null)}>
+            إلغاء
+          </button>
+        </div>
       </Modal>
 
       <Modal open={importOpen} title="استيراد Excel" onClose={() => setImportOpen(false)}>

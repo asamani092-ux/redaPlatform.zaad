@@ -4,14 +4,15 @@ import { FormEvent, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import type { InventorySchemaField } from "@/lib/inventory-schema";
 import { DEFAULT_INVENTORY_SCHEMA } from "@/lib/inventory-schema";
+import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 
 type Association = { id?: string; name: string; active?: boolean };
 
 export default function SettingsPage() {
   const [exhibitionName, setExhibitionName] = useState("");
   const [location, setLocation] = useState("");
-  const [baseEntitlement, setBaseEntitlement] = useState(2);
-  const [lowStockThreshold, setLowStockThreshold] = useState(10);
+  const [baseEntitlement, setBaseEntitlement] = useState("2");
+  const [lowStockThreshold, setLowStockThreshold] = useState("10");
   const [schema, setSchema] = useState<InventorySchemaField[]>(DEFAULT_INVENTORY_SCHEMA);
   const [associations, setAssociations] = useState<Association[]>([]);
   const [inviteTpl, setInviteTpl] = useState("");
@@ -29,8 +30,8 @@ export default function SettingsPage() {
           setLocation(j.exhibition.location ?? "");
           const s = j.exhibition.settings;
           if (s) {
-            setBaseEntitlement(s.baseEntitlement ?? s.entitledPieces ?? 2);
-            setLowStockThreshold(s.lowStockThreshold);
+            setBaseEntitlement(String(s.baseEntitlement ?? s.entitledPieces ?? 2));
+            setLowStockThreshold(String(s.lowStockThreshold ?? 10));
             if (Array.isArray(s.inventorySchemaJson)) setSchema(s.inventorySchemaJson);
             setInviteTpl(s.whatsappInviteTpl ?? "");
             setThanksTpl(s.whatsappThanksTpl ?? "");
@@ -52,8 +53,8 @@ export default function SettingsPage() {
       body: JSON.stringify({
         exhibitionName,
         location,
-        baseEntitlement,
-        lowStockThreshold,
+        baseEntitlement: toIntOrNull(baseEntitlement) ?? undefined,
+        lowStockThreshold: toIntOrNull(lowStockThreshold) ?? undefined,
         inventorySchema: schema,
         associations,
         whatsappInviteTpl: inviteTpl,
@@ -67,6 +68,14 @@ export default function SettingsPage() {
 
   function updateField(idx: number, patch: Partial<InventorySchemaField>) {
     setSchema((s) => s.map((x, i) => (i === idx ? { ...x, ...patch } : x)));
+  }
+
+  /** مفتاح داخلي تلقائي غير مرئي للمستخدم — O(1) */
+  function nextAutoKey(current: InventorySchemaField[]): string {
+    let n = current.length + 1;
+    const keys = new Set(current.map((f) => f.key));
+    while (keys.has(`attr_${n}`)) n++;
+    return `attr_${n}`;
   }
 
   function setOptionsText(idx: number, text: string) {
@@ -109,22 +118,22 @@ export default function SettingsPage() {
             <label className="label-field">الاستحقاق الأساسي (قطع)</label>
             <input
               className="input-field"
-              type="number"
-              min={1}
+              type="text"
+              inputMode="numeric"
               dir="ltr"
               value={baseEntitlement}
-              onChange={(e) => setBaseEntitlement(Number(e.target.value))}
+              onChange={(e) => setBaseEntitlement(sanitizeNumericInput(e.target.value, false))}
             />
           </div>
           <div>
             <label className="label-field">عتبة تنبيه النفاد</label>
             <input
               className="input-field"
-              type="number"
-              min={0}
+              type="text"
+              inputMode="numeric"
               dir="ltr"
               value={lowStockThreshold}
-              onChange={(e) => setLowStockThreshold(Number(e.target.value))}
+              onChange={(e) => setLowStockThreshold(sanitizeNumericInput(e.target.value, false))}
             />
           </div>
         </div>
@@ -133,26 +142,17 @@ export default function SettingsPage() {
       <section className="panel">
         <h2 className="panel-title">مخطط سمات المخزون</h2>
         <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
-          كل سمة لها قائمة خيارات (سطر لكل خيار). بعد إدخال أصناف لا تُغيَّر المفاتيح — يُسمح بإضافة خيارات فقط.
+          كل سمة لها تسمية عربية وقائمة خيارات (سطر لكل خيار) — مثل: الوحدة، النوع، المقاس.
+          بعد إدخال أصناف تبقى السمات ثابتة ويُسمح بإضافة خيارات وتعديل التسميات فقط.
         </p>
         <div style={{ display: "grid", gap: "0.85rem" }}>
           {schema.map((f, idx) => (
-            <div key={idx} className="form-grid" style={{ gridTemplateColumns: "1fr 1fr 1.2fr" }}>
-              <div>
-                <label className="label-field">المفتاح</label>
-                <input
-                  className="input-field"
-                  placeholder="color"
-                  value={f.key}
-                  disabled={hasItems}
-                  onChange={(e) => updateField(idx, { key: e.target.value })}
-                />
-              </div>
+            <div key={f.key || idx} className="form-grid" style={{ gridTemplateColumns: "1fr 1.4fr" }}>
               <div>
                 <label className="label-field">التسمية</label>
                 <input
                   className="input-field"
-                  placeholder="اللون"
+                  placeholder="اللون / الوحدة / المقاس"
                   value={f.label}
                   onChange={(e) => updateField(idx, { label: e.target.value })}
                 />
@@ -174,7 +174,9 @@ export default function SettingsPage() {
             type="button"
             className="btn-secondary"
             disabled={hasItems}
-            onClick={() => setSchema((s) => [...s, { key: "", label: "", options: [] }])}
+            onClick={() =>
+              setSchema((s) => [...s, { key: nextAutoKey(s), label: "", options: [] }])
+            }
           >
             إضافة سمة
           </button>
