@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState, Suspense } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -63,6 +64,12 @@ function LoginForm() {
           <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading}>
             {loading ? "جاري الدخول..." : "دخول"}
           </button>
+          <Link
+            href="/forgot-password"
+            style={{ textAlign: "center", display: "block", marginTop: "0.35rem", fontSize: "0.9rem" }}
+          >
+            نسيت كلمة المرور؟
+          </Link>
         </form>
       </div>
     </div>

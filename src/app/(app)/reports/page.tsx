@@ -14,6 +14,8 @@ type Summary = {
   invited: number;
   attended: number;
   received: number;
+  exceptionAttendance?: number;
+  overrideDispenses?: number;
   piecesDispensed: number;
   byGender: Record<string, number>;
   byCity: Record<string, number>;
@@ -122,11 +124,13 @@ export default function ReportsPage() {
         <>
           <div className="stat-grid">
             {[
-              ["المستفيدون", summary.totalBeneficiaries],
+              ["إجمالي المستفيدين", summary.totalBeneficiaries],
               ["المدعوون", summary.invited],
-              ["الحضور", summary.attended],
-              ["المستلمون", summary.received],
-              ["القطع", summary.piecesDispensed],
+              ["الحاضرون", summary.attended],
+              ["استلموا", summary.received],
+              ["القطع المصروفة", summary.piecesDispensed],
+              ["حضور استثنائي", summary.exceptionAttendance ?? 0],
+              ["صرف استثنائي", summary.overrideDispenses ?? 0],
             ].map(([label, value]) => (
               <div key={String(label)} className="stat-tile">
                 <div className="value">{value as number}</div>

@@ -16,6 +16,7 @@ export async function GET() {
     attended,
     received,
     exceptions,
+    overrideDispenses,
     piecesAgg,
     inventory,
   ] = await Promise.all([
@@ -24,6 +25,9 @@ export async function GET() {
     prisma.attendance.count({ where: { exhibitionId } }),
     prisma.dispenseOrder.count({ where: { exhibitionId } }),
     prisma.attendance.count({ where: { exhibitionId, type: "EXCEPTION" } }),
+    prisma.dispenseOrder.count({
+      where: { exhibitionId, entitledOverride: { not: null } },
+    }),
     prisma.dispenseOrder.aggregate({
       where: { exhibitionId },
       _sum: { piecesCount: true },
@@ -68,6 +72,7 @@ export async function GET() {
       remainingToReceive,
       piecesDispensed,
       exceptions,
+      overrideDispenses,
       completionRate,
     },
     inventory: inventory.map((i) => ({

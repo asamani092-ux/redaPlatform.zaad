@@ -39,6 +39,7 @@ enum OutboundMessageType {
   INVITATION
   THANK_YOU
   SURVEY
+  OTP
 }
 
 enum OutboundMessageStatus {
@@ -65,6 +66,7 @@ model User {
   stockMovements     StockMovement[]     @relation("StockBy")
   invitesCreated     ExhibitionInvite[]  @relation("InviteBy")
   outboundMessages   OutboundMessage[]   @relation("MessageBy")
+  passwordResets     PasswordReset[]
 
   @@index([role])
   @@index([lastActiveAt])
@@ -256,6 +258,20 @@ model DispenseLine {
 
   @@index([dispenseOrderId])
   @@index([inventoryItemId])
+}
+
+/// رموز استعادة كلمة المرور — تُرسل عبر واتساب وتنتهي خلال 10 دقائق
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model AuditLog {

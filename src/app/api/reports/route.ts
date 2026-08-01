@@ -7,6 +7,7 @@ import { STATUS_LABELS, resolveStatus } from "@/lib/status";
 import { hasPermission } from "@/lib/rbac";
 import { canExportFullIdentity, redactIdentityFields } from "@/lib/pii";
 import { Role } from "@/generated/prisma/enums";
+import { buildPrintDocument, escapeHtml } from "@/lib/print-html";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -115,6 +116,12 @@ export async function GET(req: NextRequest) {
     invited: await prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     attended: await prisma.attendance.count({ where: { exhibitionId } }),
     received: await prisma.dispenseOrder.count({ where: { exhibitionId } }),
+    exceptionAttendance: await prisma.attendance.count({
+      where: { exhibitionId, type: "EXCEPTION" },
+    }),
+    overrideDispenses: await prisma.dispenseOrder.count({
+      where: { exhibitionId, entitledOverride: { not: null } },
+    }),
     piecesDispensed:
       (
         await prisma.dispenseOrder.aggregate({
@@ -242,14 +249,14 @@ export async function GET(req: NextRequest) {
 
   if (format === "pdf") {
     const pageSize = 40;
-    const pages: string[] = [];
+    const sections: string[] = [];
     for (let i = 0; i < safeRows.length; i += pageSize) {
       const slice = safeRows.slice(i, i + pageSize);
-      pages.push(`
-        <section style="page-break-after: always; font-family: Tahoma, Arial; direction: rtl;">
-          <h1>تقرير معرض رداء — ${escapeHtml(exhibition.name)}</h1>
-          <p>صفحة ${Math.floor(i / pageSize) + 1}</p>
-          <table border="1" cellspacing="0" cellpadding="6" width="100%" style="border-collapse:collapse;font-size:12px;">
+      const isLast = i + pageSize >= safeRows.length;
+      sections.push(`
+        <section class="${isLast ? "" : "page-break"}">
+          <h2>تفاصيل المستفيدين — صفحة ${Math.floor(i / pageSize) + 1}</h2>
+          <table>
             <thead>
               <tr>
                 <th>الاسم</th><th>الهوية</th><th>الجوال</th><th>الحالة</th><th>القطع</th>
@@ -259,7 +266,7 @@ export async function GET(req: NextRequest) {
               ${slice
                 .map(
                   (r) =>
-                    `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.nationalId)}</td><td>${escapeHtml(r.mobile)}</td><td>${escapeHtml(r.status)}</td><td>${r.pieces}</td></tr>`,
+                    `<tr><td>${escapeHtml(r.name)}</td><td class="ltr">${escapeHtml(r.nationalId)}</td><td class="ltr">${escapeHtml(r.mobile)}</td><td>${escapeHtml(r.status)}</td><td>${r.pieces}</td></tr>`,
                 )
                 .join("")}
             </tbody>
@@ -268,18 +275,20 @@ export async function GET(req: NextRequest) {
       `);
     }
 
-    const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/><title>تقرير رداء</title></head><body>
-      <h2>الملخص — ${escapeHtml(exhibition.name)}</h2>
-      <ul>
-        <li>المستفيدون: ${summary.totalBeneficiaries}</li>
-        <li>المدعوون: ${summary.invited}</li>
-        <li>الحضور: ${summary.attended}</li>
-        <li>المستلمون: ${summary.received}</li>
-        <li>القطع: ${summary.piecesDispensed}</li>
-      </ul>
-      ${pages.join("\n")}
-      <script>window.onload=()=>window.print()</script>
-    </body></html>`;
+    const html = buildPrintDocument({
+      title: `تقرير معرض: ${exhibition.name}`,
+      subtitle: exhibition.active ? "المعرض النشط حالياً" : "معرض غير نشط (أرشيف)",
+      tiles: [
+        { label: "إجمالي المستفيدين", value: summary.totalBeneficiaries },
+        { label: "المدعوون", value: summary.invited },
+        { label: "الحاضرون", value: summary.attended },
+        { label: "استلموا", value: summary.received },
+        { label: "القطع المصروفة", value: summary.piecesDispensed },
+        { label: "حضور استثنائي", value: summary.exceptionAttendance },
+        { label: "صرف استثنائي", value: summary.overrideDispenses },
+      ],
+      sectionsHtml: sections.join("\n"),
+    });
 
     return new NextResponse(html, {
       headers: { "Content-Type": "text/html; charset=utf-8" },
@@ -294,12 +303,4 @@ function groupCount(values: string[]) {
     acc[v] = (acc[v] ?? 0) + 1;
     return acc;
   }, {});
-}
-
-function escapeHtml(s: string) {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }

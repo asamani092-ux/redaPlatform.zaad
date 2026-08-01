@@ -11,6 +11,7 @@ import {
   DEFAULT_INVENTORY_SCHEMA,
   parseInventorySchema,
 } from "@/lib/inventory-schema";
+import { parseSurveyConfig } from "@/lib/survey-questions";
 import { Prisma } from "@/generated/prisma/client";
 
 const schemaField = z.object({
@@ -30,6 +31,7 @@ const settingsSchema = z.object({
   whatsappInviteTpl: z.string().optional().nullable(),
   whatsappThanksTpl: z.string().optional().nullable(),
   surveyQuestions: z.array(z.record(z.string(), z.unknown())).optional(),
+  surveyExternalUrl: z.string().optional().nullable(),
   associations: z
     .array(z.object({ id: z.string().optional(), name: z.string().min(1), active: z.boolean().optional() }))
     .optional(),
@@ -130,6 +132,19 @@ export async function PUT(req: NextRequest) {
     options: [...new Set(f.options.map((o) => o.trim()).filter(Boolean))],
   }));
 
+  // إعداد الاستبيان يُخزن كغلاف { questions, externalUrl } مع الحفاظ على القائم عند غياب أحدهما
+  let surveyPayload: Prisma.InputJsonValue | undefined;
+  if (body.data.surveyQuestions !== undefined || body.data.surveyExternalUrl !== undefined) {
+    const current = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
+    surveyPayload = {
+      questions: (body.data.surveyQuestions ?? current.questions) as unknown[],
+      externalUrl:
+        body.data.surveyExternalUrl !== undefined
+          ? body.data.surveyExternalUrl?.trim() || null
+          : current.externalUrl,
+    } as unknown as Prisma.InputJsonValue;
+  }
+
   await prisma.exhibitionSettings.upsert({
     where: { exhibitionId: exhibition.id },
     update: {
@@ -140,9 +155,7 @@ export async function PUT(req: NextRequest) {
         : undefined,
       whatsappInviteTpl: body.data.whatsappInviteTpl,
       whatsappThanksTpl: body.data.whatsappThanksTpl,
-      surveyQuestionsJson: body.data.surveyQuestions
-        ? (body.data.surveyQuestions as Prisma.InputJsonValue)
-        : undefined,
+      surveyQuestionsJson: surveyPayload,
     },
     create: {
       exhibitionId: exhibition.id,
@@ -151,7 +164,7 @@ export async function PUT(req: NextRequest) {
       inventorySchemaJson: (schemaPayload ?? DEFAULT_INVENTORY_SCHEMA) as unknown as Prisma.InputJsonValue,
       whatsappInviteTpl: body.data.whatsappInviteTpl,
       whatsappThanksTpl: body.data.whatsappThanksTpl,
-      surveyQuestionsJson: (body.data.surveyQuestions ?? []) as Prisma.InputJsonValue,
+      surveyQuestionsJson: (surveyPayload ?? { questions: [], externalUrl: null }) as Prisma.InputJsonValue,
     },
   });
 
