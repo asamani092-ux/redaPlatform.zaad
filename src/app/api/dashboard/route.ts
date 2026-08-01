@@ -37,7 +37,9 @@ export async function GET() {
 
   const remainingToReceive = Math.max(attended - received, 0);
   const piecesDispensed = piecesAgg._sum.piecesCount ?? 0;
-  const completionRate = invited > 0 ? Math.round((received / invited) * 100) : 0;
+  // نسبة الإنجاز = المستلمون ÷ الحاضرون (الاستثنائي يدخل الطرفين) بسقف 100% — O(1)
+  const completionRate =
+    attended > 0 ? Math.min(100, Math.round((received / attended) * 100)) : 0;
   const threshold = exhibition.settings?.lowStockThreshold ?? 10;
 
   const topItems = await prisma.dispenseLine.groupBy({

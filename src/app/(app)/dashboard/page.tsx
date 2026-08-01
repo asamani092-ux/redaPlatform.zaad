@@ -72,7 +72,7 @@ export default function DashboardPage() {
     { label: "القطع المصروفة", value: data.stats.piecesDispensed },
     { label: "حضور استثنائي", value: data.stats.exceptions },
     { label: "صرف استثنائي", value: data.stats.overrideDispenses ?? 0 },
-    { label: "نسبة الإنجاز %", value: data.stats.completionRate },
+    { label: "نسبة الاستلام من الحضور %", value: data.stats.completionRate },
   ];
 
   return (
