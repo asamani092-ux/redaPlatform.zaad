@@ -80,8 +80,8 @@ export function AppShell({
           })}
           {showTrialEval ? (
             <Link
-              href="/تقييم-التجربة"
-              className={`app-nav-link ${pathname.startsWith("/تقييم-التجربة") ? "is-active" : ""}`}
+              href="/trial-eval"
+              className={`app-nav-link ${pathname.startsWith("/trial-eval") ? "is-active" : ""}`}
               onClick={() => setOpen(false)}
             >
               تقييم التجربة
