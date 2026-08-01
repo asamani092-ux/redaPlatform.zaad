@@ -21,6 +21,80 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false);
   const [hasItems, setHasItems] = useState(false);
 
+  // إعداد واتساب — يُحفظ ويُختبر مستقلاً عن نموذج الإعدادات الرئيسي
+  const [wa, setWa] = useState({
+    provider: "stub",
+    apiUrl: "",
+    token: "",
+    tokenMask: "",
+    hasToken: false,
+    sender: "",
+  });
+  const [waMsg, setWaMsg] = useState("");
+  const [waBusy, setWaBusy] = useState(false);
+  const [testMobile, setTestMobile] = useState("");
+
+  useEffect(() => {
+    fetch("/api/settings/whatsapp")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.provider) {
+          setWa((w) => ({
+            ...w,
+            provider: j.provider,
+            apiUrl: j.apiUrl ?? "",
+            tokenMask: j.tokenMask ?? "",
+            hasToken: !!j.hasToken,
+            sender: j.sender ?? "",
+          }));
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function saveWhatsApp() {
+    if (waBusy) return;
+    setWaBusy(true);
+    setWaMsg("");
+    const res = await fetch("/api/settings/whatsapp", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: wa.provider,
+        apiUrl: wa.apiUrl,
+        apiToken: wa.token || null,
+        sender: wa.sender,
+      }),
+    });
+    const json = await res.json();
+    setWaBusy(false);
+    if (!res.ok) {
+      setWaMsg(json.error || "فشل الحفظ");
+      return;
+    }
+    setWa((w) => ({
+      ...w,
+      token: "",
+      tokenMask: json.tokenMask ?? "",
+      hasToken: !!json.hasToken,
+    }));
+    setWaMsg("تم حفظ إعداد واتساب");
+  }
+
+  async function testWhatsApp() {
+    if (waBusy || !testMobile.trim()) return;
+    setWaBusy(true);
+    setWaMsg("");
+    const res = await fetch("/api/settings/whatsapp/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile: testMobile.trim() }),
+    });
+    const json = await res.json();
+    setWaBusy(false);
+    setWaMsg(res.ok ? json.message : json.error || "فشل الاختبار");
+  }
+
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
@@ -227,6 +301,86 @@ export default function SettingsPage() {
               onChange={(e) => setThanksTpl(e.target.value)}
             />
           </div>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">ربط واتساب (المزوّد)</h2>
+        <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
+          رقم المرسل يُسجل لدى المزوّد (مثل Meta WhatsApp Cloud API) ثم تُنقل بياناته هنا.
+          الوضع التجريبي يسجّل الرسائل داخلياً دون إرسال حقيقي.
+        </p>
+        {waMsg ? <p className="msg">{waMsg}</p> : null}
+        <div className="form-grid">
+          <div>
+            <label className="label-field">وضع الإرسال</label>
+            <select
+              className="input-field"
+              value={wa.provider}
+              onChange={(e) => setWa((w) => ({ ...w, provider: e.target.value }))}
+            >
+              <option value="stub">تجريبي — تسجيل داخلي بلا إرسال</option>
+              <option value="api">فعلي — إرسال عبر مزوّد API</option>
+            </select>
+          </div>
+          <div>
+            <label className="label-field">رقم جوال المرسل (للتوثيق)</label>
+            <input
+              className="input-field"
+              dir="ltr"
+              inputMode="tel"
+              placeholder="9665xxxxxxxx"
+              value={wa.sender}
+              onChange={(e) => setWa((w) => ({ ...w, sender: e.target.value }))}
+            />
+          </div>
+          <div className="full">
+            <label className="label-field">رابط الإرسال (API URL)</label>
+            <input
+              className="input-field"
+              dir="ltr"
+              placeholder="https://graph.facebook.com/v20.0/<PHONE_NUMBER_ID>/messages"
+              value={wa.apiUrl}
+              onChange={(e) => setWa((w) => ({ ...w, apiUrl: e.target.value }))}
+            />
+          </div>
+          <div className="full">
+            <label className="label-field">
+              التوكن {wa.hasToken ? `— المحفوظ: ${wa.tokenMask} (اتركه فارغاً للإبقاء عليه)` : ""}
+            </label>
+            <input
+              className="input-field"
+              dir="ltr"
+              type="password"
+              autoComplete="off"
+              placeholder={wa.hasToken ? "••••••••" : "توكن المزوّد"}
+              value={wa.token}
+              onChange={(e) => setWa((w) => ({ ...w, token: e.target.value }))}
+            />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button type="button" className="btn-primary" disabled={waBusy} onClick={saveWhatsApp}>
+            {waBusy ? "جاري…" : "حفظ إعداد واتساب"}
+          </button>
+        </div>
+        <div className="toolbar" style={{ marginTop: "0.75rem" }}>
+          <input
+            className="input-field"
+            dir="ltr"
+            inputMode="tel"
+            placeholder="جوال لاختبار الإرسال 05xxxxxxxx"
+            value={testMobile}
+            onChange={(e) => setTestMobile(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn-recommend"
+            disabled={waBusy || !testMobile.trim()}
+            onClick={testWhatsApp}
+          >
+            إرسال رسالة اختبار
+          </button>
         </div>
       </section>
     </form>

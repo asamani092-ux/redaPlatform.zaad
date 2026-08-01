@@ -26,6 +26,8 @@ export const ACTION_LABELS: Record<string, string> = {
   SURVEY_BROADCAST: "إرسال استبيان جماعي",
   QR_CARDS_EXPORT: "طباعة بطاقات QR",
   PASSWORD_RESET: "استعادة كلمة مرور",
+  WHATSAPP_SETTINGS_UPDATE: "تحديث إعداد واتساب",
+  WHATSAPP_TEST: "اختبار إرسال واتساب",
 };
 
 export const ENTITY_LABELS: Record<string, string> = {
@@ -41,6 +43,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   AssociationOption: "جمعية",
   SurveyResponse: "رد استبيان",
   OutboundMessage: "رسالة صادرة",
+  AppConfig: "إعدادات المنصة",
 };
 
 export function actionLabel(action: string): string {

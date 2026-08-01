@@ -40,6 +40,7 @@ enum OutboundMessageType {
   THANK_YOU
   SURVEY
   OTP
+  TEST
 }
 
 enum OutboundMessageStatus {
@@ -258,6 +259,19 @@ model DispenseLine {
 
   @@index([dispenseOrderId])
   @@index([inventoryItemId])
+}
+
+/// إعدادات المنصة العامة (صف واحد ثابت id="app") — إعداد واتساب قابل للتعديل من الواجهة
+model AppConfig {
+  id                String   @id @default("app")
+  /// "stub" = تسجيل داخلي بلا إرسال؛ أي قيمة أخرى = إرسال حقيقي عبر API
+  whatsappProvider  String   @default("stub")
+  whatsappApiUrl    String?
+  whatsappApiToken  String?
+  /// رقم المرسل المسجل لدى المزوّد — للعرض والتوثيق
+  whatsappSender    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 /// رموز استعادة كلمة المرور — تُرسل عبر واتساب وتنتهي خلال 10 دقائق

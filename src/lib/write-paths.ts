@@ -34,6 +34,8 @@ export const WRITE_PATHS: WritePathSpec[] = [
   { id: "beneficiary.delete", entityType: "Beneficiary", action: "DELETE", route: "DELETE /api/beneficiaries/[id]", audited: true },
   { id: "user.delete", entityType: "User", action: "USER_DELETE|USER_DEACTIVATE", route: "DELETE /api/users", audited: true },
   { id: "password.reset", entityType: "User", action: "PASSWORD_RESET", route: "POST /api/password/reset", audited: true },
+  { id: "whatsapp.settings", entityType: "AppConfig", action: "WHATSAPP_SETTINGS_UPDATE", route: "PUT /api/settings/whatsapp", audited: true },
+  { id: "whatsapp.test", entityType: "AppConfig", action: "WHATSAPP_TEST", route: "POST /api/settings/whatsapp/test", audited: true },
   {
     id: "password.forgot",
     entityType: "PasswordReset",
