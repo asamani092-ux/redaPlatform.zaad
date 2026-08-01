@@ -13,12 +13,12 @@ import { effectiveEntitlement, isNonEmptyReason } from "@/lib/entitlement";
 
 const lineSchema = z.object({
   inventoryItemId: z.string(),
-  quantity: z.number().positive(),
+  quantity: z.number().int().positive(),
 });
 
 const dispenseSchema = z.object({
   beneficiaryId: z.string(),
-  lines: z.array(lineSchema).min(1),
+  lines: z.array(lineSchema).min(1, "حدد كمية لصنف واحد على الأقل"),
   entitledOverride: z.number().int().positive().optional(),
   overrideReason: z.string().optional(),
   sendThanks: z.boolean().optional(),
@@ -96,7 +96,16 @@ export async function POST(req: NextRequest) {
 
   const body = dispenseSchema.safeParse(await req.json());
   if (!body.success) {
-    return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
+    const issue = body.error.issues[0];
+    return NextResponse.json(
+      {
+        error:
+          issue?.message === "حدد كمية لصنف واحد على الأقل"
+            ? issue.message
+            : "بيانات غير صالحة — الكميات أعداد صحيحة موجبة",
+      },
+      { status: 400 },
+    );
   }
 
   let exhibition;

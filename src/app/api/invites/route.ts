@@ -88,11 +88,16 @@ export async function POST(req: NextRequest) {
     for (const t of result.tokens) {
       const b = await prisma.beneficiary.findUnique({ where: { id: t.beneficiaryId } });
       if (!b) continue;
-      const bodyText = tpl
+      let bodyText = tpl
         .replaceAll("{{name}}", b.name)
+        .replaceAll("{{exhibition}}", exhibition.name)
         .replaceAll("{{date}}", exhibition.startsAt?.toISOString().slice(0, 10) ?? "")
         .replaceAll("{{location}}", exhibition.location ?? "")
         .replaceAll("{{qr}}", t.qrToken);
+      // الدعوة تشمل الموقع دائماً حتى لو خلا القالب من {{location}}
+      if (!tpl.includes("{{location}}") && exhibition.location) {
+        bodyText += `\nالموقع: ${exhibition.location}`;
+      }
       await sendWhatsAppMessage({
         exhibitionId: exhibition.id,
         beneficiaryId: b.id,

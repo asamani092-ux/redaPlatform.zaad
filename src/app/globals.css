@@ -344,6 +344,14 @@ button {
   border-bottom: none;
 }
 
+/* خلايا الأرقام (هوية/جوال) LTR لكن محاذاتها تبقى تحت رأس العمود RTL */
+.table-wrap td[dir="ltr"] {
+  text-align: right;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 .stat-grid {
   display: grid;
   gap: 0.9rem;

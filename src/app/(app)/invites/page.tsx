@@ -104,6 +104,7 @@ export default function InvitesPage() {
                 </th>
                 <th>الاسم</th>
                 <th>الهوية</th>
+                <th>الجوال</th>
                 <th>الحالة</th>
                 <th>QR</th>
               </tr>
@@ -120,6 +121,7 @@ export default function InvitesPage() {
                   </td>
                   <td>{r.name}</td>
                   <td dir="ltr">{r.nationalId}</td>
+                  <td dir="ltr">{r.mobile}</td>
                   <td>
                     <span className="badge badge-muted">{r.statusLabel}</span>
                   </td>
@@ -135,7 +137,7 @@ export default function InvitesPage() {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={5} className="empty">
+                  <td colSpan={6} className="empty">
                     لا توجد بيانات
                   </td>
                 </tr>

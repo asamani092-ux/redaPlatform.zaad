@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { BeneficiaryCard } from "@/components/BeneficiaryCard";
 import { AttrChips } from "@/components/AttrChips";
+import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 
 type Item = {
   id: string;
@@ -38,7 +39,8 @@ export default function DispensePage() {
   const [q, setQ] = useState("");
   const [lookup, setLookup] = useState<Lookup | null>(null);
   const [items, setItems] = useState<Item[]>([]);
-  const [lines, setLines] = useState<Record<string, number>>({});
+  // كميات نصّية لتفادي قفل حقول type=number مع الأرقام العربية — O(1) لكل تحديث
+  const [lines, setLines] = useState<Record<string, string>>({});
   const [override, setOverride] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
   const [msg, setMsg] = useState("");
@@ -67,6 +69,7 @@ export default function DispensePage() {
       return;
     }
     setLookup(json);
+    setLines({});
     setOverride("");
     setOverrideReason("");
   }, []);
@@ -79,38 +82,54 @@ export default function DispensePage() {
     [preview],
   );
 
-  const raising = useMemo(() => {
-    if (!lookup || !override) return false;
-    const n = Number(override);
-    const computed = lookup.computedEntitlement ?? lookup.entitledPieces;
-    return Number.isFinite(n) && n > 0 && n !== computed;
-  }, [lookup, override]);
+  const computed = lookup?.computedEntitlement ?? lookup?.entitledPieces ?? 0;
 
-  const reasonOk = !raising || overrideReason.trim().length > 0;
+  const overriding = useMemo(() => {
+    if (!lookup || !override) return false;
+    const n = toIntOrNull(override);
+    return n != null && n > 0 && n !== computed;
+  }, [lookup, override, computed]);
+
+  const reasonOk = !overriding || overrideReason.trim().length > 0;
+
+  const selectedLines = useMemo(
+    () =>
+      Object.entries(lines)
+        .map(([inventoryItemId, raw]) => ({ inventoryItemId, quantity: toIntOrNull(raw) ?? 0 }))
+        .filter((l) => l.quantity > 0),
+    [lines],
+  );
+  const totalSelected = selectedLines.reduce((s, l) => s + l.quantity, 0);
+  const entitledNow = overriding ? (toIntOrNull(override) ?? computed) : computed;
 
   async function submit() {
     if (!lookup || busy) return;
-    if (raising && !reasonOk) {
-      setMsg("سبب رفع الاستحقاق مطلوب");
+    if (!selectedLines.length) {
+      setMsg("حدد كمية لصنف واحد على الأقل قبل تأكيد الصرف");
+      return;
+    }
+    if (overriding && !reasonOk) {
+      setMsg("سبب تعديل الاستحقاق مطلوب");
+      return;
+    }
+    if (totalSelected > entitledNow) {
+      setMsg(`مجموع الكميات (${totalSelected}) يتجاوز الاستحقاق (${entitledNow})`);
       return;
     }
     setBusy(true);
     setMsg("");
-    const selected = Object.entries(lines)
-      .filter(([, qty]) => qty > 0)
-      .map(([inventoryItemId, quantity]) => ({ inventoryItemId, quantity }));
     const res = await fetch("/api/dispense", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         beneficiaryId: lookup.beneficiary.id,
-        lines: selected,
-        entitledOverride: raising ? Number(override) : undefined,
-        overrideReason: raising ? overrideReason.trim() : undefined,
+        lines: selectedLines,
+        entitledOverride: overriding ? toIntOrNull(override) : undefined,
+        overrideReason: overriding ? overrideReason.trim() : undefined,
         sendThanks: true,
       }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     setBusy(false);
     setMsg(res.ok ? "تم الصرف بنجاح" : json.error || "فشل الصرف");
     if (res.ok) {
@@ -132,7 +151,7 @@ export default function DispensePage() {
     <div className="page-stack">
       <PageHeader
         title="صرف القطع"
-        description="يشترط الحضور — امسح أو ابحث ثم أكّد بعد المعاينة"
+        description="يشترط الحضور — امسح أو ابحث ثم أكّد بعد المعاينة. يجوز الصرف بأقل من الاستحقاق"
         actions={
           <button type="button" className="btn-recommend" onClick={() => setScanOn((v) => !v)}>
             {scanOn ? "إيقاف الكاميرا" : "مسح بالكاميرا"}
@@ -191,30 +210,31 @@ export default function DispensePage() {
 
           <div className="form-grid" style={{ marginTop: "1rem" }}>
             <div>
-              <label className="label-field">رفع الاستحقاق (موظف التوزيع / المدير)</label>
+              <label className="label-field">
+                تعديل الاستحقاق — رفع أو خفض (موظف التوزيع / المدير)
+              </label>
               <input
                 className="input-field"
                 dir="ltr"
-                type="number"
-                min={1}
-                placeholder={String(lookup.computedEntitlement ?? lookup.entitledPieces)}
+                inputMode="numeric"
+                placeholder={String(computed)}
                 value={override}
-                onChange={(e) => setOverride(e.target.value)}
+                onChange={(e) => setOverride(sanitizeNumericInput(e.target.value, false))}
               />
             </div>
             <div>
-              <label className="label-field">سبب الرفع (إلزامي عند الرفع)</label>
+              <label className="label-field">سبب التعديل (إلزامي عند التعديل)</label>
               <input
                 className="input-field"
                 value={overrideReason}
                 onChange={(e) => setOverrideReason(e.target.value)}
-                required={raising}
+                required={overriding}
                 placeholder="لا يُقبل الإرسال وسبب فارغ"
               />
             </div>
           </div>
-          {raising && !reasonOk ? (
-            <p className="msg msg-error">أدخل سبباً حقيقياً قبل تأكيد الصرف مع رفع الاستحقاق</p>
+          {overriding && !reasonOk ? (
+            <p className="msg msg-error">أدخل سبباً حقيقياً قبل تأكيد الصرف مع تعديل الاستحقاق</p>
           ) : null}
 
           <div className="table-wrap" style={{ marginTop: "1rem" }}>
@@ -235,14 +255,17 @@ export default function DispensePage() {
                     <td>{item.quantity}</td>
                     <td style={{ maxWidth: 140 }}>
                       <input
-                        type="number"
-                        min={0}
-                        step="0.001"
+                        type="text"
+                        inputMode="numeric"
                         className="input-field"
                         dir="ltr"
-                        value={lines[item.id] ?? 0}
+                        placeholder="0"
+                        value={lines[item.id] ?? ""}
                         onChange={(e) =>
-                          setLines((prev) => ({ ...prev, [item.id]: Number(e.target.value) }))
+                          setLines((prev) => ({
+                            ...prev,
+                            [item.id]: sanitizeNumericInput(e.target.value, false),
+                          }))
                         }
                       />
                     </td>
@@ -251,11 +274,21 @@ export default function DispensePage() {
               </tbody>
             </table>
           </div>
+          <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
+            المحدد: {totalSelected} من الاستحقاق {entitledNow} — يجوز الصرف بأقل من الاستحقاق
+          </p>
           <div className="form-actions">
             <button
               className="btn-primary"
               type="button"
-              disabled={busy || !lookup.attendance || lookup.dispensed || !reasonOk}
+              disabled={
+                busy ||
+                !lookup.attendance ||
+                lookup.dispensed ||
+                !reasonOk ||
+                !selectedLines.length ||
+                totalSelected > entitledNow
+              }
               onClick={submit}
             >
               {busy ? "جاري..." : "تأكيد الصرف"}

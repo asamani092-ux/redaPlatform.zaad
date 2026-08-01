@@ -138,3 +138,63 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ data: updated });
 }
+
+/**
+ * حذف مستخدم بتأكيد ثنائي. يُمنع حذف النفس وآخر مدير.
+ * إن كان مرتبطاً بعمليات (حضور/صرف/سجل) يوقَّف بدل الحذف حفاظاً على التاريخ.
+ */
+export async function DELETE(req: NextRequest) {
+  const authz = await requirePermission("users:manage");
+  if ("error" in authz) return authz.error;
+
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "حدد المستخدم" }, { status: 400 });
+  if (id === authz.userId) {
+    return NextResponse.json({ error: "لا يمكنك حذف حسابك الحالي" }, { status: 400 });
+  }
+
+  const before = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, name: true, mobile: true, role: true, active: true },
+  });
+  if (!before) return NextResponse.json({ error: "المستخدم غير موجود" }, { status: 404 });
+
+  if (before.role === Role.ADMIN) {
+    const admins = await prisma.user.count({ where: { role: Role.ADMIN, active: true } });
+    if (admins <= 1) {
+      return NextResponse.json({ error: "لا يمكن حذف آخر مدير نشط" }, { status: 400 });
+    }
+  }
+
+  try {
+    await prisma.user.delete({ where: { id } });
+    await writeAuditLog({
+      userId: authz.userId,
+      action: "USER_DELETE",
+      entityType: "User",
+      entityId: id,
+      before,
+    });
+    return NextResponse.json({ ok: true, deactivated: false });
+  } catch {
+    // مرتبط بعمليات (قيود مفاتيح خارجية) — إيقاف بدلاً من الحذف
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { active: false },
+      select: { id: true, name: true, mobile: true, role: true, active: true },
+    });
+    await writeAuditLog({
+      userId: authz.userId,
+      action: "USER_DEACTIVATE",
+      entityType: "User",
+      entityId: id,
+      before,
+      after: updated,
+    });
+    return NextResponse.json({
+      ok: true,
+      deactivated: true,
+      message: "المستخدم مرتبط بعمليات مسجلة — تم إيقافه بدلاً من الحذف حفاظاً على السجل",
+    });
+  }
+}

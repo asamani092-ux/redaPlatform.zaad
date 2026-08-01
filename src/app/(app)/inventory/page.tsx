@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { AttrChips } from "@/components/AttrChips";
 import { Modal } from "@/components/Modal";
 import type { InventorySchemaField } from "@/lib/inventory-schema";
+import { sanitizeNumericInput, toNumberOrNull } from "@/lib/num";
 
 type Item = {
   id: string;
@@ -69,7 +70,7 @@ export default function InventoryPage() {
     const res = await fetch("/api/inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attributes: attrs, quantity: Number(quantity || 0) }),
+      body: JSON.stringify({ attributes: attrs, quantity: toNumberOrNull(quantity) ?? 0 }),
     });
     const json = await res.json();
     setBusy(false);
@@ -83,6 +84,11 @@ export default function InventoryPage() {
   async function onMove(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
+    const qty = toNumberOrNull(move.quantity);
+    if (qty == null || qty <= 0) {
+      setMsg("أدخل كمية صحيحة أكبر من صفر");
+      return;
+    }
     setBusy(true);
     setMsg("");
     const res = await fetch("/api/inventory", {
@@ -91,7 +97,7 @@ export default function InventoryPage() {
       body: JSON.stringify({
         inventoryItemId: move.inventoryItemId,
         type: move.type,
-        quantity: Number(move.quantity),
+        quantity: qty,
         note: move.note || undefined,
       }),
     });
@@ -194,13 +200,12 @@ export default function InventoryPage() {
               <label className="label-field">الكمية</label>
               <input
                 className="input-field"
-                type="number"
-                min={0}
-                step="0.001"
+                type="text"
+                inputMode="decimal"
                 required
                 dir="ltr"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                onChange={(e) => setQuantity(sanitizeNumericInput(e.target.value))}
               />
             </div>
           </div>
@@ -250,11 +255,12 @@ export default function InventoryPage() {
               <input
                 className="input-field"
                 dir="ltr"
-                type="number"
-                min={0.001}
-                step="0.001"
+                type="text"
+                inputMode="decimal"
                 value={move.quantity}
-                onChange={(e) => setMove((m) => ({ ...m, quantity: e.target.value }))}
+                onChange={(e) =>
+                  setMove((m) => ({ ...m, quantity: sanitizeNumericInput(e.target.value) }))
+                }
                 required
               />
             </div>

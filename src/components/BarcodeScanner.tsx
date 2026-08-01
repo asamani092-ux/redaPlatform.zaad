@@ -29,7 +29,7 @@ export function BarcodeScanner({ onScan, active }: Props) {
         scanner = instance;
         await instance.start(
           { facingMode: "environment" },
-          { fps: 8, qrbox: { width: 240, height: 240 } },
+          { fps: 12, qrbox: { width: 240, height: 240 }, disableFlip: true },
           (decoded: string) => {
             const now = Date.now();
             if (decoded === lastValue.current && now - lastAt.current < 2500) return;
