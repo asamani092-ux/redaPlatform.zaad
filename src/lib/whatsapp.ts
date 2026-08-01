@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { OutboundMessageStatus, OutboundMessageType } from "@/generated/prisma/enums";
+import { getWhatsAppConfig } from "@/lib/whatsapp-config";
 
 export type WhatsAppSendInput = {
   exhibitionId?: string;
@@ -12,11 +13,12 @@ export type WhatsAppSendInput = {
 };
 
 /**
- * منفذ واتساب قابل للاستبدال — حالياً stub حتى نهاية التجربة.
- * Time: O(1) لكل رسالة.
+ * منفذ واتساب قابل للاستبدال — الإعداد من قاعدة البيانات (شاشة الإعدادات)
+ * مع متغيرات البيئة كافتراضي. Time: O(1) لكل رسالة.
  */
 export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
-  const provider = process.env.WHATSAPP_PROVIDER ?? "stub";
+  const config = await getWhatsAppConfig();
+  const provider = config.provider;
 
   if (provider === "stub") {
     return prisma.outboundMessage.create({
@@ -35,12 +37,11 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
     });
   }
 
-  // ربط المزوّد الحقيقي لاحقاً عبر WHATSAPP_API_URL / WHATSAPP_API_TOKEN
   try {
-    const apiUrl = process.env.WHATSAPP_API_URL;
-    const token = process.env.WHATSAPP_API_TOKEN;
+    const apiUrl = config.apiUrl;
+    const token = config.apiToken;
     if (!apiUrl || !token) {
-      throw new Error("WHATSAPP_API_URL أو WHATSAPP_API_TOKEN غير مضبوط");
+      throw new Error("رابط الإرسال أو التوكن غير مضبوط — اضبطهما من الإعدادات");
     }
 
     const res = await fetch(apiUrl, {
