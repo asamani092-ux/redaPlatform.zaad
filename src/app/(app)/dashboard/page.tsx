@@ -17,6 +17,7 @@ type DashboardData = {
     overrideDispenses?: number;
     completionRate: number;
   };
+  attributeLabels?: Record<string, string>;
   inventory: Array<{ id: string; attributes: Record<string, unknown>; quantity: number; lowStock: boolean }>;
   topItems: Array<{ inventoryItemId: string; quantity: number; attributes: Record<string, unknown> }>;
 };
@@ -107,7 +108,7 @@ export default function DashboardPage() {
                 {data.inventory.map((i) => (
                   <tr key={i.id}>
                     <td>
-                      <AttrChips attributes={i.attributes} />
+                      <AttrChips attributes={i.attributes} labels={data.attributeLabels} />
                     </td>
                     <td>{i.quantity}</td>
                     <td>
@@ -144,8 +145,8 @@ export default function DashboardPage() {
                   borderBottom: "1px solid var(--tmkeen-surface-border)",
                 }}
               >
-                <AttrChips attributes={t.attributes} />
-                <strong style={{ color: "var(--tmkeen-primary)" }}>{t.quantity}</strong>
+                <AttrChips attributes={t.attributes} labels={data.attributeLabels} />
+                <strong style={{ color: "var(--tmkeen-primary)", flexShrink: 0 }}>{t.quantity}</strong>
               </li>
             ))}
             {!data.topItems.length ? <li className="empty">لا بيانات بعد</li> : null}

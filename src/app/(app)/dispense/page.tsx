@@ -6,6 +6,7 @@ import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { BeneficiaryCard } from "@/components/BeneficiaryCard";
 import { AttrChips } from "@/components/AttrChips";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
+import type { InventorySchemaField } from "@/lib/inventory-schema";
 
 type Item = {
   id: string;
@@ -39,9 +40,11 @@ export default function DispensePage() {
   const [q, setQ] = useState("");
   const [lookup, setLookup] = useState<Lookup | null>(null);
   const [items, setItems] = useState<Item[]>([]);
+  const [schema, setSchema] = useState<InventorySchemaField[]>([]);
   // كميات نصّية لتفادي قفل حقول type=number مع الأرقام العربية — O(1) لكل تحديث
   const [lines, setLines] = useState<Record<string, string>>({});
-  const [override, setOverride] = useState("");
+  // قطع إضافية فوق الاستحقاق — لا تُستبدل الاستحقاق المحسوب
+  const [extraAbove, setExtraAbove] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
   const [msg, setMsg] = useState("");
   const [scanOn, setScanOn] = useState(false);
@@ -52,6 +55,7 @@ export default function DispensePage() {
       .then((r) => r.json())
       .then((j) => {
         if (j.items) setItems(j.items.map((i: Item) => ({ ...i, quantity: Number(i.quantity) })));
+        if (j.inventorySchema) setSchema(j.inventorySchema);
       })
       .catch(() => undefined);
   }, []);
@@ -70,7 +74,7 @@ export default function DispensePage() {
     }
     setLookup(json);
     setLines({});
-    setOverride("");
+    setExtraAbove("");
     setOverrideReason("");
   }, []);
 
@@ -84,13 +88,13 @@ export default function DispensePage() {
 
   const computed = lookup?.computedEntitlement ?? lookup?.entitledPieces ?? 0;
 
-  const overriding = useMemo(() => {
-    if (!lookup || !override) return false;
-    const n = toIntOrNull(override);
-    return n != null && n > 0 && n !== computed;
-  }, [lookup, override, computed]);
+  const extraN = useMemo(() => {
+    const n = toIntOrNull(extraAbove);
+    return n != null && n > 0 ? n : 0;
+  }, [extraAbove]);
 
-  const reasonOk = !overriding || overrideReason.trim().length > 0;
+  const addingExtra = extraN > 0;
+  const reasonOk = !addingExtra || overrideReason.trim().length > 0;
 
   const selectedLines = useMemo(
     () =>
@@ -100,7 +104,7 @@ export default function DispensePage() {
     [lines],
   );
   const totalSelected = selectedLines.reduce((s, l) => s + l.quantity, 0);
-  const entitledNow = overriding ? (toIntOrNull(override) ?? computed) : computed;
+  const entitledNow = computed + extraN;
 
   async function submit() {
     if (!lookup || busy) return;
@@ -108,12 +112,12 @@ export default function DispensePage() {
       setMsg("حدد كمية لصنف واحد على الأقل قبل تأكيد الصرف");
       return;
     }
-    if (overriding && !reasonOk) {
-      setMsg("سبب تعديل الاستحقاق مطلوب");
+    if (addingExtra && !reasonOk) {
+      setMsg("سبب الإضافة فوق الاستحقاق مطلوب");
       return;
     }
     if (totalSelected > entitledNow) {
-      setMsg(`مجموع الكميات (${totalSelected}) يتجاوز الاستحقاق (${entitledNow})`);
+      setMsg(`مجموع الكميات (${totalSelected}) يتجاوز المسموح (${entitledNow})`);
       return;
     }
     setBusy(true);
@@ -124,8 +128,8 @@ export default function DispensePage() {
       body: JSON.stringify({
         beneficiaryId: lookup.beneficiary.id,
         lines: selectedLines,
-        entitledOverride: overriding ? toIntOrNull(override) : undefined,
-        overrideReason: overriding ? overrideReason.trim() : undefined,
+        extraAbove: addingExtra ? extraN : undefined,
+        overrideReason: addingExtra ? overrideReason.trim() : undefined,
         sendThanks: true,
       }),
     });
@@ -136,7 +140,7 @@ export default function DispensePage() {
       setLines({});
       setLookup(null);
       setQ("");
-      setOverride("");
+      setExtraAbove("");
       setOverrideReason("");
     }
   }
@@ -211,30 +215,35 @@ export default function DispensePage() {
           <div className="form-grid" style={{ marginTop: "1rem" }}>
             <div>
               <label className="label-field">
-                تعديل الاستحقاق — رفع أو خفض (موظف التوزيع / المدير)
+                قطع إضافية فوق الاستحقاق ({computed}) — ليست من ضمنه
               </label>
               <input
                 className="input-field"
                 dir="ltr"
                 inputMode="numeric"
-                placeholder={String(computed)}
-                value={override}
-                onChange={(e) => setOverride(sanitizeNumericInput(e.target.value, false))}
+                placeholder="0"
+                value={extraAbove}
+                onChange={(e) => setExtraAbove(sanitizeNumericInput(e.target.value, false))}
               />
             </div>
             <div>
-              <label className="label-field">سبب التعديل (إلزامي عند التعديل)</label>
+              <label className="label-field">سبب الإضافة (إلزامي عند الإضافة)</label>
               <input
                 className="input-field"
                 value={overrideReason}
                 onChange={(e) => setOverrideReason(e.target.value)}
-                required={overriding}
-                placeholder="لا يُقبل الإرسال وسبب فارغ"
+                required={addingExtra}
+                placeholder="مثال: عائلة كبيرة / حالة خاصة"
               />
             </div>
           </div>
-          {overriding && !reasonOk ? (
-            <p className="msg msg-error">أدخل سبباً حقيقياً قبل تأكيد الصرف مع تعديل الاستحقاق</p>
+          {addingExtra ? (
+            <p className="page-header__desc" style={{ marginTop: "0.5rem" }}>
+              المسموح الإجمالي = الاستحقاق {computed} + الإضافي {extraN} = {entitledNow}
+            </p>
+          ) : null}
+          {addingExtra && !reasonOk ? (
+            <p className="msg msg-error">أدخل سبباً قبل تأكيد الصرف مع قطع إضافية</p>
           ) : null}
 
           <div className="table-wrap" style={{ marginTop: "1rem" }}>
@@ -250,7 +259,10 @@ export default function DispensePage() {
                 {items.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <AttrChips attributes={item.attributes ?? item.attributesJson} />
+                      <AttrChips
+                        attributes={item.attributes ?? item.attributesJson}
+                        schema={schema}
+                      />
                     </td>
                     <td>{item.quantity}</td>
                     <td style={{ maxWidth: 140 }}>
@@ -275,7 +287,7 @@ export default function DispensePage() {
             </table>
           </div>
           <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
-            المحدد: {totalSelected} من الاستحقاق {entitledNow} — يجوز الصرف بأقل من الاستحقاق
+            المحدد: {totalSelected} من المسموح {entitledNow} — يجوز الصرف بأقل من الاستحقاق
           </p>
           <div className="form-actions">
             <button

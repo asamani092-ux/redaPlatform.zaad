@@ -1,6 +1,6 @@
 /**
- * الاستحقاق الفعلي — O(1) زمن ومكان.
- * effective = override إن وُجد، وإلا MAX(base, dependents).
+ * الاستحقاق المحسوب — O(1) زمن ومكان.
+ * computed = MAX(base, dependents) دون استثناء.
  */
 export function effectiveEntitlement(
   baseEntitlement: number,
@@ -13,6 +13,14 @@ export function effectiveEntitlement(
   const base = Number.isFinite(baseEntitlement) ? baseEntitlement : 1;
   const deps = Number.isFinite(dependentsCount) ? dependentsCount : 0;
   return Math.max(base, deps);
+}
+
+/** قطع إضافية فوق الاستحقاق المحسوب — O(1) */
+export function entitlementWithExtra(computed: number, extraAbove?: number | null): number {
+  const base = Number.isFinite(computed) ? computed : 0;
+  const extra =
+    extraAbove != null && Number.isFinite(extraAbove) ? Math.max(0, Math.floor(extraAbove)) : 0;
+  return base + extra;
 }
 
 export function isNonEmptyReason(reason: string | null | undefined): boolean {

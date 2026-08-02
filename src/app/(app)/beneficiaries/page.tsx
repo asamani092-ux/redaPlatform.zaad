@@ -416,10 +416,18 @@ export default function BeneficiariesPage() {
       </Modal>
 
       <Modal open={importOpen} title="استيراد Excel" onClose={() => setImportOpen(false)}>
+        <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
+          حمّل النموذج، عبّئه، ثم ارفعه هنا. الأعمدة المطلوبة: الاسم، رقم الهوية، رقم الجوال.
+        </p>
+        <div className="form-actions" style={{ marginBottom: "0.85rem" }}>
+          <a className="btn-secondary" href="/api/beneficiaries/import/template">
+            تحميل نموذج Excel
+          </a>
+        </div>
         <form onSubmit={onImport} className="toolbar">
           <input type="file" name="file" accept=".xlsx,.xls,.csv" required className="input-field" />
           <button className="btn-primary" type="submit" disabled={busy}>
-            {busy ? "جاري..." : "استيراد"}
+            {busy ? "جاري..." : "رفع الملف"}
           </button>
         </form>
       </Modal>

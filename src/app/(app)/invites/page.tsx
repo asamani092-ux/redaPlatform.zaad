@@ -55,18 +55,18 @@ export default function InvitesPage() {
     <div className="page-stack">
       <PageHeader
         title="الدعوات الجماعية"
-        description="تحديد المستفيدين من قاعدة البيانات وإنشاء رمز QR داخلي"
+        description="يُنشأ رمز QR لكل دعوة ويُرسل مع رسالة واتساب — الطباعة اختيارية فقط"
         actions={
           <>
-            <button className="btn-primary" type="button" onClick={() => invite(false)}>
-              دعوة المحددين ({selectedIds.length})
-            </button>
-            <a className="btn-secondary" href="/api/invites/qr-cards">
-              طباعة بطاقات QR
-            </a>
             <button className="btn-recommend" type="button" onClick={() => invite(true)}>
-              دعوة + واتساب (تجريبي)
+              دعوة + إرسال QR واتساب ({selectedIds.length})
             </button>
+            <button className="btn-primary" type="button" onClick={() => invite(false)}>
+              دعوة دون واتساب
+            </button>
+            <a className="btn-secondary" href="/api/invites/qr-cards" title="اختياري للطباعة الورقية">
+              طباعة ورقية (اختياري)
+            </a>
           </>
         }
       />

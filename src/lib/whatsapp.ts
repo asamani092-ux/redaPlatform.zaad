@@ -10,6 +10,8 @@ export type WhatsAppSendInput = {
   body: string;
   type: OutboundMessageType;
   createdById?: string;
+  /** رابط صورة عامة (QR) إن دعمها المزوّد */
+  mediaUrl?: string;
 };
 
 /**
@@ -30,6 +32,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         payloadJson: {
           mobile: input.mobile,
           body: input.body,
+          mediaUrl: input.mediaUrl ?? null,
           provider: "stub",
         } as Prisma.InputJsonValue,
         createdById: input.createdById,
@@ -50,7 +53,11 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ to: input.mobile, body: input.body }),
+      body: JSON.stringify({
+        to: input.mobile,
+        body: input.body,
+        ...(input.mediaUrl ? { mediaUrl: input.mediaUrl, type: "image" } : {}),
+      }),
     });
 
     if (!res.ok) {
@@ -70,6 +77,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         payloadJson: {
           mobile: input.mobile,
           body: input.body,
+          mediaUrl: input.mediaUrl ?? null,
           provider,
         } as Prisma.InputJsonValue,
         createdById: input.createdById,
@@ -86,6 +94,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         payloadJson: {
           mobile: input.mobile,
           body: input.body,
+          mediaUrl: input.mediaUrl ?? null,
           provider,
         } as Prisma.InputJsonValue,
         createdById: input.createdById,

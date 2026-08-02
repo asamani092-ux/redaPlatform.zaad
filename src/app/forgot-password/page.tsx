@@ -4,10 +4,15 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+/**
+ * نسيت كلمة المرور: إدخال الجوال ثم فتح نموذج التغيير مباشرة.
+ * Time: O(1) لكل طلب.
+ */
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [mobile, setMobile] = useState("");
+  const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,6 +35,8 @@ export default function ForgotPasswordPage() {
       return;
     }
     setMsg(json.message);
+    if (json.trialCode) setCode(String(json.trialCode));
+    // فتح شاشة تعديل كلمة المرور مباشرة بعد إدخال الجوال
     setStep(2);
   }
 
@@ -48,7 +55,7 @@ export default function ForgotPasswordPage() {
     const res = await fetch("/api/password/reset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mobile, code: String(fd.get("code") ?? ""), password }),
+      body: JSON.stringify({ mobile, code: code || String(fd.get("code") ?? ""), password }),
     });
     const json = await res.json();
     setLoading(false);
@@ -67,14 +74,14 @@ export default function ForgotPasswordPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.webp" alt="رداء" width={80} height={80} />
           <h1>استعادة كلمة المرور</h1>
-          <p>يصلك رمز تحقق عبر واتساب على جوالك المسجل</p>
+          <p>أدخل الجوال ثم عدّل كلمة المرور مباشرة بعد رمز التحقق</p>
         </div>
 
         {msg ? <p className="msg">{msg}</p> : null}
         {error ? <p className="msg msg-error">{error}</p> : null}
 
         {step === 1 ? (
-          <form onSubmit={requestCode} className="login-form">
+          <form onSubmit={requestCode} className="login-form" method="post" action="#">
             <div>
               <label className="label-field" htmlFor="mobile">
                 رقم الجوال
@@ -91,14 +98,14 @@ export default function ForgotPasswordPage() {
               />
             </div>
             <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading}>
-              {loading ? "جاري الإرسال..." : "إرسال رمز التحقق"}
+              {loading ? "جاري…" : "متابعة لتعديل كلمة المرور"}
             </button>
             <Link href="/login" className="btn-secondary" style={{ width: "100%", textAlign: "center" }}>
               العودة للدخول
             </Link>
           </form>
         ) : (
-          <form onSubmit={resetPassword} className="login-form">
+          <form onSubmit={resetPassword} className="login-form" method="post" action="#">
             <div>
               <label className="label-field" htmlFor="code">
                 رمز التحقق
@@ -111,6 +118,8 @@ export default function ForgotPasswordPage() {
                 inputMode="numeric"
                 required
                 placeholder="123456"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
               />
             </div>
             <div>
@@ -150,7 +159,7 @@ export default function ForgotPasswordPage() {
               style={{ width: "100%" }}
               onClick={() => setStep(1)}
             >
-              لم يصلك الرمز؟ أعد الإرسال
+              تغيير رقم الجوال / إعادة الإرسال
             </button>
           </form>
         )}

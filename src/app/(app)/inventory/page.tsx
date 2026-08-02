@@ -149,7 +149,7 @@ export default function InventoryPage() {
               {items.map((i) => (
                 <tr key={i.id}>
                   <td>
-                    <AttrChips attributes={i.attributes} />
+                    <AttrChips attributes={i.attributes} schema={schema} />
                   </td>
                   <td>{i.quantity}</td>
                   <td>

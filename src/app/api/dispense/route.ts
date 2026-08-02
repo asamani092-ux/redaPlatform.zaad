@@ -9,7 +9,8 @@ import { StockMovementType } from "@/generated/prisma/enums";
 import { hasPermission } from "@/lib/rbac";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
-import { effectiveEntitlement, isNonEmptyReason } from "@/lib/entitlement";
+import { effectiveEntitlement, entitlementWithExtra, isNonEmptyReason } from "@/lib/entitlement";
+import { parseInventorySchema } from "@/lib/inventory-schema";
 
 const lineSchema = z.object({
   inventoryItemId: z.string(),
@@ -19,6 +20,9 @@ const lineSchema = z.object({
 const dispenseSchema = z.object({
   beneficiaryId: z.string(),
   lines: z.array(lineSchema).min(1, "حدد كمية لصنف واحد على الأقل"),
+  /** قطع إضافية فوق الاستحقاق المحسوب (ليست بديلاً عنه) */
+  extraAbove: z.number().int().nonnegative().optional(),
+  /** توافق خلفي: إجمالي الاستحقاق النهائي */
   entitledOverride: z.number().int().positive().optional(),
   overrideReason: z.string().optional(),
   sendThanks: z.boolean().optional(),
@@ -81,6 +85,7 @@ export async function GET(req: NextRequest) {
     recent,
     baseEntitlement: base,
     entitledPieces: base,
+    inventorySchema: parseInventorySchema(exhibition.settings?.inventorySchemaJson),
     items: items.map((i) => ({
       id: i.id,
       attributes: i.attributesJson,
@@ -163,20 +168,26 @@ export async function POST(req: NextRequest) {
   let entitledOverride: number | null = null;
   let overrideReason: string | null = null;
 
-  if (
+  const extraAbove = body.data.extraAbove ?? null;
+  const wantsExtra = extraAbove != null && extraAbove > 0;
+  const wantsLegacyOverride =
+    !wantsExtra &&
     body.data.entitledOverride != null &&
-    body.data.entitledOverride !== computed
-  ) {
+    body.data.entitledOverride !== computed;
+
+  if (wantsExtra || wantsLegacyOverride) {
     if (!hasPermission(authz.role, "dispense:override")) {
       return NextResponse.json(
-        { error: "رفع الاستحقاق يتطلب صلاحية اعتماد الاستثناء (توزيع أو مدير)" },
+        { error: "الإضافة فوق الاستحقاق تتطلب صلاحية اعتماد الاستثناء (توزيع أو مدير)" },
         { status: 403 },
       );
     }
     if (!isNonEmptyReason(body.data.overrideReason)) {
-      return NextResponse.json({ error: "سبب تعديل الاستحقاق مطلوب" }, { status: 400 });
+      return NextResponse.json({ error: "سبب الإضافة فوق الاستحقاق مطلوب" }, { status: 400 });
     }
-    entitledOverride = body.data.entitledOverride;
+    entitledOverride = wantsExtra
+      ? entitlementWithExtra(computed, extraAbove)
+      : body.data.entitledOverride!;
     overrideReason = body.data.overrideReason!.trim();
     entitled = entitledOverride;
   }

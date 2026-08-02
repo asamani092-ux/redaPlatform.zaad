@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { requireActiveExhibition } from "@/lib/exhibition";
+import { DEFAULT_INVENTORY_SCHEMA, parseInventorySchema } from "@/lib/inventory-schema";
 
 export async function GET() {
   const authz = await requirePermission("dashboard:view");
@@ -46,7 +47,7 @@ export async function GET() {
     by: ["inventoryItemId"],
     _sum: { quantity: true },
     orderBy: { _sum: { quantity: "desc" } },
-    take: 5,
+    take: 8,
   });
 
   const topDetailed = await Promise.all(
@@ -58,6 +59,11 @@ export async function GET() {
         attributes: item?.attributesJson ?? {},
       };
     }),
+  );
+
+  const schema = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
+  const attributeLabels = Object.fromEntries(
+    (schema.length ? schema : DEFAULT_INVENTORY_SCHEMA).map((f) => [f.key, f.label]),
   );
 
   return NextResponse.json({
@@ -77,6 +83,8 @@ export async function GET() {
       overrideDispenses,
       completionRate,
     },
+    attributeLabels,
+    inventorySchema: schema,
     inventory: inventory.map((i) => ({
       id: i.id,
       attributes: i.attributesJson,

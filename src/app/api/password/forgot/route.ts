@@ -5,12 +5,14 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
+import { getWhatsAppConfig } from "@/lib/whatsapp-config";
 
 const schema = z.object({ mobile: z.string().min(9) });
 
 /**
  * طلب رمز استعادة كلمة المرور — يُرسل عبر واتساب وينتهي خلال 10 دقائق.
- * الرد عام دائماً لمنع تعداد الحسابات. O(1) استعلامات.
+ * الرد عام دائماً لمنع تعداد الحسابات. في الوضع التجريبي يُعاد الرمز لفتح شاشة التغيير مباشرة.
+ * O(1) استعلامات.
  */
 export async function POST(req: NextRequest) {
   const body = schema.safeParse(await req.json().catch(() => ({})));
@@ -21,6 +23,7 @@ export async function POST(req: NextRequest) {
   const generic = {
     ok: true,
     message: "إن كان الجوال مسجلاً فسيصلك رمز تحقق عبر واتساب خلال دقائق",
+    openReset: true as const,
   };
 
   const user = await prisma.user.findUnique({
@@ -48,6 +51,15 @@ export async function POST(req: NextRequest) {
     body: `رمز استعادة كلمة المرور لمنصة رداء: ${code} — صالح 10 دقائق. تجاهل الرسالة إن لم تطلبها.`,
     type: OutboundMessageType.OTP,
   });
+
+  const wa = await getWhatsAppConfig();
+  if (wa.provider === "stub") {
+    return NextResponse.json({
+      ...generic,
+      message: "تم فتح تعديل كلمة المرور — أدخل الرمز التجريبي الظاهر ثم كلمة المرور الجديدة",
+      trialCode: code,
+    });
+  }
 
   return NextResponse.json(generic);
 }

@@ -7,6 +7,7 @@ import { requireActiveExhibition } from "@/lib/exhibition";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
 import { randomUUID } from "crypto";
+import { appOrigin } from "@/lib/app-url";
 
 const bulkSchema = z.object({
   beneficiaryIds: z.array(z.string()).min(1),
@@ -82,27 +83,35 @@ export async function POST(req: NextRequest) {
   });
 
   if (body.data.sendWhatsApp) {
+    const origin = appOrigin(req);
     const tpl =
       exhibition.settings?.whatsappInviteTpl ??
-      "مرحباً {{name}}، أنت مدعو لمعرض رداء.";
+      "مرحباً {{name}}، أنت مدعو إلى {{exhibition}}. الموعد: {{date}} — الموقع: {{location}}";
     for (const t of result.tokens) {
       const b = await prisma.beneficiary.findUnique({ where: { id: t.beneficiaryId } });
       if (!b) continue;
+      const qrUrl = `${origin}/api/qr/public/${t.qrToken}`;
       let bodyText = tpl
         .replaceAll("{{name}}", b.name)
         .replaceAll("{{exhibition}}", exhibition.name)
         .replaceAll("{{date}}", exhibition.startsAt?.toISOString().slice(0, 10) ?? "")
         .replaceAll("{{location}}", exhibition.location ?? "")
-        .replaceAll("{{qr}}", t.qrToken);
+        .replaceAll("{{qr}}", t.qrToken)
+        .replaceAll("{{qr_url}}", qrUrl);
       // الدعوة تشمل الموقع دائماً حتى لو خلا القالب من {{location}}
       if (!tpl.includes("{{location}}") && exhibition.location) {
         bodyText += `\nالموقع: ${exhibition.location}`;
+      }
+      // إرفاق رمز المسح مع الدعوة (رابط صورة QR + نص الرمز)
+      if (!tpl.includes("{{qr_url}}") && !bodyText.includes(qrUrl)) {
+        bodyText += `\nرمز الحضور (امسحه عند الدخول):\n${qrUrl}`;
       }
       await sendWhatsAppMessage({
         exhibitionId: exhibition.id,
         beneficiaryId: b.id,
         mobile: b.mobile,
         body: bodyText,
+        mediaUrl: qrUrl,
         type: OutboundMessageType.INVITATION,
         createdById: authz.userId,
       });

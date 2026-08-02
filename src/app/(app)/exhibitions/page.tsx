@@ -3,6 +3,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
+import {
+  EXHIBITION_STATUS_LABELS,
+  exhibitionLifecycle,
+  type ExhibitionLifecycle,
+} from "@/lib/exhibition-status";
 
 type ExhibitionRow = {
   id: string;
@@ -10,7 +15,15 @@ type ExhibitionRow = {
   location?: string | null;
   active: boolean;
   startsAt?: string | null;
+  endsAt?: string | null;
 };
+
+function statusBadgeClass(status: ExhibitionLifecycle): string {
+  if (status === "active") return "badge-success";
+  if (status === "ended") return "badge-danger";
+  if (status === "upcoming" || status === "running") return "badge-warning";
+  return "badge-muted";
+}
 
 export default function ExhibitionsPage() {
   const [rows, setRows] = useState<ExhibitionRow[]>([]);
@@ -41,6 +54,7 @@ export default function ExhibitionsPage() {
         name: fd.get("name"),
         location: fd.get("location") || null,
         startsAt: fd.get("startsAt") || null,
+        endsAt: fd.get("endsAt") || null,
         activate: fd.get("activate") === "on",
       }),
     });
@@ -68,7 +82,7 @@ export default function ExhibitionsPage() {
     <div className="page-stack">
       <PageHeader
         title="المعارض"
-        description="إنشاء معارض بأسماء فريدة وتفعيل معرض تشغيل واحد فقط"
+        description="حالة زمنية (قادم / جاري / منتهٍ) ومعرض تشغيلي واحد نشط"
         actions={
           <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
             إضافة معرض
@@ -84,39 +98,53 @@ export default function ExhibitionsPage() {
               <tr>
                 <th>الاسم</th>
                 <th>الموقع</th>
+                <th>الفترة</th>
                 <th>الحالة</th>
                 <th>إجراء</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.name}</td>
-                  <td>{r.location || "—"}</td>
-                  <td>
-                    <span className={`badge ${r.active ? "badge-success" : "badge-muted"}`}>
-                      {r.active ? "نشط" : "غير نشط"}
-                    </span>
-                  </td>
-                  <td>
-                    {r.active ? (
-                      "—"
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        disabled={busy}
-                        onClick={() => activate(r.id)}
-                      >
-                        تفعيل
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {rows.map((r) => {
+                const status = exhibitionLifecycle({
+                  active: r.active,
+                  startsAt: r.startsAt,
+                  endsAt: r.endsAt,
+                });
+                const period = [
+                  r.startsAt ? String(r.startsAt).slice(0, 10) : "—",
+                  r.endsAt ? String(r.endsAt).slice(0, 10) : "—",
+                ].join(" ← ");
+                return (
+                  <tr key={r.id}>
+                    <td>{r.name}</td>
+                    <td>{r.location || "—"}</td>
+                    <td dir="ltr">{period}</td>
+                    <td>
+                      <span className={`badge ${statusBadgeClass(status)}`}>
+                        {EXHIBITION_STATUS_LABELS[status]}
+                      </span>
+                    </td>
+                    <td>
+                      {r.active ? (
+                        "—"
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={busy || status === "ended"}
+                          onClick={() => activate(r.id)}
+                          title={status === "ended" ? "المعرض منتهٍ" : "تفعيل تشغيلي"}
+                        >
+                          تفعيل
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={4} className="empty">
+                  <td colSpan={5} className="empty">
                     لا معارض بعد — أضف معرضاً للبدء
                   </td>
                 </tr>
@@ -140,6 +168,10 @@ export default function ExhibitionsPage() {
             <div>
               <label className="label-field">تاريخ البداية</label>
               <input name="startsAt" type="date" className="input-field" dir="ltr" />
+            </div>
+            <div>
+              <label className="label-field">تاريخ النهاية</label>
+              <input name="endsAt" type="date" className="input-field" dir="ltr" />
             </div>
             <div className="full" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <input id="activate" name="activate" type="checkbox" />

@@ -12,6 +12,7 @@ export default auth((req) => {
   if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/password") ||
+    pathname.startsWith("/api/qr/public") ||
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
