@@ -39,7 +39,7 @@ function LoginForm() {
           <h1>منصة رداء</h1>
           <p>دخول الموظفين بالجوال وكلمة المرور</p>
         </div>
-        <form onSubmit={onSubmit} className="login-form">
+        <form onSubmit={onSubmit} className="login-form" method="post" action="#">
           <div>
             <label className="label-field" htmlFor="mobile">
               رقم الجوال
