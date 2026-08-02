@@ -27,6 +27,7 @@ html,
 body {
   min-height: 100%;
   margin: 0;
+  overflow-x: clip;
 }
 
 body {
@@ -39,11 +40,17 @@ body {
   text-align: start;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
 }
 
 input,
@@ -56,18 +63,21 @@ button {
 /* ── Layout shell ── */
 .app-frame {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
 }
 
 .app-sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   padding: 1.25rem 1rem;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
   background: #fff;
   border-inline-end: 1px solid var(--tmkeen-surface-border);
   z-index: 40;
@@ -208,6 +218,7 @@ button {
   max-width: 1120px;
   margin: 0 auto;
   padding: 1.5rem 1.5rem 2.5rem;
+  padding-bottom: max(2.5rem, calc(1.5rem + env(safe-area-inset-bottom)));
 }
 
 /* ── Page primitives ── */
@@ -282,6 +293,32 @@ button {
   grid-column: 1 / -1;
 }
 
+/* شبكات فرعية تتكيّف دون inline styles تكسر الجوال */
+.form-grid--attrs {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+}
+
+.form-grid--survey-q {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 0.7fr) auto;
+  align-items: end;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.row-actions .btn-primary,
+.row-actions .btn-secondary,
+.row-actions .btn-recommend,
+.row-actions .btn-danger {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;
@@ -313,15 +350,17 @@ button {
 
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--tmkeen-surface-border);
   border-radius: 0.8rem;
   background: #fff;
+  max-width: 100%;
 }
 
 .table-wrap table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 640px;
+  min-width: 560px;
 }
 
 .table-wrap th,
@@ -355,7 +394,7 @@ button {
 .stat-grid {
   display: grid;
   gap: 0.9rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
 }
 
 .stat-tile {
@@ -459,28 +498,33 @@ button {
 }
 
 @media (max-width: 1100px) {
-  .stat-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .split-2 {
     grid-template-columns: 1fr;
+  }
+
+  .form-grid--survey-q {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .form-grid--survey-q > :first-child {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 900px) {
   .app-frame {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .app-sidebar {
     position: fixed;
     top: 0;
     bottom: 0;
-    right: 0;
-    left: auto;
-    width: min(84vw, 300px);
+    inset-inline-end: 0;
+    inset-inline-start: auto;
+    width: min(86vw, 300px);
     height: 100vh;
+    height: 100dvh;
     transform: translateX(105%);
     transition: transform 0.2s ease;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
@@ -488,12 +532,18 @@ button {
     border-inline-start: 1px solid var(--tmkeen-surface-border);
   }
 
+  [dir="rtl"] .app-sidebar {
+    transform: translateX(105%);
+  }
+
+  [dir="rtl"] .app-sidebar.is-open,
   .app-sidebar.is-open {
     transform: translateX(0);
   }
 
   .app-topbar {
     display: flex;
+    padding-top: max(0.75rem, env(safe-area-inset-top));
   }
 
   .app-backdrop {
@@ -507,33 +557,133 @@ button {
 
   .app-content {
     padding: 1rem 1rem 2rem;
+    padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
   }
 
-  .form-grid {
+  .form-grid,
+  .form-grid--attrs,
+  .form-grid--survey-q {
     grid-template-columns: 1fr;
+  }
+
+  .form-grid--survey-q > :first-child {
+    grid-column: auto;
+  }
+
+  .panel {
+    padding: 1rem;
+  }
+
+  .page-header__title {
+    font-size: 1.35rem;
+  }
+
+  .table-wrap table {
+    min-width: 520px;
+  }
+
+  .table-wrap th:first-child,
+  .table-wrap td:first-child {
+    position: sticky;
+    inset-inline-start: 0;
+    background: #fff;
+    z-index: 1;
+    box-shadow: -6px 0 8px -6px rgba(0, 0, 0, 0.12);
+  }
+
+  .table-wrap th:first-child {
+    background: rgba(139, 21, 56, 0.05);
+  }
+
+  .modal-root {
+    align-items: end;
+    padding: 0;
+  }
+
+  .modal-panel,
+  .modal-panel--wide {
+    width: 100%;
+    max-width: 100%;
+    max-height: min(92dvh, 100%);
+    border-radius: 1rem 1rem 0 0;
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
   }
 }
 
 @media (max-width: 560px) {
   .stat-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-tile {
+    min-height: 84px;
+    padding: 0.85rem 0.9rem;
+  }
+
+  .stat-tile .value {
+    font-size: 1.4rem;
   }
 
   .page-header__actions,
   .form-actions,
-  .toolbar {
+  .toolbar,
+  .row-actions {
     width: 100%;
   }
 
   .page-header__actions .btn-primary,
   .page-header__actions .btn-secondary,
   .page-header__actions .btn-recommend,
+  .page-header__actions .btn-danger,
   .form-actions .btn-primary,
   .form-actions .btn-secondary,
+  .form-actions .btn-recommend,
+  .form-actions .btn-danger,
   .toolbar .btn-primary,
   .toolbar .btn-secondary,
-  .toolbar .btn-recommend {
-    flex: 1;
+  .toolbar .btn-recommend,
+  .toolbar .btn-danger,
+  .row-actions .btn-primary,
+  .row-actions .btn-secondary,
+  .row-actions .btn-recommend,
+  .row-actions .btn-danger {
+    flex: 1 1 calc(50% - 0.35rem);
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .toolbar .input-field {
+    min-width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .login-card {
+    padding: 1.35rem 1.1rem;
+  }
+
+  .login-brand h1 {
+    font-size: 1.55rem;
+  }
+
+  .scan-box {
+    min-height: 180px;
+  }
+
+  .app-topbar__brand span {
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-topbar__user {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
   }
 }
 

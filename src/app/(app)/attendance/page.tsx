@@ -126,7 +126,7 @@ export default function AttendancePage() {
         }
       />
 
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+      <div className="stat-grid">
         <div className="stat-tile">
           <div className="value">{count}</div>
           <div className="label">الحاضرون الآن</div>

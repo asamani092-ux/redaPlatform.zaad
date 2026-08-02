@@ -138,7 +138,7 @@ export default function ReportsPage() {
               </div>
             ))}
           </div>
-          <div className="split-2" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+          <div className="split-2">
             <Breakdown title="حسب الجنس" data={summary.byGender} />
             <Breakdown title="حسب المدينة" data={summary.byCity} />
             <Breakdown title="حسب الحي" data={summary.byNeighborhood} />

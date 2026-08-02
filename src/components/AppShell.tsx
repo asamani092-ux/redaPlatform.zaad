@@ -38,9 +38,23 @@ export function AppShell({
     };
   }, [pathname]);
 
+  // إغلاق قائمة الجوال ومنع تمرير الخلفية عند التنقل أو فتح القائمة
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
   return (
-    <div className="app-frame" data-tmkeen>
-      <aside className={`app-sidebar ${open ? "is-open" : ""}`}>
+    <div className={`app-frame ${open ? "is-nav-open" : ""}`} data-tmkeen>
+      <aside className={`app-sidebar ${open ? "is-open" : ""}`} id="app-sidebar">
         <div className="app-sidebar__brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.webp" alt="رداء" width={40} height={40} />
@@ -110,8 +124,14 @@ export function AppShell({
 
       <div className="app-main">
         <header className="app-topbar">
-          <button type="button" className="app-menu-btn btn-secondary" onClick={() => setOpen((v) => !v)}>
-            القائمة
+          <button
+            type="button"
+            className="app-menu-btn btn-secondary"
+            aria-expanded={open}
+            aria-controls="app-sidebar"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? "إغلاق" : "القائمة"}
           </button>
           <div className="app-topbar__brand">
             {/* eslint-disable-next-line @next/next/no-img-element */}

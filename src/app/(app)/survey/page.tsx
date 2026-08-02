@@ -169,7 +169,7 @@ export default function SurveyPage() {
           <h2 className="panel-title">أسئلة الاستبيان (تحرير — مدير)</h2>
           <div style={{ display: "grid", gap: "0.85rem" }}>
             {questions.map((qq, idx) => (
-              <div key={qq.id} className="form-grid" style={{ gridTemplateColumns: "2fr 1fr 0.6fr 0.6fr auto" }}>
+              <div key={qq.id} className="form-grid form-grid--survey-q">
                 <div>
                   <label className="label-field">نص السؤال</label>
                   <input

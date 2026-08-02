@@ -321,7 +321,7 @@ export default function BeneficiariesPage() {
                   </td>
                   {canManage ? (
                     <td>
-                      <div className="toolbar" style={{ gap: "0.4rem" }}>
+                      <div className="row-actions">
                         <button
                           type="button"
                           className="btn-secondary"
