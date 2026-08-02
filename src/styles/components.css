@@ -353,12 +353,4 @@ input[type="password"][dir="ltr"],
   background: var(--tmkeen-overlay);
   padding: 1rem;
 }
-.modal-panel {
-  max-height: 90vh;
-  width: 100%;
-  max-width: 32rem;
-  overflow-y: auto;
-}
-.modal-panel.wide {
-  max-width: 48rem;
-}
+/* أنماط النافذة الفعلية في globals.css (modal-root / modal-panel--wide) */

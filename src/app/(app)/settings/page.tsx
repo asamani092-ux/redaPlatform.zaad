@@ -221,7 +221,7 @@ export default function SettingsPage() {
         </p>
         <div style={{ display: "grid", gap: "0.85rem" }}>
           {schema.map((f, idx) => (
-            <div key={f.key || idx} className="form-grid" style={{ gridTemplateColumns: "1fr 1.4fr" }}>
+            <div key={f.key || idx} className="form-grid form-grid--attrs">
               <div>
                 <label className="label-field">التسمية</label>
                 <input

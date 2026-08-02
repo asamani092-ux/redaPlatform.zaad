@@ -109,7 +109,7 @@ export function TrialEvalClient() {
         </ol>
       </section>
 
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+      <div className="stat-grid">
         {summary.map((s) => (
           <div key={s.label} className="stat-tile">
             <div className="value">{s.count}</div>
@@ -144,8 +144,8 @@ export function TrialEvalClient() {
                       {t.path}
                     </Link>
                   </td>
-                  <td style={{ minWidth: 220 }}>{t.verify}</td>
-                  <td style={{ minWidth: 140 }}>
+                  <td>{t.verify}</td>
+                  <td>
                     <select
                       className="input-field"
                       value={ratingFor(t.path)}
@@ -158,7 +158,7 @@ export function TrialEvalClient() {
                       ))}
                     </select>
                   </td>
-                  <td style={{ minWidth: 160 }}>
+                  <td>
                     <input
                       className="input-field"
                       placeholder="ملاحظة إصلاح"
