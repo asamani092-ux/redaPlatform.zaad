@@ -79,6 +79,12 @@ export default function SettingsPage() {
     if (busy) return;
     setBusy(true);
     setMsg("");
+    // تنظيف الخيارات الفارغة عند الحفظ فقط — أثناء الكتابة تبقى الأسطر فارغة مسموحة
+    const cleanedSchema = schema.map((f) => ({
+      ...f,
+      label: f.label.trim(),
+      options: f.options.map((o) => o.trim()).filter(Boolean),
+    }));
     const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -87,7 +93,7 @@ export default function SettingsPage() {
         location,
         baseEntitlement: toIntOrNull(baseEntitlement) ?? undefined,
         lowStockThreshold: toIntOrNull(lowStockThreshold) ?? undefined,
-        inventorySchema: schema,
+        inventorySchema: cleanedSchema,
         associations,
         whatsappInviteTpl: inviteTpl,
         whatsappThanksTpl: thanksTpl,
@@ -96,7 +102,10 @@ export default function SettingsPage() {
     const json = await res.json();
     setBusy(false);
     setMsg(res.ok ? "تم حفظ الإعدادات" : json.error || "فشل الحفظ");
-    if (res.ok) setSection(null);
+    if (res.ok) {
+      setSchema(cleanedSchema);
+      setSection(null);
+    }
   }
 
   async function onSaveSection(e: FormEvent) {
@@ -158,12 +167,35 @@ export default function SettingsPage() {
     return `attr_${n}`;
   }
 
+  /** أثناء الكتابة لا نحذف الأسطر الفارغة حتى يعمل Enter لإضافة خيار — O(n) */
   function setOptionsText(idx: number, text: string) {
-    const options = text
-      .split("\n")
-      .map((o) => o.trim())
-      .filter(Boolean);
-    updateField(idx, { options });
+    updateField(idx, { options: text.split("\n") });
+  }
+
+  function setOptionAt(fieldIdx: number, optIdx: number, value: string) {
+    setSchema((s) =>
+      s.map((f, i) => {
+        if (i !== fieldIdx) return f;
+        const options = [...f.options];
+        options[optIdx] = value;
+        return { ...f, options };
+      }),
+    );
+  }
+
+  function addOption(fieldIdx: number) {
+    setSchema((s) =>
+      s.map((f, i) => (i === fieldIdx ? { ...f, options: [...f.options, ""] } : f)),
+    );
+  }
+
+  function removeOption(fieldIdx: number, optIdx: number) {
+    setSchema((s) =>
+      s.map((f, i) => {
+        if (i !== fieldIdx) return f;
+        return { ...f, options: f.options.filter((_, oi) => oi !== optIdx) };
+      }),
+    );
   }
 
   const cards: Array<{ id: Exclude<Section, null>; title: string; desc: string }> = [
@@ -260,11 +292,20 @@ export default function SettingsPage() {
       <Modal open={section === "schema"} title="سمات المخزون" onClose={() => setSection(null)} wide>
         <form onSubmit={onSaveSection}>
           <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
-            التسمية العربية ظاهرة للمستخدم. المفتاح الداخلي تلقائي ومخفي. الوحدة تُدار كسمة «الوحدة».
+            التسمية العربية ظاهرة للمستخدم. أضف كل خيار بسطر أو بزر «إضافة خيار». المفتاح الداخلي مخفي.
           </p>
-          <div style={{ display: "grid", gap: "0.85rem" }}>
+          <div style={{ display: "grid", gap: "1rem" }}>
             {schema.map((f, idx) => (
-              <div key={f.key || idx} className="form-grid form-grid--attrs">
+              <div
+                key={f.key || idx}
+                style={{
+                  border: "1px solid var(--tmkeen-surface-border)",
+                  borderRadius: "0.75rem",
+                  padding: "0.85rem",
+                  display: "grid",
+                  gap: "0.65rem",
+                }}
+              >
                 <div>
                   <label className="label-field">التسمية</label>
                   <input
@@ -275,13 +316,49 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="label-field">الخيارات (سطر لكل خيار)</label>
-                  <textarea
-                    className="input-field"
-                    rows={3}
-                    value={f.options.join("\n")}
-                    onChange={(e) => setOptionsText(idx, e.target.value)}
-                  />
+                  <label className="label-field">الخيارات</label>
+                  <div style={{ display: "grid", gap: "0.45rem" }}>
+                    {f.options.map((opt, oi) => (
+                      <div key={`${f.key}-opt-${oi}`} className="toolbar" style={{ alignItems: "center" }}>
+                        <input
+                          className="input-field"
+                          placeholder={`خيار ${oi + 1}`}
+                          value={opt}
+                          onChange={(e) => setOptionAt(idx, oi, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              addOption(idx);
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => removeOption(idx, oi)}
+                          aria-label="حذف الخيار"
+                        >
+                          حذف
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" className="btn-secondary" onClick={() => addOption(idx)}>
+                      إضافة خيار
+                    </button>
+                  </div>
+                  <details style={{ marginTop: "0.55rem" }}>
+                    <summary className="page-header__desc" style={{ cursor: "pointer" }}>
+                      أو لصق عدة خيارات (سطر لكل خيار)
+                    </summary>
+                    <textarea
+                      className="input-field"
+                      rows={4}
+                      style={{ marginTop: "0.4rem" }}
+                      value={f.options.join("\n")}
+                      onChange={(e) => setOptionsText(idx, e.target.value)}
+                      placeholder={"قطعة\nمتر\nعلبة"}
+                    />
+                  </details>
                 </div>
               </div>
             ))}
@@ -291,8 +368,9 @@ export default function SettingsPage() {
               type="button"
               className="btn-secondary"
               disabled={hasItems}
+              title={hasItems ? "لا يمكن إضافة سمات جديدة بعد إدخال أصناف" : undefined}
               onClick={() =>
-                setSchema((s) => [...s, { key: nextAutoKey(s), label: "", options: [] }])
+                setSchema((s) => [...s, { key: nextAutoKey(s), label: "", options: [""] }])
               }
             >
               إضافة سمة
