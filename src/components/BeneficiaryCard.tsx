@@ -18,7 +18,7 @@ export function BeneficiaryCard({
       <div className="beneficiary-card__name">{name}</div>
 
       <div className="beneficiary-card__row">
-        <span className="beneficiary-card__label">رقم الهوية</span>
+        <span className="beneficiary-card__label">رقم الهوية:</span>
         <span className="beneficiary-card__value" dir="ltr">
           {nationalId}
         </span>
@@ -26,7 +26,7 @@ export function BeneficiaryCard({
 
       {mobile ? (
         <div className="beneficiary-card__row">
-          <span className="beneficiary-card__label">الجوال</span>
+          <span className="beneficiary-card__label">الجوال:</span>
           <span className="beneficiary-card__value" dir="ltr">
             {mobile}
           </span>
@@ -35,7 +35,7 @@ export function BeneficiaryCard({
 
       {association ? (
         <div className="beneficiary-card__row">
-          <span className="beneficiary-card__label">الجمعية</span>
+          <span className="beneficiary-card__label">الجمعية:</span>
           <span className="beneficiary-card__text">{association}</span>
         </div>
       ) : null}
