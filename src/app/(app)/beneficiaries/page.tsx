@@ -38,6 +38,7 @@ export default function BeneficiariesPage() {
   const [useOther, setUseOther] = useState(false);
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
   const [editing, setEditing] = useState<Beneficiary | null>(null);
   const [deleting, setDeleting] = useState<Beneficiary | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -134,14 +135,24 @@ export default function BeneficiariesPage() {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
+    setImportErrors([]);
+    setMsg("");
     const fd = new FormData(e.currentTarget);
     const res = await fetch("/api/beneficiaries/import", { method: "POST", body: fd });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     setBusy(false);
-    setMsg(res.ok ? `استيراد: ${json.created} ناجح / ${json.skipped} متجاوز` : json.error);
-    if (res.ok) {
-      setImportOpen(false);
+    const errs: string[] = Array.isArray(json.errors) ? json.errors : [];
+    setImportErrors(errs);
+    const created = Number(json.created ?? 0);
+    const skipped = Number(json.skipped ?? 0);
+    if (!res.ok) {
+      setMsg(json.error || json.message || "فشل الاستيراد");
+      return;
+    }
+    setMsg(json.message || `استيراد: ${created} ناجح / ${skipped} متجاوز`);
+    if (created > 0) {
       load();
+      if (errs.length === 0) setImportOpen(false);
     }
   }
 
@@ -415,9 +426,17 @@ export default function BeneficiariesPage() {
         </div>
       </Modal>
 
-      <Modal open={importOpen} title="استيراد Excel" onClose={() => setImportOpen(false)}>
+      <Modal
+        open={importOpen}
+        title="استيراد Excel"
+        onClose={() => {
+          setImportOpen(false);
+          setImportErrors([]);
+        }}
+      >
         <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
-          حمّل النموذج، عبّئه، ثم ارفعه هنا. الأعمدة المطلوبة: الاسم، رقم الهوية، رقم الجوال.
+          حمّل النموذج، عبّئه، ثم ارفعه. الهوية يجب أن تكون 10 أرقام صالحة (تبدأ بـ 1 أو 2)، والجوال
+          05xxxxxxxx.
         </p>
         <div className="form-actions" style={{ marginBottom: "0.85rem" }}>
           <a className="btn-secondary" href="/api/beneficiaries/import/template">
@@ -430,6 +449,21 @@ export default function BeneficiariesPage() {
             {busy ? "جاري..." : "رفع الملف"}
           </button>
         </form>
+        {msg && importOpen ? (
+          <p className={`msg ${importErrors.length && !msg.includes("ناجح") ? "msg-error" : ""}`} style={{ marginTop: "0.75rem" }}>
+            {msg}
+          </p>
+        ) : null}
+        {importErrors.length ? (
+          <div className="msg msg-error" style={{ marginTop: "0.85rem" }}>
+            <strong>أسباب الرفض / التجاوز:</strong>
+            <ul style={{ margin: "0.5rem 0 0", paddingInlineStart: "1.25rem" }}>
+              {importErrors.map((err, i) => (
+                <li key={`${i}-${err.slice(0, 24)}`}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );

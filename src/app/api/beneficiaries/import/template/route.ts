@@ -12,6 +12,21 @@ export async function GET() {
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "منصة رداء";
+
+  const guide = wb.addWorksheet("تعليمات");
+  guide.getColumn(1).width = 72;
+  [
+    "تعليمات استيراد المستفيدين",
+    "1) عبّئ ورقة «المستفيدون» — لا تغيّر عناوين الصف الأول.",
+    "2) رقم الهوية: 10 أرقام تبدأ بـ 1 أو 2 وصالحة (خوارزمية التحقق).",
+    "3) رقم الجوال: 05xxxxxxxx (اكتب الجوال كنص إن حذف Excel الصفر).",
+    "4) احذف صف المثال قبل الرفع أو عدّل بياناته لقيم حقيقية غير مكررة.",
+    "5) أمثلة هويات صالحة للتجربة: 1000000008 و 2000000006",
+  ].forEach((line, i) => {
+    guide.getRow(i + 1).getCell(1).value = line;
+    if (i === 0) guide.getRow(i + 1).font = { bold: true, size: 14 };
+  });
+
   const sheet = wb.addWorksheet("المستفيدون");
   const headers = [
     "الاسم",
@@ -26,7 +41,23 @@ export async function GET() {
   ];
   sheet.addRow(headers);
   sheet.getRow(1).font = { bold: true };
-  sheet.addRow(["مثال أحمد", "1000000008", "0500000001", "ذكر", "الرياض", "النخيل", "", "3", ""]);
+  // صف مثال بهوية وجوال صالحين — يُستبدل عند التعبئة
+  const example = sheet.addRow([
+    "مثال أحمد",
+    "1000000008",
+    "0500000001",
+    "ذكر",
+    "الرياض",
+    "النخيل",
+    "",
+    "3",
+    "",
+  ]);
+  // فرض نص على أعمدة الهوية والجوال حتى لا يحذف Excel الأصفار
+  sheet.getColumn(2).numFmt = "@";
+  sheet.getColumn(3).numFmt = "@";
+  example.getCell(2).numFmt = "@";
+  example.getCell(3).numFmt = "@";
   headers.forEach((_, i) => {
     sheet.getColumn(i + 1).width = 16;
   });
