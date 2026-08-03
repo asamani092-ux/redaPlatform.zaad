@@ -17,27 +17,43 @@ export function Modal({
 }) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
+  // التركيز مرة واحدة عند الفتح فقط — لا تعتمد على هوية onClose حتى لا يُسرق التركيز مع كل حرف
   useEffect(() => {
     if (!open) return;
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
+
+    const panel = panelRef.current;
+    const active = document.activeElement;
+    const alreadyInside = !!panel && !!active && panel.contains(active);
+    if (!alreadyInside) {
+      panel?.focus();
+    }
+
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
   return (
     <div className="modal-root" role="presentation">
-      <button type="button" className="modal-backdrop" aria-label="إغلاق" onClick={onClose} />
+      <button
+        type="button"
+        className="modal-backdrop"
+        aria-label="إغلاق"
+        onClick={() => onCloseRef.current()}
+      />
       <div
         ref={panelRef}
         className={`modal-panel ${wide ? "modal-panel--wide" : ""}`}
@@ -50,7 +66,11 @@ export function Modal({
           <h2 id={titleId} className="modal-title">
             {title}
           </h2>
-          <button type="button" className="btn-secondary modal-close" onClick={onClose}>
+          <button
+            type="button"
+            className="btn-secondary modal-close"
+            onClick={() => onCloseRef.current()}
+          >
             إغلاق
           </button>
         </div>
