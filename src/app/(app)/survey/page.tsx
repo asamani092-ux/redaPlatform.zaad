@@ -320,7 +320,19 @@ export default function SurveyPage() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">الردود</h2>
+        <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: "0.75rem" }}>
+          <h2 className="panel-title" style={{ margin: 0 }}>
+            الردود ({responses.length})
+          </h2>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={!responses.length}
+            onClick={() => window.open("/api/survey/print", "_blank", "noopener,noreferrer")}
+          >
+            طباعة الردود
+          </button>
+        </div>
         <div className="table-wrap">
           <table>
             <thead>

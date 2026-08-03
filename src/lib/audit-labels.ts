@@ -26,6 +26,7 @@ export const ACTION_LABELS: Record<string, string> = {
   SURVEY: "استبيان",
   SURVEY_SUBMIT: "تسجيل استبيان",
   SURVEY_BROADCAST: "إرسال استبيان جماعي",
+  SURVEY_PRINT: "طباعة ردود الاستبيان",
   QR_CARDS_EXPORT: "طباعة بطاقات QR",
   PASSWORD_RESET: "استعادة كلمة مرور",
   WHATSAPP_SETTINGS_UPDATE: "تحديث إعداد واتساب",

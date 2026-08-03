@@ -31,6 +31,7 @@ export const WRITE_PATHS: WritePathSpec[] = [
   { id: "user.update", entityType: "User", action: "USER_UPDATE", route: "PATCH /api/users", audited: true },
   { id: "survey.create", entityType: "SurveyResponse", action: "SURVEY", route: "POST /api/survey", audited: true },
   { id: "survey.broadcast", entityType: "SurveyResponse", action: "SURVEY_BROADCAST", route: "POST /api/survey/broadcast", audited: true },
+  { id: "survey.print", entityType: "SurveyResponse", action: "SURVEY_PRINT", route: "GET /api/survey/print", audited: true },
   { id: "invites.qrCards", entityType: "ExhibitionInvite", action: "QR_CARDS_EXPORT", route: "GET /api/invites/qr-cards", audited: true },
   { id: "beneficiary.delete", entityType: "Beneficiary", action: "DELETE", route: "DELETE /api/beneficiaries/[id]", audited: true },
   { id: "user.delete", entityType: "User", action: "USER_DELETE|USER_DEACTIVATE", route: "DELETE /api/users", audited: true },
