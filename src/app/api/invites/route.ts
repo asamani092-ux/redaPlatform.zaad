@@ -11,7 +11,8 @@ import { appOrigin } from "@/lib/app-url";
 
 const bulkSchema = z.object({
   beneficiaryIds: z.array(z.string()).min(1),
-  sendWhatsApp: z.boolean().optional(),
+  /** افتراضي true — الدعوة بلا واتساب بلا فائدة تشغيلية */
+  sendWhatsApp: z.boolean().optional().default(true),
 });
 
 export async function GET() {
@@ -82,7 +83,8 @@ export async function POST(req: NextRequest) {
     meta: { count: result.invited, beneficiaryIds: uniqueIds },
   });
 
-  if (body.data.sendWhatsApp) {
+  // إرسال واتساب مع QR هو المسار التشغيلي للدعوة
+  if (body.data.sendWhatsApp !== false) {
     const origin = appOrigin(req);
     const tpl =
       exhibition.settings?.whatsappInviteTpl ??

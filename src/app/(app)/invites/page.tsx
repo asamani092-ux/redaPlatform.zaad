@@ -12,11 +12,16 @@ type Row = {
   qrToken?: string | null;
 };
 
+/**
+ * الدعوات = إنشاء رمز QR + إرساله واتساباً. لا مسار «دعوة صامتة».
+ * Time: O(n) على المحددين عند الإرسال.
+ */
 export default function InvitesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState("");
   const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     const res = await fetch(`/api/beneficiaries?q=${encodeURIComponent(q)}`);
@@ -33,18 +38,26 @@ export default function InvitesPage() {
     .filter(([, v]) => v)
     .map(([id]) => id);
 
-  async function invite(sendWhatsApp: boolean) {
+  async function inviteAndSend() {
     if (!selectedIds.length) {
       setMsg("حدد مستفيدين أولاً");
       return;
     }
+    if (busy) return;
+    setBusy(true);
+    setMsg("");
     const res = await fetch("/api/invites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ beneficiaryIds: selectedIds, sendWhatsApp }),
+      body: JSON.stringify({ beneficiaryIds: selectedIds, sendWhatsApp: true }),
     });
     const json = await res.json();
-    setMsg(res.ok ? `تمت دعوة ${json.invited} مستفيد` : json.error);
+    setBusy(false);
+    setMsg(
+      res.ok
+        ? `تمت دعوة ${json.invited} مستفيد وإرسال رمز QR عبر واتساب`
+        : json.error || "فشلت الدعوة",
+    );
     if (res.ok) {
       setSelected({});
       load();
@@ -55,19 +68,16 @@ export default function InvitesPage() {
     <div className="page-stack">
       <PageHeader
         title="الدعوات الجماعية"
-        description="يُنشأ رمز QR لكل دعوة ويُرسل مع رسالة واتساب — الطباعة اختيارية فقط"
+        description="تحديد المستفيدين ثم إرسال الدعوة مع رمز QR عبر واتساب — هذا هو مسار الدعوة الوحيد"
         actions={
-          <>
-            <button className="btn-recommend" type="button" onClick={() => invite(true)}>
-              دعوة + إرسال QR واتساب ({selectedIds.length})
-            </button>
-            <button className="btn-primary" type="button" onClick={() => invite(false)}>
-              دعوة دون واتساب
-            </button>
-            <a className="btn-secondary" href="/api/invites/qr-cards" title="اختياري للطباعة الورقية">
-              طباعة ورقية (اختياري)
-            </a>
-          </>
+          <button
+            className="btn-primary"
+            type="button"
+            disabled={busy || !selectedIds.length}
+            onClick={inviteAndSend}
+          >
+            {busy ? "جاري الإرسال…" : `دعوة وإرسال QR واتساب (${selectedIds.length})`}
+          </button>
         }
       />
       {msg ? <p className="msg">{msg}</p> : null}
