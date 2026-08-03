@@ -10,6 +10,7 @@ import {
 import {
   DEFAULT_INVENTORY_SCHEMA,
   parseInventorySchema,
+  validateInventorySchemaMutation,
 } from "@/lib/inventory-schema";
 import { parseSurveyConfig } from "@/lib/survey-questions";
 import { Prisma } from "@/generated/prisma/client";
@@ -36,14 +37,6 @@ const settingsSchema = z.object({
     .array(z.object({ id: z.string().optional(), name: z.string().min(1), active: z.boolean().optional() }))
     .optional(),
 });
-
-function sameSchemaKeys(
-  a: Array<{ key: string }>,
-  b: Array<{ key: string }>,
-): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((f, i) => f.key === b[i]?.key);
-}
 
 export async function GET() {
   const authz = await requirePermission("settings:manage");
@@ -116,21 +109,25 @@ export async function PUT(req: NextRequest) {
     where: { exhibitionId: exhibition.id },
   });
 
-  if (body.data.inventorySchema && inventoryCount > 0) {
+  let schemaPayload:
+    | Array<{ key: string; label: string; options: string[] }>
+    | undefined;
+  if (body.data.inventorySchema) {
     const current = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
-    if (!sameSchemaKeys(current, body.data.inventorySchema)) {
-      return NextResponse.json(
-        { error: "لا يمكن تغيير مفاتيح مخطط المخزون بعد إدخال أصناف — يمكن إضافة خيارات فقط" },
-        { status: 400 },
-      );
+    const schemaError = validateInventorySchemaMutation(
+      current,
+      body.data.inventorySchema,
+      inventoryCount > 0,
+    );
+    if (schemaError) {
+      return NextResponse.json({ error: schemaError }, { status: 400 });
     }
+    schemaPayload = body.data.inventorySchema.map((f) => ({
+      key: f.key.trim(),
+      label: f.label.trim(),
+      options: [...new Set(f.options.map((o) => o.trim()).filter(Boolean))],
+    }));
   }
-
-  const schemaPayload = body.data.inventorySchema?.map((f) => ({
-    key: f.key.trim(),
-    label: f.label.trim(),
-    options: [...new Set(f.options.map((o) => o.trim()).filter(Boolean))],
-  }));
 
   // إعداد الاستبيان يُخزن كغلاف { questions, externalUrl } مع الحفاظ على القائم عند غياب أحدهما
   let surveyPayload: Prisma.InputJsonValue | undefined;

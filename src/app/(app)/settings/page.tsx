@@ -4,7 +4,11 @@ import { FormEvent, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
 import type { InventorySchemaField } from "@/lib/inventory-schema";
-import { DEFAULT_INVENTORY_SCHEMA } from "@/lib/inventory-schema";
+import {
+  DEFAULT_INVENTORY_SCHEMA,
+  isRequiredInventoryAttrKey,
+  REQUIRED_INVENTORY_ATTR_LABELS,
+} from "@/lib/inventory-schema";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 
 type Association = { id?: string; name: string; active?: boolean };
@@ -198,6 +202,18 @@ export default function SettingsPage() {
     );
   }
 
+  function removeAttribute(fieldIdx: number) {
+    const field = schema[fieldIdx];
+    if (!field) return;
+    if (isRequiredInventoryAttrKey(field.key)) {
+      setMsg(
+        `لا يمكن حذف «${REQUIRED_INVENTORY_ATTR_LABELS[field.key] ?? field.label}» — سمة معتمدة`,
+      );
+      return;
+    }
+    setSchema((s) => s.filter((_, i) => i !== fieldIdx));
+  }
+
   const cards: Array<{ id: Exclude<Section, null>; title: string; desc: string }> = [
     { id: "exhibition", title: "المعرض والاستحقاق", desc: "الاسم، الموقع، القطع، عتبة النفاد" },
     { id: "schema", title: "سمات المخزون", desc: "تسميات عربية وخيارات دون مفاتيح ظاهرة" },
@@ -292,7 +308,7 @@ export default function SettingsPage() {
       <Modal open={section === "schema"} title="سمات المخزون" onClose={() => setSection(null)} wide>
         <form onSubmit={onSaveSection}>
           <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
-            التسمية العربية ظاهرة للمستخدم. أضف كل خيار بسطر أو بزر «إضافة خيار». المفتاح الداخلي مخفي.
+            اللون والوحدة معتمدتان ولا تُحذفان. يمكن حذف النوع أو الصنف إن اكتفيت بواحد منهما.
           </p>
           <div style={{ display: "grid", gap: "1rem" }}>
             {schema.map((f, idx) => (
@@ -306,14 +322,32 @@ export default function SettingsPage() {
                   gap: "0.65rem",
                 }}
               >
-                <div>
-                  <label className="label-field">التسمية</label>
-                  <input
-                    className="input-field"
-                    placeholder="اللون / الوحدة / المقاس"
-                    value={f.label}
-                    onChange={(e) => updateField(idx, { label: e.target.value })}
-                  />
+                <div className="toolbar" style={{ justifyContent: "space-between", alignItems: "end" }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="label-field">
+                      التسمية
+                      {isRequiredInventoryAttrKey(f.key) ? (
+                        <span className="badge badge-muted" style={{ marginInlineStart: "0.4rem" }}>
+                          معتمدة
+                        </span>
+                      ) : null}
+                    </label>
+                    <input
+                      className="input-field"
+                      placeholder="اللون / الوحدة / المقاس"
+                      value={f.label}
+                      onChange={(e) => updateField(idx, { label: e.target.value })}
+                    />
+                  </div>
+                  {!isRequiredInventoryAttrKey(f.key) ? (
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      onClick={() => removeAttribute(idx)}
+                    >
+                      حذف السمة
+                    </button>
+                  ) : null}
                 </div>
                 <div>
                   <label className="label-field">الخيارات</label>
