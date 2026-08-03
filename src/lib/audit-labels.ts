@@ -11,6 +11,7 @@ export const ACTION_LABELS: Record<string, string> = {
   DISPENSE: "صرف قطع",
   ENTITLEMENT_OVERRIDE: "تعديل استحقاق",
   INVENTORY_CREATE: "إضافة صنف",
+  INVENTORY_UPDATE: "تعديل صنف",
   STOCK_ADD: "إضافة كمية",
   STOCK_RETURN: "استرجاع كمية",
   EXHIBITION_CREATE: "إنشاء معرض",

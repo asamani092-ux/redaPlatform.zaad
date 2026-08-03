@@ -14,11 +14,17 @@ type Item = {
   lowStock: boolean;
 };
 
+/**
+ * المخزون: إضافة / تعديل سمات الصنف / حركة كمية.
+ * Time: O(n) لعرض القائمة، O(s) لحفظ السمات.
+ */
 export default function InventoryPage() {
   const [schema, setSchema] = useState<InventorySchemaField[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [msg, setMsg] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [moveOpen, setMoveOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [attrs, setAttrs] = useState<Record<string, string>>({});
@@ -44,11 +50,28 @@ export default function InventoryPage() {
     return next;
   }, [schema]);
 
+  function attrsFromItem(item: Item): Record<string, string> {
+    const next: Record<string, string> = {};
+    for (const f of schema) {
+      const raw = item.attributes?.[f.key];
+      const asStr = raw != null ? String(raw) : "";
+      next[f.key] = f.options.includes(asStr) ? asStr : (f.options[0] ?? "");
+    }
+    return next;
+  }
+
   function openAdd() {
     setAttrs({ ...defaultAttrs });
     setQuantity("0");
     setMsg("");
     setAddOpen(true);
+  }
+
+  function openEdit(item: Item) {
+    setEditingId(item.id);
+    setAttrs(attrsFromItem(item));
+    setMsg("");
+    setEditOpen(true);
   }
 
   function openMove(itemId?: string) {
@@ -77,6 +100,26 @@ export default function InventoryPage() {
     setMsg(res.ok ? "تمت إضافة الصنف" : json.error || "فشل الإضافة");
     if (res.ok) {
       setAddOpen(false);
+      await load();
+    }
+  }
+
+  async function onEdit(e: FormEvent) {
+    e.preventDefault();
+    if (busy || !editingId) return;
+    setBusy(true);
+    setMsg("");
+    const res = await fetch("/api/inventory", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: editingId, attributes: attrs }),
+    });
+    const json = await res.json();
+    setBusy(false);
+    setMsg(res.ok ? "تم تعديل الصنف" : json.error || "فشل التعديل");
+    if (res.ok) {
+      setEditOpen(false);
+      setEditingId(null);
       await load();
     }
   }
@@ -110,11 +153,31 @@ export default function InventoryPage() {
     }
   }
 
+  function attrFields() {
+    return schema.map((f) => (
+      <div key={f.key}>
+        <label className="label-field">{f.label}</label>
+        <select
+          className="input-field"
+          value={attrs[f.key] ?? ""}
+          onChange={(e) => setAttrs((a) => ({ ...a, [f.key]: e.target.value }))}
+          required
+        >
+          {f.options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      </div>
+    ));
+  }
+
   return (
     <div className="page-stack">
       <PageHeader
         title="المخزون"
-        description="إدخال الأصناف وتعديل الكميات فقط أثناء التشغيل"
+        description="إضافة الأصناف وتعديل سماتها وحركات الكمية أثناء التشغيل"
         actions={
           <>
             <button type="button" className="btn-primary" onClick={openAdd}>
@@ -142,7 +205,7 @@ export default function InventoryPage() {
                 <th>السمات</th>
                 <th>الكمية</th>
                 <th>تنبيه</th>
-                <th></th>
+                <th>إجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -158,9 +221,14 @@ export default function InventoryPage() {
                     </span>
                   </td>
                   <td>
-                    <button type="button" className="btn-secondary" onClick={() => openMove(i.id)}>
-                      حركة
-                    </button>
+                    <div className="row-actions">
+                      <button type="button" className="btn-secondary" onClick={() => openEdit(i)}>
+                        تعديل
+                      </button>
+                      <button type="button" className="btn-secondary" onClick={() => openMove(i.id)}>
+                        حركة
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -179,23 +247,7 @@ export default function InventoryPage() {
       <Modal open={addOpen} title="إضافة صنف" onClose={() => !busy && setAddOpen(false)} wide>
         <form onSubmit={onCreate}>
           <div className="form-grid">
-            {schema.map((f) => (
-              <div key={f.key}>
-                <label className="label-field">{f.label}</label>
-                <select
-                  className="input-field"
-                  value={attrs[f.key] ?? ""}
-                  onChange={(e) => setAttrs((a) => ({ ...a, [f.key]: e.target.value }))}
-                  required
-                >
-                  {f.options.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
+            {attrFields()}
             <div>
               <label className="label-field">الكمية</label>
               <input
@@ -214,6 +266,40 @@ export default function InventoryPage() {
               {busy ? "جاري الحفظ…" : "حفظ"}
             </button>
             <button type="button" className="btn-secondary" disabled={busy} onClick={() => setAddOpen(false)}>
+              إلغاء
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={editOpen}
+        title="تعديل الصنف"
+        onClose={() => {
+          if (busy) return;
+          setEditOpen(false);
+          setEditingId(null);
+        }}
+        wide
+      >
+        <form onSubmit={onEdit}>
+          <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
+            تعديل السمات فقط — لتغيير الكمية استخدم «حركة كمية».
+          </p>
+          <div className="form-grid">{attrFields()}</div>
+          <div className="form-actions">
+            <button className="btn-primary" type="submit" disabled={busy}>
+              {busy ? "جاري الحفظ…" : "حفظ التعديل"}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={busy}
+              onClick={() => {
+                setEditOpen(false);
+                setEditingId(null);
+              }}
+            >
               إلغاء
             </button>
           </div>

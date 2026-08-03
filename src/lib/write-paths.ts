@@ -21,6 +21,7 @@ export const WRITE_PATHS: WritePathSpec[] = [
   { id: "dispense.create", entityType: "DispenseOrder", action: "DISPENSE", route: "POST /api/dispense", audited: true },
   { id: "dispense.override", entityType: "DispenseOrder", action: "ENTITLEMENT_OVERRIDE", route: "POST /api/dispense", audited: true },
   { id: "inventory.create", entityType: "InventoryItem", action: "INVENTORY_CREATE", route: "POST /api/inventory", audited: true },
+  { id: "inventory.update", entityType: "InventoryItem", action: "INVENTORY_UPDATE", route: "PUT /api/inventory", audited: true },
   { id: "inventory.stock", entityType: "InventoryItem", action: "STOCK_ADD|STOCK_RETURN", route: "PATCH /api/inventory", audited: true },
   { id: "exhibition.create", entityType: "Exhibition", action: "EXHIBITION_CREATE", route: "POST /api/exhibitions", audited: true },
   { id: "exhibition.activate", entityType: "Exhibition", action: "EXHIBITION_ACTIVATE", route: "POST /api/exhibitions/[id]/activate", audited: true },

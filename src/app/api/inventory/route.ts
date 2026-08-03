@@ -13,12 +13,31 @@ const createSchema = z.object({
   quantity: z.number().nonnegative(),
 });
 
+const updateItemSchema = z.object({
+  id: z.string().min(1),
+  attributes: z.record(z.string(), z.union([z.string(), z.number()])),
+});
+
 const movementSchema = z.object({
   inventoryItemId: z.string(),
   type: z.enum(["ADD", "RETURN"]),
   quantity: z.number().positive(),
   note: z.string().optional(),
 });
+
+function validateAttributesAgainstSchema(
+  schema: ReturnType<typeof parseInventorySchema>,
+  attributes: Record<string, string | number>,
+): string | null {
+  for (const field of schema) {
+    const value = String(attributes[field.key] ?? "").trim();
+    if (!value) return `الحقل مطلوب: ${field.label}`;
+    if (field.options.length && !field.options.includes(value)) {
+      return `قيمة غير مسموحة لحقل ${field.label}`;
+    }
+  }
+  return null;
+}
 
 export async function GET() {
   const authz = await requirePermission("inventory:manage");
@@ -57,17 +76,9 @@ export async function POST(req: NextRequest) {
   }
 
   const schema = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
-  for (const field of schema) {
-    const value = String(body.data.attributes[field.key] ?? "").trim();
-    if (!value) {
-      return NextResponse.json({ error: `الحقل مطلوب: ${field.label}` }, { status: 400 });
-    }
-    if (field.options.length && !field.options.includes(value)) {
-      return NextResponse.json(
-        { error: `قيمة غير مسموحة لحقل ${field.label}` },
-        { status: 400 },
-      );
-    }
+  const attrError = validateAttributesAgainstSchema(schema, body.data.attributes);
+  if (attrError) {
+    return NextResponse.json({ error: attrError }, { status: 400 });
   }
 
   const item = await prisma.$transaction(async (tx) => {
@@ -102,6 +113,55 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ data: item }, { status: 201 });
+}
+
+/**
+ * تعديل سمات صنف موجود — O(s) للتحقق حيث s عدد حقول المخطط.
+ * الكمية تبقى عبر حركات المخزون (PATCH).
+ */
+export async function PUT(req: NextRequest) {
+  const authz = await requirePermission("inventory:manage");
+  if ("error" in authz) return authz.error;
+  const exhibition = await requireActiveExhibition();
+  const body = updateItemSchema.safeParse(await req.json());
+  if (!body.success) {
+    return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
+  }
+
+  const existing = await prisma.inventoryItem.findFirst({
+    where: { id: body.data.id, exhibitionId: exhibition.id },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "الصنف غير موجود" }, { status: 404 });
+  }
+
+  const schema = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
+  const attrError = validateAttributesAgainstSchema(schema, body.data.attributes);
+  if (attrError) {
+    return NextResponse.json({ error: attrError }, { status: 400 });
+  }
+
+  // فقط مفاتيح المخطط الحالي (المفاتيح المحذوفة من الإعدادات لا تُحفظ)
+  const attributesJson: Record<string, string> = {};
+  for (const field of schema) {
+    attributesJson[field.key] = String(body.data.attributes[field.key] ?? "").trim();
+  }
+
+  const updated = await prisma.inventoryItem.update({
+    where: { id: existing.id },
+    data: { attributesJson: attributesJson as Prisma.InputJsonValue },
+  });
+
+  await writeAuditLog({
+    userId: authz.userId,
+    action: "INVENTORY_UPDATE",
+    entityType: "InventoryItem",
+    entityId: updated.id,
+    before: existing,
+    after: updated,
+  });
+
+  return NextResponse.json({ data: updated });
 }
 
 export async function PATCH(req: NextRequest) {
