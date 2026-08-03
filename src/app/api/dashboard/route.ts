@@ -15,7 +15,7 @@ export async function GET() {
     totalBeneficiaries,
     invited,
     attended,
-    received,
+    receivedGroups,
     exceptions,
     overrideDispenses,
     piecesAgg,
@@ -24,7 +24,11 @@ export async function GET() {
     prisma.beneficiary.count(),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
-    prisma.dispenseOrder.count({ where: { exhibitionId } }),
+    // مستلمون مميزون — لا تُضاعف عند صرف استثنائي متكرر — O(R)
+    prisma.dispenseOrder.groupBy({
+      by: ["beneficiaryId"],
+      where: { exhibitionId },
+    }),
     prisma.attendance.count({ where: { exhibitionId, type: "EXCEPTION" } }),
     prisma.dispenseOrder.count({
       where: { exhibitionId, entitledOverride: { not: null } },
@@ -36,6 +40,7 @@ export async function GET() {
     prisma.inventoryItem.findMany({ where: { exhibitionId } }),
   ]);
 
+  const received = receivedGroups.length;
   const remainingToReceive = Math.max(attended - received, 0);
   const piecesDispensed = piecesAgg._sum.piecesCount ?? 0;
   // نسبة الإنجاز = المستلمون ÷ الحاضرون (الاستثنائي يدخل الطرفين) بسقف 100% — O(1)

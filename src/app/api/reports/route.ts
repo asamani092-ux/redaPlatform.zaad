@@ -115,7 +115,12 @@ export async function GET(req: NextRequest) {
     totalBeneficiaries: beneficiaries.length,
     invited: await prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     attended: await prisma.attendance.count({ where: { exhibitionId } }),
-    received: await prisma.dispenseOrder.count({ where: { exhibitionId } }),
+    received: (
+      await prisma.dispenseOrder.groupBy({
+        by: ["beneficiaryId"],
+        where: { exhibitionId },
+      })
+    ).length,
     exceptionAttendance: await prisma.attendance.count({
       where: { exhibitionId, type: "EXCEPTION" },
     }),

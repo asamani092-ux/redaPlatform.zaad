@@ -1,12 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { BeneficiaryCard } from "@/components/BeneficiaryCard";
 import { AttrChips } from "@/components/AttrChips";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 import type { InventorySchemaField } from "@/lib/inventory-schema";
+import { hasPermission } from "@/lib/rbac";
+import type { Role } from "@/generated/prisma/enums";
 
 type Item = {
   id: string;
@@ -27,6 +30,8 @@ type Lookup = {
   statusLabel: string;
   attendance: { type: string } | null;
   dispensed: boolean;
+  dispenseCount?: number;
+  previousPiecesTotal?: number;
   entitledPieces: number;
   baseEntitlement?: number;
   dependentsCount?: number;
@@ -37,6 +42,10 @@ type Lookup = {
 };
 
 export default function DispensePage() {
+  const { data: session } = useSession();
+  const role = session?.user?.role as Role | undefined;
+  const canOverride = role ? hasPermission(role, "dispense:override") : false;
+
   const [q, setQ] = useState("");
   const [lookup, setLookup] = useState<Lookup | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -46,6 +55,7 @@ export default function DispensePage() {
   // قطع إضافية فوق الاستحقاق — لا تُستبدل الاستحقاق المحسوب
   const [extraAbove, setExtraAbove] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
+  const [repeatReason, setRepeatReason] = useState("");
   const [msg, setMsg] = useState("");
   const [scanOn, setScanOn] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -76,6 +86,7 @@ export default function DispensePage() {
     setLines({});
     setExtraAbove("");
     setOverrideReason("");
+    setRepeatReason("");
   }, []);
 
   const onScan = useCallback(
@@ -95,6 +106,8 @@ export default function DispensePage() {
 
   const addingExtra = extraN > 0;
   const reasonOk = !addingExtra || overrideReason.trim().length > 0;
+  const alreadyDispensed = Boolean(lookup?.dispensed);
+  const repeatOk = !alreadyDispensed || (canOverride && repeatReason.trim().length > 0);
 
   const selectedLines = useMemo(
     () =>
@@ -116,6 +129,14 @@ export default function DispensePage() {
       setMsg("سبب الإضافة فوق الاستحقاق مطلوب");
       return;
     }
+    if (alreadyDispensed && !canOverride) {
+      setMsg("الصرف المتكرر يتطلب صلاحية الاستثناء (توزيع أو مدير)");
+      return;
+    }
+    if (alreadyDispensed && !repeatReason.trim()) {
+      setMsg("سبب الصرف الاستثنائي مطلوب لأن المستفيد صُرف له سابقاً");
+      return;
+    }
     if (totalSelected > entitledNow) {
       setMsg(`مجموع الكميات (${totalSelected}) يتجاوز المسموح (${entitledNow})`);
       return;
@@ -130,6 +151,7 @@ export default function DispensePage() {
         lines: selectedLines,
         extraAbove: addingExtra ? extraN : undefined,
         overrideReason: addingExtra ? overrideReason.trim() : undefined,
+        repeatReason: alreadyDispensed ? repeatReason.trim() : undefined,
         sendThanks: true,
       }),
     });
@@ -142,6 +164,7 @@ export default function DispensePage() {
       setQ("");
       setExtraAbove("");
       setOverrideReason("");
+      setRepeatReason("");
     }
   }
 
@@ -212,6 +235,38 @@ export default function DispensePage() {
             }
           />
 
+          {lookup.dispensed ? (
+            <div className="panel" style={{ marginTop: "1rem", borderColor: "var(--warning, #d97706)" }}>
+              <p className="page-header__desc">
+                صُرف لهذا المستفيد سابقاً
+                {typeof lookup.dispenseCount === "number" ? ` (${lookup.dispenseCount} مرة)` : ""}
+                {typeof lookup.previousPiecesTotal === "number"
+                  ? ` — إجمالي القطع السابقة: ${lookup.previousPiecesTotal}`
+                  : ""}
+                . السجل السابق لا يُحذف؛ الصرف الجديد يُضاف تراكمياً.
+              </p>
+              {canOverride ? (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <label className="label-field" htmlFor="repeat-reason">
+                    سبب الصرف الاستثنائي *
+                  </label>
+                  <textarea
+                    id="repeat-reason"
+                    className="input-field"
+                    rows={3}
+                    value={repeatReason}
+                    onChange={(e) => setRepeatReason(e.target.value)}
+                    placeholder="مثال: خطأ في الكمية السابقة / توجيه إداري…"
+                  />
+                </div>
+              ) : (
+                <p className="msg msg-error" style={{ marginTop: "0.75rem" }}>
+                  لا تملك صلاحية الصرف الاستثنائي — اطلب من مشرف التوزيع أو المدير.
+                </p>
+              )}
+            </div>
+          ) : null}
+
           <div className="form-grid" style={{ marginTop: "1rem" }}>
             <div>
               <label className="label-field">
@@ -244,6 +299,9 @@ export default function DispensePage() {
           ) : null}
           {addingExtra && !reasonOk ? (
             <p className="msg msg-error">أدخل سبباً قبل تأكيد الصرف مع قطع إضافية</p>
+          ) : null}
+          {alreadyDispensed && canOverride && !repeatReason.trim() ? (
+            <p className="msg msg-error">أدخل سبب الصرف الاستثنائي قبل التأكيد</p>
           ) : null}
 
           <div className="table-wrap" style={{ marginTop: "1rem" }}>
@@ -296,14 +354,14 @@ export default function DispensePage() {
               disabled={
                 busy ||
                 !lookup.attendance ||
-                lookup.dispensed ||
                 !reasonOk ||
+                !repeatOk ||
                 !selectedLines.length ||
                 totalSelected > entitledNow
               }
-              onClick={submit}
+              onClick={() => void submit()}
             >
-              {busy ? "جاري..." : "تأكيد الصرف"}
+              {busy ? "جاري..." : alreadyDispensed ? "تأكيد الصرف الاستثنائي" : "تأكيد الصرف"}
             </button>
           </div>
         </section>

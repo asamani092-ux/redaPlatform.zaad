@@ -25,6 +25,8 @@ const dispenseSchema = z.object({
   /** توافق خلفي: إجمالي الاستحقاق النهائي */
   entitledOverride: z.number().int().positive().optional(),
   overrideReason: z.string().optional(),
+  /** إلزامي عند صرف لاحق لمستفيد صُرف له سابقاً */
+  repeatReason: z.string().optional(),
   sendThanks: z.boolean().optional(),
 });
 
@@ -149,16 +151,29 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const existing = await prisma.dispenseOrder.findUnique({
+  const priorOrders = await prisma.dispenseOrder.findMany({
     where: {
-      exhibitionId_beneficiaryId: {
-        exhibitionId: exhibition.id,
-        beneficiaryId: body.data.beneficiaryId,
-      },
+      exhibitionId: exhibition.id,
+      beneficiaryId: body.data.beneficiaryId,
     },
+    select: { id: true, piecesCount: true },
   });
-  if (existing) {
-    return NextResponse.json({ error: "تم الصرف مسبقاً لهذا المستفيد" }, { status: 409 });
+  const isRepeat = priorOrders.length > 0;
+  const previousPiecesTotal = priorOrders.reduce((s, o) => s + o.piecesCount, 0);
+
+  if (isRepeat) {
+    if (!hasPermission(authz.role, "dispense:override")) {
+      return NextResponse.json(
+        { error: "الصرف المتكرر يتطلب صلاحية الاستثناء (توزيع أو مدير)" },
+        { status: 403 },
+      );
+    }
+    if (!isNonEmptyReason(body.data.repeatReason)) {
+      return NextResponse.json(
+        { error: "سبب الصرف الاستثنائي مطلوب لأن المستفيد صُرف له سابقاً" },
+        { status: 400 },
+      );
+    }
   }
 
   const base = settings.baseEntitlement;
@@ -190,6 +205,15 @@ export async function POST(req: NextRequest) {
       : body.data.entitledOverride!;
     overrideReason = body.data.overrideReason!.trim();
     entitled = entitledOverride;
+  }
+
+  // صرف متكرر: السبب يُسجَّل مع الاستثناء (تراكمي — لا يستبدل الصرف السابق)
+  if (isRepeat) {
+    const repeat = body.data.repeatReason!.trim();
+    overrideReason = overrideReason ? `${overrideReason} | إعادة صرف: ${repeat}` : `إعادة صرف: ${repeat}`;
+    if (entitledOverride == null) {
+      entitledOverride = entitled;
+    }
   }
 
   const totalQty = body.data.lines.reduce((s, l) => s + l.quantity, 0);
@@ -277,6 +301,9 @@ export async function POST(req: NextRequest) {
         baseEntitlement: base,
         dependentsCount: deps,
         overrideReason,
+        isRepeat,
+        previousPiecesTotal: isRepeat ? previousPiecesTotal : undefined,
+        priorOrderCount: isRepeat ? priorOrders.length : undefined,
       },
     });
 

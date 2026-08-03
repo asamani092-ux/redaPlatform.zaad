@@ -246,7 +246,8 @@ model DispenseOrder {
   createdBy   User?         @relation("DispenseBy", fields: [createdById], references: [id])
   lines       DispenseLine[]
 
-  @@unique([exhibitionId, beneficiaryId])
+  /// يُسمح بأكثر من صرف لنفس المستفيد (صرف استثنائي لاحق) — التاريخ تراكمي
+  @@index([exhibitionId, beneficiaryId])
   @@index([exhibitionId, createdAt])
 }
 

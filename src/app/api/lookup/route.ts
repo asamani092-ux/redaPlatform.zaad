@@ -84,25 +84,23 @@ export async function GET(req: NextRequest) {
       },
     },
   });
-  const dispense = await prisma.dispenseOrder.findUnique({
-    where: {
-      exhibitionId_beneficiaryId: {
-        exhibitionId: exhibition.id,
-        beneficiaryId: beneficiary.id,
-      },
-    },
+  const dispenseOrders = await prisma.dispenseOrder.findMany({
+    where: { exhibitionId: exhibition.id, beneficiaryId: beneficiary.id },
+    orderBy: { createdAt: "desc" },
   });
+  const latestDispense = dispenseOrders[0] ?? null;
+  const previousPiecesTotal = dispenseOrders.reduce((s, o) => s + o.piecesCount, 0);
 
   const status = resolveStatus({
     invited: invite?.invited,
     attendanceType: attendance?.type ?? null,
-    received: !!dispense,
+    received: dispenseOrders.length > 0,
   });
 
   const base = exhibition.settings?.baseEntitlement ?? 1;
   const deps = beneficiary.dependentsCount ?? 0;
   const effective = effectiveEntitlement(base, deps);
-  const override = dispense?.entitledOverride ?? null;
+  const override = latestDispense?.entitledOverride ?? null;
 
   return NextResponse.json({
     exhibition: { id: exhibition.id, name: exhibition.name },
@@ -111,7 +109,7 @@ export async function GET(req: NextRequest) {
     effectiveEntitlement: effectiveEntitlement(base, deps, override),
     entitledPieces: effectiveEntitlement(base, deps, override),
     entitledOverride: override,
-    overrideReason: dispense?.overrideReason ?? null,
+    overrideReason: latestDispense?.overrideReason ?? null,
     beneficiary: {
       id: beneficiary.id,
       name: beneficiary.name,
@@ -126,7 +124,9 @@ export async function GET(req: NextRequest) {
     attendance: attendance
       ? { type: attendance.type, checkedInAt: attendance.checkedInAt, exceptionReason: attendance.exceptionReason }
       : null,
-    dispensed: !!dispense,
+    dispensed: dispenseOrders.length > 0,
+    dispenseCount: dispenseOrders.length,
+    previousPiecesTotal,
     status,
     statusLabel: STATUS_LABELS[status],
     computedEntitlement: effective,
