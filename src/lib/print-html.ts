@@ -50,7 +50,10 @@ export function buildPrintDocument(opts: {
   tr:nth-child(even) td { background: #fbf9f6; }
   td.ltr { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; }
   .foot { margin-top: 22px; padding-top: 8px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; }
-  @media print { body { padding: 10mm; } .no-print { display: none; } }
+  @media print {
+    body { padding: 10mm; }
+    .no-print { display: none !important; }
+  }
   .page-break { page-break-after: always; }
 </style>
 </head><body>

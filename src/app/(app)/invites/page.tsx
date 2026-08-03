@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 
 type Row = {
@@ -13,8 +13,9 @@ type Row = {
 };
 
 /**
- * الدعوات = إنشاء رمز QR + إرساله واتساباً. لا مسار «دعوة صامتة».
- * Time: O(n) على المحددين عند الإرسال.
+ * الدعوات = إنشاء رمز QR + إرساله واتساباً.
+ * الطباعة = قائمة المدعوين فقط مع QR بهوية المنصة.
+ * Time: O(n) على المحددين / المدعوين.
  */
 export default function InvitesPage() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -22,6 +23,8 @@ export default function InvitesPage() {
   const [msg, setMsg] = useState("");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  /** اختيار للدعوة | عرض المدعوين فقط (للطباعة) */
+  const [view, setView] = useState<"pick" | "invited">("pick");
 
   async function load() {
     const res = await fetch(`/api/beneficiaries?q=${encodeURIComponent(q)}`);
@@ -33,6 +36,9 @@ export default function InvitesPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const invitedRows = useMemo(() => rows.filter((r) => !!r.qrToken), [rows]);
+  const visibleRows = view === "invited" ? invitedRows : rows;
 
   const selectedIds = Object.entries(selected)
     .filter(([, v]) => v)
@@ -61,23 +67,44 @@ export default function InvitesPage() {
     if (res.ok) {
       setSelected({});
       load();
+      setView("invited");
     }
+  }
+
+  function printInvited() {
+    if (!invitedRows.length) {
+      setMsg("لا يوجد مدعوون للطباعة بعد");
+      return;
+    }
+    window.open("/api/invites/print", "_blank", "noopener,noreferrer");
   }
 
   return (
     <div className="page-stack">
       <PageHeader
         title="الدعوات الجماعية"
-        description="تحديد المستفيدين ثم إرسال الدعوة مع رمز QR عبر واتساب — هذا هو مسار الدعوة الوحيد"
+        description="دعوة عبر واتساب مع QR — الطباعة للمستدعَين فقط بهوية المنصة"
         actions={
-          <button
-            className="btn-primary"
-            type="button"
-            disabled={busy || !selectedIds.length}
-            onClick={inviteAndSend}
-          >
-            {busy ? "جاري الإرسال…" : `دعوة وإرسال QR واتساب (${selectedIds.length})`}
-          </button>
+          <>
+            {view === "pick" ? (
+              <button
+                className="btn-primary"
+                type="button"
+                disabled={busy || !selectedIds.length}
+                onClick={inviteAndSend}
+              >
+                {busy ? "جاري الإرسال…" : `دعوة وإرسال QR واتساب (${selectedIds.length})`}
+              </button>
+            ) : null}
+            <button
+              className="btn-secondary"
+              type="button"
+              disabled={!invitedRows.length}
+              onClick={printInvited}
+            >
+              طباعة قائمة المدعوين ({invitedRows.length})
+            </button>
+          </>
         }
       />
       {msg ? <p className="msg">{msg}</p> : null}
@@ -93,25 +120,45 @@ export default function InvitesPage() {
           <button className="btn-secondary" type="button" onClick={load}>
             تحديث
           </button>
+          <button
+            type="button"
+            className={view === "pick" ? "btn-primary" : "btn-secondary"}
+            onClick={() => setView("pick")}
+          >
+            اختيار للدعوة
+          </button>
+          <button
+            type="button"
+            className={view === "invited" ? "btn-primary" : "btn-secondary"}
+            onClick={() => setView("invited")}
+          >
+            المدعوون فقط ({invitedRows.length})
+          </button>
         </div>
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">المستفيدون</h2>
+        <h2 className="panel-title">
+          {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
+        </h2>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    onChange={(e) => {
-                      const next: Record<string, boolean> = {};
-                      if (e.target.checked) rows.forEach((r) => (next[r.id] = true));
-                      setSelected(next);
-                    }}
-                  />
-                </th>
+                {view === "pick" ? (
+                  <th>
+                    <input
+                      type="checkbox"
+                      onChange={(e) => {
+                        const next: Record<string, boolean> = {};
+                        if (e.target.checked) rows.forEach((r) => (next[r.id] = true));
+                        setSelected(next);
+                      }}
+                    />
+                  </th>
+                ) : (
+                  <th>#</th>
+                )}
                 <th>الاسم</th>
                 <th>الهوية</th>
                 <th>الجوال</th>
@@ -120,15 +167,21 @@ export default function InvitesPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {visibleRows.map((r, idx) => (
                 <tr key={r.id}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={!!selected[r.id]}
-                      onChange={(e) => setSelected((s) => ({ ...s, [r.id]: e.target.checked }))}
-                    />
-                  </td>
+                  {view === "pick" ? (
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={!!selected[r.id]}
+                        onChange={(e) =>
+                          setSelected((s) => ({ ...s, [r.id]: e.target.checked }))
+                        }
+                      />
+                    </td>
+                  ) : (
+                    <td>{idx + 1}</td>
+                  )}
                   <td>{r.name}</td>
                   <td dir="ltr">{r.nationalId}</td>
                   <td dir="ltr">{r.mobile}</td>
@@ -145,10 +198,10 @@ export default function InvitesPage() {
                   </td>
                 </tr>
               ))}
-              {!rows.length ? (
+              {!visibleRows.length ? (
                 <tr>
                   <td colSpan={6} className="empty">
-                    لا توجد بيانات
+                    {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
                   </td>
                 </tr>
               ) : null}
