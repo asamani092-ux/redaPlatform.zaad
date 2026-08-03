@@ -168,11 +168,16 @@ export default function BeneficiariesPage() {
         <input name="name" className="input-field" required defaultValue={b?.name ?? ""} />
       </div>
       <div>
-        <label className="label-field">رقم الهوية</label>
+        <label className="label-field">رقم الهوية (10–14 رقماً)</label>
         <input
           name="nationalId"
           className="input-field"
           dir="ltr"
+          inputMode="numeric"
+          minLength={10}
+          maxLength={14}
+          pattern="\d{10,14}"
+          title="من 10 إلى 14 رقماً"
           required
           defaultValue={b?.nationalId ?? ""}
         />
@@ -435,7 +440,7 @@ export default function BeneficiariesPage() {
         }}
       >
         <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
-          حمّل النموذج، عبّئه، ثم ارفعه. الهوية يجب أن تكون 10 أرقام صالحة (تبدأ بـ 1 أو 2)، والجوال
+          حمّل النموذج، عبّئه، ثم ارفعه. الهوية من 10 إلى 14 رقماً، والجوال
           05xxxxxxxx.
         </p>
         <div className="form-actions" style={{ marginBottom: "0.85rem" }}>

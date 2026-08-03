@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
-import { isValidSaudiNationalId, normalizeNationalId } from "@/lib/national-id";
+import { isValidNationalId, normalizeNationalId } from "@/lib/national-id";
 import { writeAuditLog } from "@/lib/audit";
 import { Gender } from "@/generated/prisma/enums";
 import { normalizeDigits } from "@/lib/num";
@@ -134,10 +134,10 @@ export async function POST(req: NextRequest) {
       continue;
     }
 
-    if (!isValidSaudiNationalId(nationalId)) {
+    if (!isValidNationalId(nationalId)) {
       skipped++;
       errors.push(
-        `صف ${r}: رقم الهوية غير صالح (${nationalId || "فارغ"}) — يجب 10 أرقام تبدأ بـ 1 أو 2 وتمر بخوارزمية التحقق`,
+        `صف ${r}: رقم الهوية غير صالح (${nationalId || "فارغ"}) — يجب من 10 إلى 14 رقماً`,
       );
       continue;
     }

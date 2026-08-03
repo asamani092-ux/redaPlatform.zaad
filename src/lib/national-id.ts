@@ -1,21 +1,25 @@
-/** تحقق هوية سعودية: 10 أرقام + خوارزمية Luhn المعدّلة — O(1) زمن ومساحة */
-export function isValidSaudiNationalId(raw: string): boolean {
-  const id = raw.trim();
-  if (!/^[12]\d{9}$/.test(id)) return false;
-
-  const digits = id.split("").map(Number);
-  let sum = 0;
-  for (let i = 0; i < 10; i++) {
-    if (i % 2 === 0) {
-      const doubled = digits[i]! * 2;
-      sum += Math.floor(doubled / 10) + (doubled % 10);
-    } else {
-      sum += digits[i]!;
-    }
-  }
-  return sum % 10 === 0;
-}
-
+/**
+ * تطبيع رقم الهوية: أرقام عربية/فارسية → لاتينية، ثم أرقام فقط — O(n).
+ */
 export function normalizeNationalId(raw: string): string {
-  return raw.replace(/\s+/g, "").trim();
+  return raw
+    .replace(/[\u0660-\u0669]/g, (c) => String(c.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (c) => String(c.charCodeAt(0) - 0x06F0))
+    .replace(/\D/g, "");
 }
+
+/**
+ * رقم الهوية مقبول: من 10 إلى 14 خانة رقمية — O(1).
+ */
+export function isValidNationalId(raw: string): boolean {
+  const id = normalizeNationalId(raw);
+  return /^\d{10,14}$/.test(id);
+}
+
+/** توافق خلفي مع الاستدعاءات القديمة */
+export function isValidSaudiNationalId(raw: string): boolean {
+  return isValidNationalId(raw);
+}
+
+export const NATIONAL_ID_ERROR =
+  "رقم الهوية غير صالح — يجب أن يكون من 10 إلى 14 رقماً";

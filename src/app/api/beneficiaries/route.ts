@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
-import { isValidSaudiNationalId, normalizeNationalId } from "@/lib/national-id";
+import {
+  isValidNationalId,
+  NATIONAL_ID_ERROR,
+  normalizeNationalId,
+} from "@/lib/national-id";
 import { writeAuditLog } from "@/lib/audit";
 import { Gender } from "@/generated/prisma/enums";
 import { getActiveExhibition } from "@/lib/exhibition";
@@ -85,8 +89,8 @@ export async function POST(req: NextRequest) {
   }
 
   const nationalId = normalizeNationalId(body.data.nationalId);
-  if (!isValidSaudiNationalId(nationalId)) {
-    return NextResponse.json({ error: "رقم الهوية غير صالح" }, { status: 400 });
+  if (!isValidNationalId(nationalId)) {
+    return NextResponse.json({ error: NATIONAL_ID_ERROR }, { status: 400 });
   }
 
   const existing = await prisma.beneficiary.findUnique({ where: { nationalId } });
