@@ -1,18 +1,23 @@
 /**
  * الاستحقاق المحسوب — O(1) زمن ومكان.
- * computed = MAX(base, dependents) دون استثناء.
+ * الكامل = الأساسي + (عدد التابعين × استحقاق التابع)
+ * الاستثناء (entitledOverride) يستبدل المحسوب إن وُجد.
  */
 export function effectiveEntitlement(
   baseEntitlement: number,
   dependentsCount: number,
+  dependentsEntitlement: number = 0,
   entitledOverride?: number | null,
 ): number {
   if (entitledOverride != null && Number.isFinite(entitledOverride)) {
     return entitledOverride;
   }
-  const base = Number.isFinite(baseEntitlement) ? baseEntitlement : 1;
-  const deps = Number.isFinite(dependentsCount) ? dependentsCount : 0;
-  return Math.max(base, deps);
+  const base = Number.isFinite(baseEntitlement) ? Math.max(0, Math.floor(baseEntitlement)) : 1;
+  const deps = Number.isFinite(dependentsCount) ? Math.max(0, Math.floor(dependentsCount)) : 0;
+  const perDep = Number.isFinite(dependentsEntitlement)
+    ? Math.max(0, Math.floor(dependentsEntitlement))
+    : 0;
+  return base + deps * perDep;
 }
 
 /** قطع إضافية فوق الاستحقاق المحسوب — O(1) */

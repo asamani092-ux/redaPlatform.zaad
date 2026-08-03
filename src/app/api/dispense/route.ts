@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
   }
   const q = req.nextUrl.searchParams.get("q")?.trim();
   const base = exhibition.settings?.baseEntitlement ?? 1;
+  const perDep = exhibition.settings?.dependentsEntitlement ?? 0;
 
   if (q) {
     const beneficiary = await prisma.beneficiary.findFirst({
@@ -61,10 +62,11 @@ export async function GET(req: NextRequest) {
       },
     });
     const deps = beneficiary?.dependentsCount ?? 0;
-    const effective = effectiveEntitlement(base, deps);
+    const effective = effectiveEntitlement(base, deps, perDep);
     return NextResponse.json({
       beneficiary,
       baseEntitlement: base,
+      dependentsEntitlement: perDep,
       dependentsCount: deps,
       effectiveEntitlement: effective,
       entitledPieces: effective,
@@ -86,6 +88,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     recent,
     baseEntitlement: base,
+    dependentsEntitlement: perDep,
     entitledPieces: base,
     inventorySchema: parseInventorySchema(exhibition.settings?.inventorySchemaJson),
     items: items.map((i) => ({
@@ -177,8 +180,9 @@ export async function POST(req: NextRequest) {
   }
 
   const base = settings.baseEntitlement;
+  const perDep = settings.dependentsEntitlement ?? 0;
   const deps = beneficiary.dependentsCount;
-  const computed = effectiveEntitlement(base, deps);
+  const computed = effectiveEntitlement(base, deps, perDep);
   let entitled = computed;
   let entitledOverride: number | null = null;
   let overrideReason: string | null = null;
@@ -280,6 +284,7 @@ export async function POST(req: NextRequest) {
         before: {
           effectiveEntitlement: computed,
           baseEntitlement: base,
+          dependentsEntitlement: perDep,
           dependentsCount: deps,
         },
         after: {
@@ -299,6 +304,7 @@ export async function POST(req: NextRequest) {
       meta: {
         effectiveEntitlement: entitled,
         baseEntitlement: base,
+        dependentsEntitlement: perDep,
         dependentsCount: deps,
         overrideReason,
         isRepeat,

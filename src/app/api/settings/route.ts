@@ -27,6 +27,8 @@ const settingsSchema = z.object({
   baseEntitlement: z.number().int().positive().optional(),
   /** توافق خلفي مع الحقل السابق */
   entitledPieces: z.number().int().positive().optional(),
+  /** قطع لكل تابع — الكامل = الأساسي + التابعون × هذا */
+  dependentsEntitlement: z.number().int().nonnegative().optional(),
   lowStockThreshold: z.number().int().nonnegative().optional(),
   inventorySchema: z.array(schemaField).optional(),
   whatsappInviteTpl: z.string().optional().nullable(),
@@ -146,6 +148,7 @@ export async function PUT(req: NextRequest) {
     where: { exhibitionId: exhibition.id },
     update: {
       baseEntitlement: body.data.baseEntitlement ?? body.data.entitledPieces,
+      dependentsEntitlement: body.data.dependentsEntitlement,
       lowStockThreshold: body.data.lowStockThreshold,
       inventorySchemaJson: schemaPayload
         ? (schemaPayload as unknown as Prisma.InputJsonValue)
@@ -157,6 +160,7 @@ export async function PUT(req: NextRequest) {
     create: {
       exhibitionId: exhibition.id,
       baseEntitlement: body.data.baseEntitlement ?? body.data.entitledPieces ?? 2,
+      dependentsEntitlement: body.data.dependentsEntitlement ?? 0,
       lowStockThreshold: body.data.lowStockThreshold ?? 10,
       inventorySchemaJson: (schemaPayload ?? DEFAULT_INVENTORY_SCHEMA) as unknown as Prisma.InputJsonValue,
       whatsappInviteTpl: body.data.whatsappInviteTpl,

@@ -18,6 +18,7 @@ export default function SettingsPage() {
   const [exhibitionName, setExhibitionName] = useState("");
   const [location, setLocation] = useState("");
   const [baseEntitlement, setBaseEntitlement] = useState("2");
+  const [dependentsEntitlement, setDependentsEntitlement] = useState("0");
   const [lowStockThreshold, setLowStockThreshold] = useState("10");
   const [schema, setSchema] = useState<InventorySchemaField[]>(DEFAULT_INVENTORY_SCHEMA);
   const [associations, setAssociations] = useState<Association[]>([]);
@@ -68,6 +69,7 @@ export default function SettingsPage() {
           const s = j.exhibition.settings;
           if (s) {
             setBaseEntitlement(String(s.baseEntitlement ?? s.entitledPieces ?? 2));
+            setDependentsEntitlement(String(s.dependentsEntitlement ?? 0));
             setLowStockThreshold(String(s.lowStockThreshold ?? 10));
             if (Array.isArray(s.inventorySchemaJson)) setSchema(s.inventorySchemaJson);
             setInviteTpl(s.whatsappInviteTpl ?? "");
@@ -96,6 +98,7 @@ export default function SettingsPage() {
         exhibitionName,
         location,
         baseEntitlement: toIntOrNull(baseEntitlement) ?? undefined,
+        dependentsEntitlement: toIntOrNull(dependentsEntitlement) ?? 0,
         lowStockThreshold: toIntOrNull(lowStockThreshold) ?? undefined,
         inventorySchema: cleanedSchema,
         associations,
@@ -284,6 +287,22 @@ export default function SettingsPage() {
                 value={baseEntitlement}
                 onChange={(e) => setBaseEntitlement(sanitizeNumericInput(e.target.value, false))}
               />
+            </div>
+            <div>
+              <label className="label-field">استحقاق التابعين (قطع لكل تابع)</label>
+              <input
+                className="input-field"
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
+                value={dependentsEntitlement}
+                onChange={(e) =>
+                  setDependentsEntitlement(sanitizeNumericInput(e.target.value, false))
+                }
+              />
+              <p className="page-header__desc" style={{ marginTop: "0.35rem" }}>
+                الكامل = الأساسي + (عدد التابعين × استحقاق التابع)
+              </p>
             </div>
             <div>
               <label className="label-field">عتبة تنبيه النفاد</label>

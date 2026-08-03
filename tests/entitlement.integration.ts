@@ -20,10 +20,11 @@ function assert(cond: unknown, msg: string): asserts cond {
 
 async function main() {
   console.log("=== (a) effectiveEntitlement unit cases ===");
-  assert(effectiveEntitlement(2, 0) === 2, "deps<base → base");
-  assert(effectiveEntitlement(2, 5) === 5, "deps>base → deps");
-  assert(effectiveEntitlement(2, 5, 9) === 9, "override replaces computed");
-  assert(effectiveEntitlement(2, 0, 1) === 1, "override below base still replaces");
+  assert(effectiveEntitlement(2, 0, 1) === 2, "no deps → base only");
+  assert(effectiveEntitlement(2, 5, 1) === 7, "base + deps×per");
+  assert(effectiveEntitlement(2, 5, 0) === 2, "perDep=0 → base only");
+  assert(effectiveEntitlement(2, 5, 1, 9) === 9, "override replaces computed");
+  assert(effectiveEntitlement(2, 0, 1, 1) === 1, "override below base still replaces");
   console.log("OK effectiveEntitlement");
 
   const stamp = Date.now();
@@ -34,6 +35,7 @@ async function main() {
       settings: {
         create: {
           baseEntitlement: 2,
+          dependentsEntitlement: 1,
           lowStockThreshold: 1,
           inventorySchemaJson: DEFAULT_INVENTORY_SCHEMA,
         },
@@ -94,7 +96,7 @@ async function main() {
     },
   });
 
-  console.log("=== (a) DB path: MAX for low/high dependents ===");
+  console.log("=== (a) DB path: base + deps×per for low/high dependents ===");
   const orderLow = await prisma.dispenseOrder.create({
     data: {
       exhibitionId: exhibition.id,
@@ -106,16 +108,17 @@ async function main() {
   });
   assert(orderLow.piecesCount === 2, "low deps capped at base=2");
 
+  // base 2 + 5 deps × 1 = 7
   const orderHigh = await prisma.dispenseOrder.create({
     data: {
       exhibitionId: exhibition.id,
       beneficiaryId: bHigh.id,
-      piecesCount: 5,
+      piecesCount: 7,
       createdById: operator.id,
-      lines: { create: [{ inventoryItemId: item.id, quantity: 5 }] },
+      lines: { create: [{ inventoryItemId: item.id, quantity: 7 }] },
     },
   });
-  assert(orderHigh.piecesCount === 5, "high deps allows 5");
+  assert(orderHigh.piecesCount === 7, "high deps allows base+deps×per=7");
 
   let overComputedRejected = false;
   try {
@@ -123,6 +126,7 @@ async function main() {
       data: {
         exhibitionId: exhibition.id,
         beneficiaryId: bOverride.id,
+        // computed for deps=1: 2+1=3
         piecesCount: 4,
         createdById: operator.id,
       },
@@ -186,8 +190,9 @@ async function main() {
       entityType: "DispenseOrder",
       entityId: overrideOrder.id,
       beforeJson: {
-        effectiveEntitlement: effectiveEntitlement(2, 1),
+        effectiveEntitlement: effectiveEntitlement(2, 1, 1),
         baseEntitlement: 2,
+        dependentsEntitlement: 1,
         dependentsCount: 1,
       },
       afterJson: { effectiveEntitlement: 8, entitledOverride: 8 },
@@ -204,7 +209,7 @@ async function main() {
   const before = audit!.beforeJson as { effectiveEntitlement: number };
   const after = audit!.afterJson as { entitledOverride: number };
   const meta = audit!.metaJson as { reason: string };
-  assert(before.effectiveEntitlement === 2, "audit before computed");
+  assert(before.effectiveEntitlement === 3, "audit before computed (2+1×1)");
   assert(after.entitledOverride === 8, "audit after override");
   assert(meta.reason.includes("عائلة"), "audit reason");
   console.log("OK override + audit");

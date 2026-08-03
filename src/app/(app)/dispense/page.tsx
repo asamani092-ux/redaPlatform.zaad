@@ -34,6 +34,7 @@ type Lookup = {
   previousPiecesTotal?: number;
   entitledPieces: number;
   baseEntitlement?: number;
+  dependentsEntitlement?: number;
   dependentsCount?: number;
   computedEntitlement?: number;
   effectiveEntitlement?: number;
@@ -221,8 +222,10 @@ export default function DispensePage() {
                   الاستحقاق الفعلي: {effective}
                 </span>
                 <span className="badge badge-muted">
-                  أساسي: {lookup.baseEntitlement ?? "—"} / تابعون:{" "}
-                  {lookup.dependentsCount ?? lookup.beneficiary.dependentsCount ?? 0}
+                  أساسي: {lookup.baseEntitlement ?? "—"} + تابعون:{" "}
+                  {lookup.dependentsCount ?? lookup.beneficiary.dependentsCount ?? 0} ×{" "}
+                  {lookup.dependentsEntitlement ?? 0} ={" "}
+                  {lookup.computedEntitlement ?? lookup.entitledPieces ?? "—"}
                 </span>
                 {lookup.entitledOverride != null ? (
                   <span className="badge badge-warning">

@@ -98,16 +98,18 @@ export async function GET(req: NextRequest) {
   });
 
   const base = exhibition.settings?.baseEntitlement ?? 1;
+  const perDep = exhibition.settings?.dependentsEntitlement ?? 0;
   const deps = beneficiary.dependentsCount ?? 0;
-  const effective = effectiveEntitlement(base, deps);
+  const effective = effectiveEntitlement(base, deps, perDep);
   const override = latestDispense?.entitledOverride ?? null;
 
   return NextResponse.json({
     exhibition: { id: exhibition.id, name: exhibition.name },
     baseEntitlement: base,
+    dependentsEntitlement: perDep,
     dependentsCount: deps,
-    effectiveEntitlement: effectiveEntitlement(base, deps, override),
-    entitledPieces: effectiveEntitlement(base, deps, override),
+    effectiveEntitlement: effectiveEntitlement(base, deps, perDep, override),
+    entitledPieces: effectiveEntitlement(base, deps, perDep, override),
     entitledOverride: override,
     overrideReason: latestDispense?.overrideReason ?? null,
     beneficiary: {
