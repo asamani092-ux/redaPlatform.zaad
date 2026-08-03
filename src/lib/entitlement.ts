@@ -6,7 +6,7 @@
 export function effectiveEntitlement(
   baseEntitlement: number,
   dependentsCount: number,
-  dependentsEntitlement: number = 0,
+  dependentsEntitlement: number = 1,
   entitledOverride?: number | null,
 ): number {
   if (entitledOverride != null && Number.isFinite(entitledOverride)) {

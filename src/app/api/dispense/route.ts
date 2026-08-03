@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   }
   const q = req.nextUrl.searchParams.get("q")?.trim();
   const base = exhibition.settings?.baseEntitlement ?? 1;
-  const perDep = exhibition.settings?.dependentsEntitlement ?? 0;
+  const perDep = exhibition.settings?.dependentsEntitlement ?? 1;
 
   if (q) {
     const beneficiary = await prisma.beneficiary.findFirst({
@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
   }
 
   const base = settings.baseEntitlement;
-  const perDep = settings.dependentsEntitlement ?? 0;
+  const perDep = settings.dependentsEntitlement ?? 1;
   const deps = beneficiary.dependentsCount;
   const computed = effectiveEntitlement(base, deps, perDep);
   let entitled = computed;

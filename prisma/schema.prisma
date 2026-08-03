@@ -144,8 +144,8 @@ model ExhibitionSettings {
   exhibitionId         String   @unique
   /// الاستحقاق الأساسي لكل معرض (قابل للتعديل من الإعدادات)
   baseEntitlement      Int      @default(1)
-  /// استحقاق كل تابع (قطعة) — الكامل = الأساسي + التابعون × هذا الحقل
-  dependentsEntitlement Int     @default(0)
+  /// استحقاق كل تابع (قطعة) — الكامل = الأساسي + التابعون × هذا الحقل (افتراضي: وحدة واحدة)
+  dependentsEntitlement Int     @default(1)
   lowStockThreshold    Int      @default(10)
   /// مخطط سمات المخزون: [{key,label,options:string[]}] مثل نوع/صنف/لون/وحدة
   inventorySchemaJson  Json

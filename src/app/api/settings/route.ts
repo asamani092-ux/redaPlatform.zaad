@@ -160,7 +160,7 @@ export async function PUT(req: NextRequest) {
     create: {
       exhibitionId: exhibition.id,
       baseEntitlement: body.data.baseEntitlement ?? body.data.entitledPieces ?? 2,
-      dependentsEntitlement: body.data.dependentsEntitlement ?? 0,
+      dependentsEntitlement: body.data.dependentsEntitlement ?? 1,
       lowStockThreshold: body.data.lowStockThreshold ?? 10,
       inventorySchemaJson: (schemaPayload ?? DEFAULT_INVENTORY_SCHEMA) as unknown as Prisma.InputJsonValue,
       whatsappInviteTpl: body.data.whatsappInviteTpl,

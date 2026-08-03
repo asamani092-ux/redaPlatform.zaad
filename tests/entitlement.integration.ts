@@ -20,7 +20,8 @@ function assert(cond: unknown, msg: string): asserts cond {
 
 async function main() {
   console.log("=== (a) effectiveEntitlement unit cases ===");
-  assert(effectiveEntitlement(2, 0, 1) === 2, "no deps → base only");
+  assert(effectiveEntitlement(2, 0) === 2, "no deps → base only (default perDep=1)");
+  assert(effectiveEntitlement(2, 3) === 5, "base + 1 per dependent");
   assert(effectiveEntitlement(2, 5, 1) === 7, "base + deps×per");
   assert(effectiveEntitlement(2, 5, 0) === 2, "perDep=0 → base only");
   assert(effectiveEntitlement(2, 5, 1, 9) === 9, "override replaces computed");

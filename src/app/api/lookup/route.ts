@@ -98,19 +98,21 @@ export async function GET(req: NextRequest) {
   });
 
   const base = exhibition.settings?.baseEntitlement ?? 1;
-  const perDep = exhibition.settings?.dependentsEntitlement ?? 0;
+  // وحدة لكل تابع من الإعدادات — الافتراضي 1
+  const perDep = exhibition.settings?.dependentsEntitlement ?? 1;
   const deps = beneficiary.dependentsCount ?? 0;
-  const effective = effectiveEntitlement(base, deps, perDep);
-  const override = latestDispense?.entitledOverride ?? null;
+  // الفعلي المحسوب = الأساسي + التابعون × وحدة التابع (لا يُستبدل باستثناء صرف سابق)
+  const computed = effectiveEntitlement(base, deps, perDep);
+  const latestOverride = latestDispense?.entitledOverride ?? null;
 
   return NextResponse.json({
     exhibition: { id: exhibition.id, name: exhibition.name },
     baseEntitlement: base,
     dependentsEntitlement: perDep,
     dependentsCount: deps,
-    effectiveEntitlement: effectiveEntitlement(base, deps, perDep, override),
-    entitledPieces: effectiveEntitlement(base, deps, perDep, override),
-    entitledOverride: override,
+    effectiveEntitlement: computed,
+    entitledPieces: computed,
+    entitledOverride: latestOverride,
     overrideReason: latestDispense?.overrideReason ?? null,
     beneficiary: {
       id: beneficiary.id,
@@ -131,6 +133,6 @@ export async function GET(req: NextRequest) {
     previousPiecesTotal,
     status,
     statusLabel: STATUS_LABELS[status],
-    computedEntitlement: effective,
+    computedEntitlement: computed,
   });
 }

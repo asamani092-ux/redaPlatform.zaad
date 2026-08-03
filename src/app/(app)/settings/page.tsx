@@ -18,7 +18,7 @@ export default function SettingsPage() {
   const [exhibitionName, setExhibitionName] = useState("");
   const [location, setLocation] = useState("");
   const [baseEntitlement, setBaseEntitlement] = useState("2");
-  const [dependentsEntitlement, setDependentsEntitlement] = useState("0");
+  const [dependentsEntitlement, setDependentsEntitlement] = useState("1");
   const [lowStockThreshold, setLowStockThreshold] = useState("10");
   const [schema, setSchema] = useState<InventorySchemaField[]>(DEFAULT_INVENTORY_SCHEMA);
   const [associations, setAssociations] = useState<Association[]>([]);
@@ -69,7 +69,7 @@ export default function SettingsPage() {
           const s = j.exhibition.settings;
           if (s) {
             setBaseEntitlement(String(s.baseEntitlement ?? s.entitledPieces ?? 2));
-            setDependentsEntitlement(String(s.dependentsEntitlement ?? 0));
+            setDependentsEntitlement(String(s.dependentsEntitlement ?? 1));
             setLowStockThreshold(String(s.lowStockThreshold ?? 10));
             if (Array.isArray(s.inventorySchemaJson)) setSchema(s.inventorySchemaJson);
             setInviteTpl(s.whatsappInviteTpl ?? "");
@@ -98,7 +98,7 @@ export default function SettingsPage() {
         exhibitionName,
         location,
         baseEntitlement: toIntOrNull(baseEntitlement) ?? undefined,
-        dependentsEntitlement: toIntOrNull(dependentsEntitlement) ?? 0,
+        dependentsEntitlement: toIntOrNull(dependentsEntitlement) ?? 1,
         lowStockThreshold: toIntOrNull(lowStockThreshold) ?? undefined,
         inventorySchema: cleanedSchema,
         associations,
@@ -289,7 +289,7 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="label-field">استحقاق التابعين (قطع لكل تابع)</label>
+              <label className="label-field">استحقاق التابعين (وحدة لكل تابع)</label>
               <input
                 className="input-field"
                 type="text"
@@ -301,7 +301,7 @@ export default function SettingsPage() {
                 }
               />
               <p className="page-header__desc" style={{ marginTop: "0.35rem" }}>
-                الكامل = الأساسي + (عدد التابعين × استحقاق التابع)
+                الاستحقاق الفعلي = الأساسي (من الإعدادات) + (عدد التابعين × وحدة لكل تابع)
               </p>
             </div>
             <div>

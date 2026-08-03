@@ -169,9 +169,10 @@ export default function DispensePage() {
     }
   }
 
+  // الفعلي المعروض = المحسوب (أساسي + تابعون × وحدة) — لا يُستبدل باستثناء صرف سابق
   const effective =
-    lookup?.effectiveEntitlement ??
     lookup?.computedEntitlement ??
+    lookup?.effectiveEntitlement ??
     lookup?.entitledPieces ??
     0;
 
