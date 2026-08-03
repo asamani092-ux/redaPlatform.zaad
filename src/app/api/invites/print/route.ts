@@ -44,6 +44,7 @@ export async function GET() {
         <td>${escapeHtml(b.name)}</td>
         <td class="ltr">${escapeHtml(b.nationalId)}</td>
         <td class="ltr">${escapeHtml(b.mobile)}</td>
+        <td class="ltr">${b.dependentsCount ?? 0}</td>
         <td>${escapeHtml(assoc)}</td>
         <td class="qr-cell"><img src="${qrDataUrl}" alt="QR" width="72" height="72" /></td>
       </tr>`;
@@ -74,6 +75,7 @@ export async function GET() {
                   <th>الاسم</th>
                   <th>الهوية</th>
                   <th>الجوال</th>
+                  <th>عدد التابعين</th>
                   <th>الجمعية</th>
                   <th>رمز QR</th>
                 </tr>

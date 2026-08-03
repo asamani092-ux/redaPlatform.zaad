@@ -313,7 +313,7 @@ export default function BeneficiariesPage() {
                 <th>الاسم</th>
                 <th>الهوية</th>
                 <th>الجوال</th>
-                <th>التابعون</th>
+                <th>عدد التابعين</th>
                 <th>الجمعية</th>
                 <th>الحالة</th>
                 {canManage ? <th>إجراءات</th> : null}

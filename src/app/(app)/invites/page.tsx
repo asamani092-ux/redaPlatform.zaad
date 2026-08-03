@@ -8,6 +8,7 @@ type Row = {
   name: string;
   nationalId: string;
   mobile: string;
+  dependentsCount?: number;
   statusLabel?: string;
   qrToken?: string | null;
 };
@@ -162,6 +163,7 @@ export default function InvitesPage() {
                 <th>الاسم</th>
                 <th>الهوية</th>
                 <th>الجوال</th>
+                <th>عدد التابعين</th>
                 <th>الحالة</th>
                 <th>QR</th>
               </tr>
@@ -185,6 +187,7 @@ export default function InvitesPage() {
                   <td>{r.name}</td>
                   <td dir="ltr">{r.nationalId}</td>
                   <td dir="ltr">{r.mobile}</td>
+                  <td>{r.dependentsCount ?? 0}</td>
                   <td>
                     <span className="badge badge-muted">{r.statusLabel}</span>
                   </td>
@@ -200,7 +203,7 @@ export default function InvitesPage() {
               ))}
               {!visibleRows.length ? (
                 <tr>
-                  <td colSpan={6} className="empty">
+                  <td colSpan={7} className="empty">
                     {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
                   </td>
                 </tr>
