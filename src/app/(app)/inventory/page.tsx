@@ -85,6 +85,8 @@ export default function InventoryPage() {
     setMoveOpen(true);
   }
 
+  const moveIsRemove = move.type === "REMOVE";
+
   async function onCreate(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -132,6 +134,10 @@ export default function InventoryPage() {
       setMsg("أدخل كمية صحيحة أكبر من صفر");
       return;
     }
+    if (move.type === "REMOVE" && !move.note.trim()) {
+      setMsg("سبب الحذف مطلوب");
+      return;
+    }
     setBusy(true);
     setMsg("");
     const res = await fetch("/api/inventory", {
@@ -141,12 +147,18 @@ export default function InventoryPage() {
         inventoryItemId: move.inventoryItemId,
         type: move.type,
         quantity: qty,
-        note: move.note || undefined,
+        note: move.note.trim() || undefined,
       }),
     });
     const json = await res.json();
     setBusy(false);
-    setMsg(res.ok ? "تم تحديث الكمية" : json.error || "فشل التحديث");
+    setMsg(
+      res.ok
+        ? move.type === "REMOVE"
+          ? "تم حذف الكمية من المخزون"
+          : "تم تحديث الكمية"
+        : json.error || "فشل التحديث",
+    );
     if (res.ok) {
       setMoveOpen(false);
       await load();
@@ -326,14 +338,14 @@ export default function InventoryPage() {
               </select>
             </div>
             <div>
-              <label className="label-field">النوع</label>
+              <label className="label-field">نوع الحركة</label>
               <select
                 className="input-field"
                 value={move.type}
                 onChange={(e) => setMove((m) => ({ ...m, type: e.target.value }))}
               >
                 <option value="ADD">إضافة</option>
-                <option value="RETURN">استرجاع</option>
+                <option value="REMOVE">حذف</option>
               </select>
             </div>
             <div>
@@ -350,18 +362,26 @@ export default function InventoryPage() {
                 required
               />
             </div>
-            <div>
-              <label className="label-field">ملاحظة</label>
+            <div className="full">
+              <label className="label-field">
+                {moveIsRemove ? "سبب الحذف (إلزامي)" : "ملاحظة (اختياري)"}
+              </label>
               <input
                 className="input-field"
                 value={move.note}
                 onChange={(e) => setMove((m) => ({ ...m, note: e.target.value }))}
+                required={moveIsRemove}
+                placeholder={moveIsRemove ? "مثال: تالف / خطأ إدخال / منتهي الصلاحية" : ""}
               />
             </div>
           </div>
           <div className="form-actions">
-            <button className="btn-primary" type="submit" disabled={busy}>
-              {busy ? "جاري التنفيذ…" : "تنفيذ"}
+            <button
+              className={moveIsRemove ? "btn-danger" : "btn-primary"}
+              type="submit"
+              disabled={busy || (moveIsRemove && !move.note.trim())}
+            >
+              {busy ? "جاري التنفيذ…" : moveIsRemove ? "تأكيد الحذف" : "تنفيذ الإضافة"}
             </button>
             <button type="button" className="btn-secondary" disabled={busy} onClick={() => setMoveOpen(false)}>
               إلغاء

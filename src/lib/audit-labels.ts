@@ -14,6 +14,7 @@ export const ACTION_LABELS: Record<string, string> = {
   INVENTORY_UPDATE: "تعديل صنف",
   STOCK_ADD: "إضافة كمية",
   STOCK_RETURN: "استرجاع كمية",
+  STOCK_REMOVE: "حذف كمية",
   EXHIBITION_CREATE: "إنشاء معرض",
   EXHIBITION_ACTIVATE: "تفعيل معرض",
   UPDATE_SETTINGS: "تحديث الإعدادات",

@@ -18,12 +18,29 @@ const updateItemSchema = z.object({
   attributes: z.record(z.string(), z.union([z.string(), z.number()])),
 });
 
-const movementSchema = z.object({
-  inventoryItemId: z.string(),
-  type: z.enum(["ADD", "RETURN"]),
-  quantity: z.number().positive(),
-  note: z.string().optional(),
-});
+const movementSchema = z
+  .object({
+    inventoryItemId: z.string(),
+    type: z.enum(["ADD", "RETURN", "REMOVE"]),
+    quantity: z.number().positive(),
+    /** سبب الحذف إلزامي عند REMOVE */
+    note: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.type === "REMOVE" && !data.note?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "سبب الحذف مطلوب",
+        path: ["note"],
+      });
+    }
+  });
+
+const MOVEMENT_TYPE_MAP: Record<"ADD" | "RETURN" | "REMOVE", StockMovementType> = {
+  ADD: StockMovementType.ADD,
+  RETURN: StockMovementType.RETURN,
+  REMOVE: StockMovementType.REMOVE,
+};
 
 function validateAttributesAgainstSchema(
   schema: ReturnType<typeof parseInventorySchema>,
@@ -168,9 +185,14 @@ export async function PATCH(req: NextRequest) {
   const authz = await requirePermission("inventory:manage");
   if ("error" in authz) return authz.error;
   const exhibition = await requireActiveExhibition();
-  const body = movementSchema.safeParse(await req.json());
+  const raw = await req.json().catch(() => ({}));
+  const body = movementSchema.safeParse(raw);
   if (!body.success) {
-    return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
+    const msg = body.error.issues[0]?.message;
+    return NextResponse.json(
+      { error: msg === "سبب الحذف مطلوب" ? msg : "بيانات غير صالحة" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -180,10 +202,19 @@ export async function PATCH(req: NextRequest) {
       });
       if (!item) throw new Error("الصنف غير موجود");
 
+      const qty = body.data.quantity;
       if (body.data.type === "ADD" || body.data.type === "RETURN") {
         await tx.inventoryItem.update({
           where: { id: item.id },
-          data: { quantity: { increment: body.data.quantity } },
+          data: { quantity: { increment: qty } },
+        });
+      } else if (body.data.type === "REMOVE") {
+        if (Number(item.quantity) < qty) {
+          throw new Error(`الكمية غير كافية — المتاح ${Number(item.quantity)}`);
+        }
+        await tx.inventoryItem.update({
+          where: { id: item.id },
+          data: { quantity: { decrement: qty } },
         });
       }
 
@@ -191,10 +222,9 @@ export async function PATCH(req: NextRequest) {
         data: {
           exhibitionId: exhibition.id,
           inventoryItemId: item.id,
-          type:
-            body.data.type === "ADD" ? StockMovementType.ADD : StockMovementType.RETURN,
-          quantity: new Prisma.Decimal(body.data.quantity),
-          note: body.data.note,
+          type: MOVEMENT_TYPE_MAP[body.data.type],
+          quantity: new Prisma.Decimal(qty),
+          note: body.data.note?.trim() || null,
           createdById: authz.userId,
         },
       });
@@ -208,7 +238,7 @@ export async function PATCH(req: NextRequest) {
       entityType: "InventoryItem",
       entityId: updated.id,
       after: updated,
-      meta: { quantity: body.data.quantity, note: body.data.note },
+      meta: { quantity: body.data.quantity, note: body.data.note?.trim() || null },
     });
 
     return NextResponse.json({ data: updated });

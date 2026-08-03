@@ -33,6 +33,8 @@ enum StockMovementType {
   ADD
   DISPENSE
   RETURN
+  /// خصم/حذف كمية من المخزون مع سبب
+  REMOVE
 }
 
 enum OutboundMessageType {
