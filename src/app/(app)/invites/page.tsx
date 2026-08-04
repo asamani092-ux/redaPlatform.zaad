@@ -13,22 +13,18 @@ type Row = {
   qrToken?: string | null;
 };
 
-function initialOf(name: string): string {
-  const t = name.trim();
-  return t ? t[0]! : "؟";
-}
-
 /**
- * الدعوات: صف يعرض البيانات الأساسية دائماً، وQR عند التوسيع.
- * Time: O(n) عرضاً، O(1) لكل توسيع.
+ * الدعوات = إنشاء رمز QR + إرساله واتساباً.
+ * الطباعة = قائمة المدعوين فقط مع QR بهوية المنصة.
+ * العرض: جدول عادي، وعلى الشاشات الصغيرة يتحول إلى صفوف مكدّسة — O(n).
  */
 export default function InvitesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState("");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  /** اختيار للدعوة | عرض المدعوين فقط (للطباعة) */
   const [view, setView] = useState<"pick" | "invited">("pick");
 
   async function load() {
@@ -48,10 +44,6 @@ export default function InvitesPage() {
   const selectedIds = Object.entries(selected)
     .filter(([, v]) => v)
     .map(([id]) => id);
-
-  function toggleExpand(id: string) {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
 
   async function inviteAndSend() {
     if (!selectedIds.length) {
@@ -146,139 +138,85 @@ export default function InvitesPage() {
         </div>
       </section>
 
-      <section className="panel invite-panel">
-        <div className="invite-list__head">
-          <div>
-            <h2 className="panel-title" style={{ margin: 0 }}>
-              {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
-            </h2>
-            <p className="invite-list__hint">
-              {visibleRows.length} سجل — البيانات الأساسية ظاهرة، والضغط يظهر رمز QR
-            </p>
-          </div>
-          {view === "pick" && visibleRows.length ? (
-            <label className="invite-list__select-all">
-              <input
-                type="checkbox"
-                checked={
-                  visibleRows.length > 0 && visibleRows.every((r) => selected[r.id])
-                }
-                onChange={(e) => {
-                  const next: Record<string, boolean> = {};
-                  if (e.target.checked) visibleRows.forEach((r) => (next[r.id] = true));
-                  setSelected(next);
-                }}
-              />
-              تحديد الكل
-            </label>
-          ) : null}
-        </div>
-
-        <ul className="invite-list">
-          {visibleRows.map((r, idx) => {
-            const open = !!expanded[r.id];
-            const checked = !!selected[r.id];
-            return (
-              <li
-                key={r.id}
-                className={`invite-row ${open ? "is-open" : ""} ${checked ? "is-checked" : ""}`}
-              >
-                <div className="invite-row__bar">
+      <section className="panel">
+        <h2 className="panel-title">
+          {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
+        </h2>
+        <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
+          <table>
+            <thead>
+              <tr>
+                {view === "pick" ? (
+                  <th>
+                    <input
+                      type="checkbox"
+                      aria-label="تحديد الكل"
+                      onChange={(e) => {
+                        const next: Record<string, boolean> = {};
+                        if (e.target.checked) visibleRows.forEach((r) => (next[r.id] = true));
+                        setSelected(next);
+                      }}
+                    />
+                  </th>
+                ) : (
+                  <th>#</th>
+                )}
+                <th>الاسم</th>
+                <th>الهوية</th>
+                <th>الجوال</th>
+                <th>عدد التابعين</th>
+                <th>الحالة</th>
+                <th>QR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRows.map((r, idx) => (
+                <tr key={r.id}>
                   {view === "pick" ? (
-                    <label
-                      className="invite-row__check"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <td data-label="اختيار">
                       <input
                         type="checkbox"
-                        checked={checked}
+                        checked={!!selected[r.id]}
                         onChange={(e) =>
                           setSelected((s) => ({ ...s, [r.id]: e.target.checked }))
                         }
                         aria-label={`اختيار ${r.name}`}
                       />
-                    </label>
+                    </td>
                   ) : (
-                    <span className="invite-row__num">{idx + 1}</span>
+                    <td data-label="#">{idx + 1}</td>
                   )}
-
-                  <button
-                    type="button"
-                    className="invite-row__hit"
-                    aria-expanded={open}
-                    onClick={() => toggleExpand(r.id)}
-                  >
-                    <span className="invite-row__avatar" aria-hidden>
-                      {initialOf(r.name)}
-                    </span>
-
-                    <span className="invite-row__body">
-                      <span className="invite-row__top">
-                        <span className="invite-row__name">{r.name}</span>
-                        {r.statusLabel ? (
-                          <span className="invite-row__status">{r.statusLabel}</span>
-                        ) : null}
-                      </span>
-
-                      <span className="invite-row__meta" aria-label="بيانات المستفيد">
-                        <span className="invite-row__meta-item">
-                          <span className="invite-row__meta-k">الجوال</span>
-                          <span className="invite-row__meta-v" dir="ltr">
-                            {r.mobile}
-                          </span>
-                        </span>
-                        <span className="invite-row__meta-item">
-                          <span className="invite-row__meta-k">الهوية</span>
-                          <span className="invite-row__meta-v" dir="ltr">
-                            {r.nationalId}
-                          </span>
-                        </span>
-                        <span className="invite-row__meta-item">
-                          <span className="invite-row__meta-k">التابعون</span>
-                          <span className="invite-row__meta-v">{r.dependentsCount ?? 0}</span>
-                        </span>
-                      </span>
-                    </span>
-
-                    <span className="invite-row__action">
-                      {open ? "إخفاء QR" : "عرض QR"}
-                      <span className="invite-row__chevron" aria-hidden />
-                    </span>
-                  </button>
-                </div>
-
-                {open ? (
-                  <div className="invite-row__panel">
-                    <div className="invite-row__qr-box">
-                      {r.qrToken ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={`/api/qr/${r.qrToken}`}
-                          alt={`رمز QR لـ ${r.name}`}
-                          width={112}
-                          height={112}
-                        />
-                      ) : (
-                        <span className="invite-row__qr-empty">لا يوجد رمز QR بعد — أرسل الدعوة أولاً</span>
-                      )}
-                    </div>
-                    <p className="invite-row__qr-note">
-                      {r.qrToken
-                        ? "رمز الدعوة جاهز للمسح أو الطباعة من قائمة المدعوين"
-                        : "بعد الدعوة عبر واتساب سيظهر الرمز هنا"}
-                    </p>
-                  </div>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-
-        {!visibleRows.length ? (
-          <p className="empty">
-            {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
-          </p>
-        ) : null}
+                  <td data-label="الاسم">{r.name}</td>
+                  <td data-label="الهوية" dir="ltr">
+                    {r.nationalId}
+                  </td>
+                  <td data-label="الجوال" dir="ltr">
+                    {r.mobile}
+                  </td>
+                  <td data-label="عدد التابعين">{r.dependentsCount ?? 0}</td>
+                  <td data-label="الحالة">
+                    <span className="badge badge-muted">{r.statusLabel ?? "—"}</span>
+                  </td>
+                  <td data-label="QR">
+                    {r.qrToken ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={`/api/qr/${r.qrToken}`} alt={`QR ${r.name}`} width={52} height={52} />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {!visibleRows.length ? (
+                <tr>
+                  <td colSpan={7} className="empty">
+                    {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );
