@@ -216,7 +216,7 @@ export default function AttendancePage() {
 
       <section className="panel">
         <h2 className="panel-title">آخر التسجيلات</h2>
-        <div className="table-wrap">
+        <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
           <table>
             <thead>
               <tr>
@@ -229,10 +229,14 @@ export default function AttendancePage() {
             <tbody>
               {recent.map((r) => (
                 <tr key={r.id}>
-                  <td>{r.beneficiary.name}</td>
-                  <td dir="ltr">{r.beneficiary.nationalId}</td>
-                  <td>{r.type === "EXCEPTION" ? `استثناء: ${r.exceptionReason}` : "عادي"}</td>
-                  <td>{new Date(r.checkedInAt).toLocaleString("ar-SA")}</td>
+                  <td data-label="الاسم">{r.beneficiary.name}</td>
+                  <td data-label="الهوية" dir="ltr">
+                    {r.beneficiary.nationalId}
+                  </td>
+                  <td data-label="النوع">
+                    {r.type === "EXCEPTION" ? `استثناء: ${r.exceptionReason}` : "عادي"}
+                  </td>
+                  <td data-label="الوقت">{new Date(r.checkedInAt).toLocaleString("ar-SA")}</td>
                 </tr>
               ))}
             </tbody>

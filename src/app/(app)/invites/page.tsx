@@ -142,7 +142,7 @@ export default function InvitesPage() {
         <h2 className="panel-title">
           {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
         </h2>
-        <div className="table-wrap">
+        <div className="table-wrap table-wrap--stack">
           <table>
             <thead>
               <tr>
@@ -172,7 +172,7 @@ export default function InvitesPage() {
               {visibleRows.map((r, idx) => (
                 <tr key={r.id}>
                   {view === "pick" ? (
-                    <td>
+                    <td data-label="اختيار">
                       <input
                         type="checkbox"
                         checked={!!selected[r.id]}
@@ -182,16 +182,20 @@ export default function InvitesPage() {
                       />
                     </td>
                   ) : (
-                    <td>{idx + 1}</td>
+                    <td data-label="#">{idx + 1}</td>
                   )}
-                  <td>{r.name}</td>
-                  <td dir="ltr">{r.nationalId}</td>
-                  <td dir="ltr">{r.mobile}</td>
-                  <td>{r.dependentsCount ?? 0}</td>
-                  <td>
+                  <td data-label="الاسم">{r.name}</td>
+                  <td data-label="الهوية" dir="ltr">
+                    {r.nationalId}
+                  </td>
+                  <td data-label="الجوال" dir="ltr">
+                    {r.mobile}
+                  </td>
+                  <td data-label="عدد التابعين">{r.dependentsCount ?? 0}</td>
+                  <td data-label="الحالة">
                     <span className="badge badge-muted">{r.statusLabel}</span>
                   </td>
-                  <td>
+                  <td data-label="QR">
                     {r.qrToken ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={`/api/qr/${r.qrToken}`} alt="QR" width={52} height={52} />

@@ -144,7 +144,7 @@ export default function UsersPage() {
 
       <section className="panel">
         <h2 className="panel-title">الحسابات</h2>
-        <div className="table-wrap">
+        <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
           <table>
             <thead>
               <tr>
@@ -158,15 +158,17 @@ export default function UsersPage() {
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
-                  <td>{u.name}</td>
-                  <td dir="ltr">{u.mobile}</td>
-                  <td>{ROLE_LABELS[u.role]}</td>
-                  <td>
+                  <td data-label="الاسم">{u.name}</td>
+                  <td data-label="الجوال" dir="ltr">
+                    {u.mobile}
+                  </td>
+                  <td data-label="الدور">{ROLE_LABELS[u.role]}</td>
+                  <td data-label="الحالة">
                     <span className={`badge ${u.active ? "badge-success" : "badge-danger"}`}>
                       {u.active ? "نشط" : "موقوف"}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="إجراءات">
                     <div className="row-actions">
                       <button type="button" className="btn-secondary" onClick={() => setEditing(u)}>
                         تعديل

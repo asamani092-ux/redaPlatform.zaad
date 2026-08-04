@@ -92,7 +92,7 @@ export default function ExhibitionsPage() {
       {msg ? <p className="msg">{msg}</p> : null}
 
       <section className="panel">
-        <div className="table-wrap">
+        <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
           <table>
             <thead>
               <tr>
@@ -116,15 +116,17 @@ export default function ExhibitionsPage() {
                 ].join(" ← ");
                 return (
                   <tr key={r.id}>
-                    <td>{r.name}</td>
-                    <td>{r.location || "—"}</td>
-                    <td dir="ltr">{period}</td>
-                    <td>
+                    <td data-label="الاسم">{r.name}</td>
+                    <td data-label="الموقع">{r.location || "—"}</td>
+                    <td data-label="الفترة" dir="ltr">
+                      {period}
+                    </td>
+                    <td data-label="الحالة">
                       <span className={`badge ${statusBadgeClass(status)}`}>
                         {EXHIBITION_STATUS_LABELS[status]}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="إجراء">
                       {r.active ? (
                         "—"
                       ) : (

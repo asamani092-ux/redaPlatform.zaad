@@ -34,7 +34,7 @@ export default function AuditPage() {
         }
       />
       <section className="panel">
-        <div className="table-wrap">
+        <div className="table-wrap table-wrap--stack">
           <table>
             <thead>
               <tr>
@@ -48,11 +48,11 @@ export default function AuditPage() {
             <tbody>
               {logs.map((l) => (
                 <tr key={l.id}>
-                  <td>{new Date(l.createdAt).toLocaleString("ar-SA")}</td>
-                  <td>{l.user?.name ?? "—"}</td>
-                  <td>{actionLabel(l.action)}</td>
-                  <td>{entityLabel(l.entityType)}</td>
-                  <td dir="ltr" style={{ fontSize: "0.78rem" }}>
+                  <td data-label="الوقت">{new Date(l.createdAt).toLocaleString("ar-SA")}</td>
+                  <td data-label="المستخدم">{l.user?.name ?? "—"}</td>
+                  <td data-label="الإجراء">{actionLabel(l.action)}</td>
+                  <td data-label="الكيان">{entityLabel(l.entityType)}</td>
+                  <td data-label="المعرف" dir="ltr" style={{ fontSize: "0.78rem" }}>
                     {l.entityId}
                   </td>
                 </tr>

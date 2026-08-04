@@ -311,7 +311,7 @@ export default function BeneficiariesPage() {
 
       <section className="panel">
         <h2 className="panel-title">القائمة ({rows.length})</h2>
-        <div className="table-wrap">
+        <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
           <table>
             <thead>
               <tr>
@@ -327,16 +327,22 @@ export default function BeneficiariesPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td>{r.name}</td>
-                  <td dir="ltr">{r.nationalId}</td>
-                  <td dir="ltr">{r.mobile}</td>
-                  <td>{r.dependentsCount ?? 0}</td>
-                  <td>{r.association?.name ?? r.associationOther ?? "—"}</td>
-                  <td>
+                  <td data-label="الاسم">{r.name}</td>
+                  <td data-label="الهوية" dir="ltr">
+                    {r.nationalId}
+                  </td>
+                  <td data-label="الجوال" dir="ltr">
+                    {r.mobile}
+                  </td>
+                  <td data-label="عدد التابعين">{r.dependentsCount ?? 0}</td>
+                  <td data-label="الجمعية">
+                    {r.association?.name ?? r.associationOther ?? "—"}
+                  </td>
+                  <td data-label="الحالة">
                     <span className="badge badge-muted">{r.statusLabel}</span>
                   </td>
                   {canManage ? (
-                    <td>
+                    <td data-label="إجراءات">
                       <div className="row-actions">
                         <button
                           type="button"
