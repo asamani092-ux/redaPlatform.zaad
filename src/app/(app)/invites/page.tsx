@@ -16,11 +16,12 @@ type Row = {
 /**
  * الدعوات = إنشاء رمز QR + إرساله واتساباً.
  * الطباعة = قائمة المدعوين فقط مع QR بهوية المنصة.
- * Time: O(n) على المحددين / المدعوين.
+ * البطاقات: اسم + جوال + توسيع التفاصيل — O(n) عرضاً، O(1) لكل توسيع.
  */
 export default function InvitesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState("");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,6 +45,10 @@ export default function InvitesPage() {
   const selectedIds = Object.entries(selected)
     .filter(([, v]) => v)
     .map(([id]) => id);
+
+  function toggleExpand(id: string) {
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
 
   async function inviteAndSend() {
     if (!selectedIds.length) {
@@ -139,81 +144,114 @@ export default function InvitesPage() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">
-          {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
-        </h2>
-        <div className="table-wrap table-wrap--stack">
-          <table>
-            <thead>
-              <tr>
-                {view === "pick" ? (
-                  <th>
-                    <input
-                      type="checkbox"
-                      onChange={(e) => {
-                        const next: Record<string, boolean> = {};
-                        if (e.target.checked) rows.forEach((r) => (next[r.id] = true));
-                        setSelected(next);
-                      }}
-                    />
-                  </th>
-                ) : (
-                  <th>#</th>
-                )}
-                <th>الاسم</th>
-                <th>الهوية</th>
-                <th>الجوال</th>
-                <th>عدد التابعين</th>
-                <th>الحالة</th>
-                <th>QR</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((r, idx) => (
-                <tr key={r.id}>
+        <div className="data-card-list__head">
+          <h2 className="panel-title" style={{ margin: 0 }}>
+            {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
+          </h2>
+          {view === "pick" && visibleRows.length ? (
+            <label className="data-card-list__select-all">
+              <input
+                type="checkbox"
+                checked={
+                  visibleRows.length > 0 && visibleRows.every((r) => selected[r.id])
+                }
+                onChange={(e) => {
+                  const next: Record<string, boolean> = {};
+                  if (e.target.checked) visibleRows.forEach((r) => (next[r.id] = true));
+                  setSelected(next);
+                }}
+              />
+              تحديد الكل
+            </label>
+          ) : null}
+        </div>
+
+        <div className="data-card-list">
+          {visibleRows.map((r, idx) => {
+            const open = !!expanded[r.id];
+            return (
+              <article
+                key={r.id}
+                className={`data-card ${open ? "is-open" : ""}`}
+              >
+                <div className="data-card__main">
                   {view === "pick" ? (
-                    <td data-label="اختيار">
+                    <label className="data-card__check">
                       <input
                         type="checkbox"
                         checked={!!selected[r.id]}
                         onChange={(e) =>
                           setSelected((s) => ({ ...s, [r.id]: e.target.checked }))
                         }
+                        aria-label={`اختيار ${r.name}`}
                       />
-                    </td>
+                    </label>
                   ) : (
-                    <td data-label="#">{idx + 1}</td>
+                    <span className="data-card__index" aria-hidden>
+                      {idx + 1}
+                    </span>
                   )}
-                  <td data-label="الاسم">{r.name}</td>
-                  <td data-label="الهوية" dir="ltr">
-                    {r.nationalId}
-                  </td>
-                  <td data-label="الجوال" dir="ltr">
-                    {r.mobile}
-                  </td>
-                  <td data-label="عدد التابعين">{r.dependentsCount ?? 0}</td>
-                  <td data-label="الحالة">
-                    <span className="badge badge-muted">{r.statusLabel}</span>
-                  </td>
-                  <td data-label="QR">
+
+                  <div className="data-card__identity">
+                    <strong className="data-card__name">{r.name}</strong>
+                    <span className="data-card__mobile" dir="ltr">
+                      {r.mobile}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-secondary data-card__toggle"
+                    aria-expanded={open}
+                    onClick={() => toggleExpand(r.id)}
+                  >
+                    {open ? "إخفاء" : "عرض البيانات"}
+                  </button>
+                </div>
+
+                <div
+                  className="data-card__details"
+                  hidden={!open}
+                >
+                  <div className="data-card__row">
+                    <span className="data-card__label">الهوية</span>
+                    <span className="data-card__value" dir="ltr">
+                      {r.nationalId}
+                    </span>
+                  </div>
+                  <div className="data-card__row">
+                    <span className="data-card__label">عدد التابعين</span>
+                    <span className="data-card__value">{r.dependentsCount ?? 0}</span>
+                  </div>
+                  <div className="data-card__row">
+                    <span className="data-card__label">الحالة</span>
+                    <span className="badge badge-muted">{r.statusLabel ?? "—"}</span>
+                  </div>
+                  <div className="data-card__row data-card__row--qr">
+                    <span className="data-card__label">QR</span>
                     {r.qrToken ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={`/api/qr/${r.qrToken}`} alt="QR" width={52} height={52} />
+                      <img
+                        className="data-card__qr"
+                        src={`/api/qr/${r.qrToken}`}
+                        alt={`رمز QR لـ ${r.name}`}
+                        width={88}
+                        height={88}
+                      />
                     ) : (
-                      "—"
+                      <span className="data-card__value">—</span>
                     )}
-                  </td>
-                </tr>
-              ))}
-              {!visibleRows.length ? (
-                <tr>
-                  <td colSpan={7} className="empty">
-                    {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+
+          {!visibleRows.length ? (
+            <p className="empty">
+              {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
+            </p>
+          ) : null}
         </div>
       </section>
     </div>
