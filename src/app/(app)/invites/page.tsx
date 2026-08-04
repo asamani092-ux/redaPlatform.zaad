@@ -19,7 +19,7 @@ function initialOf(name: string): string {
 }
 
 /**
- * الدعوات: قائمة أفقية مضغوطة (اسم + جوال) مع كشف التفاصيل.
+ * الدعوات: صف يعرض البيانات الأساسية دائماً، وQR عند التوسيع.
  * Time: O(n) عرضاً، O(1) لكل توسيع.
  */
 export default function InvitesPage() {
@@ -153,7 +153,7 @@ export default function InvitesPage() {
               {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
             </h2>
             <p className="invite-list__hint">
-              {visibleRows.length} سجل — اضغط الصف لعرض التفاصيل
+              {visibleRows.length} سجل — البيانات الأساسية ظاهرة، والضغط يظهر رمز QR
             </p>
           </div>
           {view === "pick" && visibleRows.length ? (
@@ -211,48 +211,62 @@ export default function InvitesPage() {
                     <span className="invite-row__avatar" aria-hidden>
                       {initialOf(r.name)}
                     </span>
-                    <span className="invite-row__who">
-                      <span className="invite-row__name">{r.name}</span>
-                      <span className="invite-row__phone" dir="ltr">
-                        {r.mobile}
+
+                    <span className="invite-row__body">
+                      <span className="invite-row__top">
+                        <span className="invite-row__name">{r.name}</span>
+                        {r.statusLabel ? (
+                          <span className="invite-row__status">{r.statusLabel}</span>
+                        ) : null}
+                      </span>
+
+                      <span className="invite-row__meta" aria-label="بيانات المستفيد">
+                        <span className="invite-row__meta-item">
+                          <span className="invite-row__meta-k">الجوال</span>
+                          <span className="invite-row__meta-v" dir="ltr">
+                            {r.mobile}
+                          </span>
+                        </span>
+                        <span className="invite-row__meta-item">
+                          <span className="invite-row__meta-k">الهوية</span>
+                          <span className="invite-row__meta-v" dir="ltr">
+                            {r.nationalId}
+                          </span>
+                        </span>
+                        <span className="invite-row__meta-item">
+                          <span className="invite-row__meta-k">التابعون</span>
+                          <span className="invite-row__meta-v">{r.dependentsCount ?? 0}</span>
+                        </span>
                       </span>
                     </span>
-                    {r.statusLabel ? (
-                      <span className="invite-row__status">{r.statusLabel}</span>
-                    ) : null}
-                    <span className="invite-row__chevron" aria-hidden />
+
+                    <span className="invite-row__action">
+                      {open ? "إخفاء QR" : "عرض QR"}
+                      <span className="invite-row__chevron" aria-hidden />
+                    </span>
                   </button>
                 </div>
 
                 {open ? (
                   <div className="invite-row__panel">
-                    <dl className="invite-meta">
-                      <div>
-                        <dt>الهوية</dt>
-                        <dd dir="ltr">{r.nationalId}</dd>
-                      </div>
-                      <div>
-                        <dt>التابعون</dt>
-                        <dd>{r.dependentsCount ?? 0}</dd>
-                      </div>
-                      <div>
-                        <dt>الحالة</dt>
-                        <dd>{r.statusLabel ?? "—"}</dd>
-                      </div>
-                    </dl>
                     <div className="invite-row__qr-box">
                       {r.qrToken ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={`/api/qr/${r.qrToken}`}
                           alt={`رمز QR لـ ${r.name}`}
-                          width={96}
-                          height={96}
+                          width={112}
+                          height={112}
                         />
                       ) : (
-                        <span className="invite-row__qr-empty">لا يوجد QR</span>
+                        <span className="invite-row__qr-empty">لا يوجد رمز QR بعد — أرسل الدعوة أولاً</span>
                       )}
                     </div>
+                    <p className="invite-row__qr-note">
+                      {r.qrToken
+                        ? "رمز الدعوة جاهز للمسح أو الطباعة من قائمة المدعوين"
+                        : "بعد الدعوة عبر واتساب سيظهر الرمز هنا"}
+                    </p>
                   </div>
                 ) : null}
               </li>

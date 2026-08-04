@@ -1141,6 +1141,58 @@ button {
   color: var(--tmkeen-brand-gray);
 }
 
+.invite-row__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.invite-row__top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.invite-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.85rem;
+}
+
+.invite-row__meta-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.invite-row__meta-k {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+}
+
+.invite-row__meta-v {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #3a3a3a;
+  font-variant-numeric: tabular-nums;
+  unicode-bidi: isolate;
+}
+
+.invite-row__action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+  white-space: nowrap;
+}
+
 .invite-list__select-all {
   display: inline-flex;
   align-items: center;
@@ -1245,13 +1297,6 @@ button {
   font-size: 1rem;
 }
 
-.invite-row__who {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: grid;
-  gap: 0.08rem;
-}
-
 .invite-row__name {
   font-weight: 800;
   font-size: 0.98rem;
@@ -1260,21 +1305,12 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.invite-row__phone {
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: var(--tmkeen-brand-gray);
-  font-variant-numeric: tabular-nums;
-  unicode-bidi: isolate;
-  direction: ltr;
-  text-align: start;
+  min-width: 0;
 }
 
 .invite-row__status {
   flex-shrink: 0;
-  max-width: 7rem;
+  max-width: 7.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1288,26 +1324,23 @@ button {
 
 .invite-row__chevron {
   flex-shrink: 0;
-  width: 0.55rem;
-  height: 0.55rem;
-  border-inline-end: 2px solid var(--tmkeen-brand-gray);
-  border-bottom: 2px solid var(--tmkeen-brand-gray);
+  width: 0.5rem;
+  height: 0.5rem;
+  border-inline-end: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
   transform: rotate(45deg);
   transition: transform 0.2s ease;
-  margin-inline: 0.15rem 0.2rem;
 }
 
 .invite-row.is-open .invite-row__chevron {
   transform: rotate(-135deg);
-  border-color: var(--tmkeen-primary);
 }
 
 .invite-row__panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.85rem;
-  align-items: center;
-  padding: 0.75rem 0.85rem 0.9rem;
+  justify-items: center;
+  gap: 0.55rem;
+  padding: 0.85rem;
   border-top: 1px solid rgba(139, 21, 56, 0.08);
   background: linear-gradient(180deg, rgba(139, 21, 56, 0.03), transparent);
   animation: invite-reveal 0.22s ease;
@@ -1324,41 +1357,9 @@ button {
   }
 }
 
-.invite-meta {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.invite-meta > div {
-  min-width: 0;
-  padding: 0.45rem 0.55rem;
-  border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(139, 21, 56, 0.08);
-}
-
-.invite-meta dt {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: var(--tmkeen-primary);
-}
-
-.invite-meta dd {
-  margin: 0.15rem 0 0;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #3a3a3a;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .invite-row__qr-box {
-  width: 96px;
-  height: 96px;
+  width: 112px;
+  height: 112px;
   border-radius: 0.55rem;
   border: 1px solid rgba(139, 21, 56, 0.14);
   background: #fff;
@@ -1374,32 +1375,42 @@ button {
 }
 
 .invite-row__qr-empty {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--tmkeen-brand-gray);
   text-align: center;
-  padding: 0.35rem;
+  padding: 0.5rem;
+  line-height: 1.4;
+}
+
+.invite-row__qr-note {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--tmkeen-brand-gray);
+  text-align: center;
 }
 
 @media (max-width: 640px) {
-  .invite-row__status {
-    display: none;
+  .invite-row__hit {
+    flex-wrap: wrap;
+    gap: 0.55rem;
   }
 
-  .invite-row__panel {
-    grid-template-columns: 1fr;
-    justify-items: stretch;
+  .invite-row__action {
+    width: 100%;
+    justify-content: center;
+    padding-top: 0.15rem;
+    border-top: 1px dashed rgba(139, 21, 56, 0.12);
   }
 
-  .invite-meta {
-    grid-template-columns: 1fr;
+  .invite-row__meta {
+    gap: 0.35rem 0.65rem;
   }
 
   .invite-row__qr-box {
-    width: 100%;
+    width: min(140px, 56vw);
     height: auto;
     aspect-ratio: 1;
-    max-width: 140px;
-    justify-self: center;
   }
 }
