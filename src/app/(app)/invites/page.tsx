@@ -13,10 +13,14 @@ type Row = {
   qrToken?: string | null;
 };
 
+function initialOf(name: string): string {
+  const t = name.trim();
+  return t ? t[0]! : "؟";
+}
+
 /**
- * الدعوات = إنشاء رمز QR + إرساله واتساباً.
- * الطباعة = قائمة المدعوين فقط مع QR بهوية المنصة.
- * البطاقات: اسم + جوال + توسيع التفاصيل — O(n) عرضاً، O(1) لكل توسيع.
+ * الدعوات: قائمة أفقية مضغوطة (اسم + جوال) مع كشف التفاصيل.
+ * Time: O(n) عرضاً، O(1) لكل توسيع.
  */
 export default function InvitesPage() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -25,7 +29,6 @@ export default function InvitesPage() {
   const [msg, setMsg] = useState("");
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
-  /** اختيار للدعوة | عرض المدعوين فقط (للطباعة) */
   const [view, setView] = useState<"pick" | "invited">("pick");
 
   async function load() {
@@ -143,13 +146,18 @@ export default function InvitesPage() {
         </div>
       </section>
 
-      <section className="panel">
-        <div className="data-card-list__head">
-          <h2 className="panel-title" style={{ margin: 0 }}>
-            {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
-          </h2>
+      <section className="panel invite-panel">
+        <div className="invite-list__head">
+          <div>
+            <h2 className="panel-title" style={{ margin: 0 }}>
+              {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
+            </h2>
+            <p className="invite-list__hint">
+              {visibleRows.length} سجل — اضغط الصف لعرض التفاصيل
+            </p>
+          </div>
           {view === "pick" && visibleRows.length ? (
-            <label className="data-card-list__select-all">
+            <label className="invite-list__select-all">
               <input
                 type="checkbox"
                 checked={
@@ -166,20 +174,24 @@ export default function InvitesPage() {
           ) : null}
         </div>
 
-        <div className="data-card-list">
+        <ul className="invite-list">
           {visibleRows.map((r, idx) => {
             const open = !!expanded[r.id];
+            const checked = !!selected[r.id];
             return (
-              <article
+              <li
                 key={r.id}
-                className={`data-card ${open ? "is-open" : ""}`}
+                className={`invite-row ${open ? "is-open" : ""} ${checked ? "is-checked" : ""}`}
               >
-                <div className="data-card__main">
+                <div className="invite-row__bar">
                   {view === "pick" ? (
-                    <label className="data-card__check">
+                    <label
+                      className="invite-row__check"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <input
                         type="checkbox"
-                        checked={!!selected[r.id]}
+                        checked={checked}
                         onChange={(e) =>
                           setSelected((s) => ({ ...s, [r.id]: e.target.checked }))
                         }
@@ -187,72 +199,72 @@ export default function InvitesPage() {
                       />
                     </label>
                   ) : (
-                    <span className="data-card__index" aria-hidden>
-                      {idx + 1}
-                    </span>
+                    <span className="invite-row__num">{idx + 1}</span>
                   )}
-
-                  <div className="data-card__identity">
-                    <strong className="data-card__name">{r.name}</strong>
-                    <span className="data-card__mobile" dir="ltr">
-                      {r.mobile}
-                    </span>
-                  </div>
 
                   <button
                     type="button"
-                    className="btn-secondary data-card__toggle"
+                    className="invite-row__hit"
                     aria-expanded={open}
                     onClick={() => toggleExpand(r.id)}
                   >
-                    {open ? "إخفاء" : "عرض البيانات"}
+                    <span className="invite-row__avatar" aria-hidden>
+                      {initialOf(r.name)}
+                    </span>
+                    <span className="invite-row__who">
+                      <span className="invite-row__name">{r.name}</span>
+                      <span className="invite-row__phone" dir="ltr">
+                        {r.mobile}
+                      </span>
+                    </span>
+                    {r.statusLabel ? (
+                      <span className="invite-row__status">{r.statusLabel}</span>
+                    ) : null}
+                    <span className="invite-row__chevron" aria-hidden />
                   </button>
                 </div>
 
-                <div
-                  className="data-card__details"
-                  hidden={!open}
-                >
-                  <div className="data-card__row">
-                    <span className="data-card__label">الهوية</span>
-                    <span className="data-card__value" dir="ltr">
-                      {r.nationalId}
-                    </span>
+                {open ? (
+                  <div className="invite-row__panel">
+                    <dl className="invite-meta">
+                      <div>
+                        <dt>الهوية</dt>
+                        <dd dir="ltr">{r.nationalId}</dd>
+                      </div>
+                      <div>
+                        <dt>التابعون</dt>
+                        <dd>{r.dependentsCount ?? 0}</dd>
+                      </div>
+                      <div>
+                        <dt>الحالة</dt>
+                        <dd>{r.statusLabel ?? "—"}</dd>
+                      </div>
+                    </dl>
+                    <div className="invite-row__qr-box">
+                      {r.qrToken ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`/api/qr/${r.qrToken}`}
+                          alt={`رمز QR لـ ${r.name}`}
+                          width={96}
+                          height={96}
+                        />
+                      ) : (
+                        <span className="invite-row__qr-empty">لا يوجد QR</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="data-card__row">
-                    <span className="data-card__label">عدد التابعين</span>
-                    <span className="data-card__value">{r.dependentsCount ?? 0}</span>
-                  </div>
-                  <div className="data-card__row">
-                    <span className="data-card__label">الحالة</span>
-                    <span className="badge badge-muted">{r.statusLabel ?? "—"}</span>
-                  </div>
-                  <div className="data-card__row data-card__row--qr">
-                    <span className="data-card__label">QR</span>
-                    {r.qrToken ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        className="data-card__qr"
-                        src={`/api/qr/${r.qrToken}`}
-                        alt={`رمز QR لـ ${r.name}`}
-                        width={88}
-                        height={88}
-                      />
-                    ) : (
-                      <span className="data-card__value">—</span>
-                    )}
-                  </div>
-                </div>
-              </article>
+                ) : null}
+              </li>
             );
           })}
+        </ul>
 
-          {!visibleRows.length ? (
-            <p className="empty">
-              {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
-            </p>
-          ) : null}
-        </div>
+        {!visibleRows.length ? (
+          <p className="empty">
+            {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
+          </p>
+        ) : null}
       </section>
     </div>
   );
