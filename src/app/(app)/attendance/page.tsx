@@ -30,6 +30,7 @@ export default function AttendancePage() {
   const [count, setCount] = useState(0);
   const [recent, setRecent] = useState<Recent[]>([]);
   const [msg, setMsg] = useState("");
+  const [msgError, setMsgError] = useState(false);
   const [scanOn, setScanOn] = useState(false);
   const [lookup, setLookup] = useState<Lookup | null>(null);
   const [qrToken, setQrToken] = useState("");
@@ -55,6 +56,7 @@ export default function AttendancePage() {
 
   const preview = useCallback(async (params: { qrToken?: string; q?: string }) => {
     setMsg("");
+    setMsgError(false);
     const qs = new URLSearchParams();
     if (params.qrToken) qs.set("qrToken", params.qrToken);
     if (params.q) qs.set("q", params.q);
@@ -63,12 +65,14 @@ export default function AttendancePage() {
     if (!res.ok) {
       setLookup(null);
       setMsg(json.error || "تعذر الجلب");
+      setMsgError(true);
       return;
     }
     setLookup(json);
     setQrToken(json.invite?.qrToken || params.qrToken || "");
     setQ(json.beneficiary.nationalId);
     setNeedsException(!json.invite?.invited);
+    setExceptionReason("");
   }, []);
 
   // الكاميرا تبقى تعمل للمسح المتتابع — لا تُغلق بعد كل قراءة
@@ -80,18 +84,36 @@ export default function AttendancePage() {
     [preview],
   );
 
+  const notInvited = Boolean(lookup && !lookup.invite?.invited);
+  const alreadyHere = Boolean(lookup?.attendance);
+  const exceptionForced = notInvited;
+  const exceptionActive = exceptionForced || needsException;
+  const attendanceBlock = !lookup
+    ? null
+    : alreadyHere
+      ? "سبق تسجيل حضور هذا المستفيد"
+      : exceptionActive && !exceptionReason.trim()
+        ? "سبب الاستثناء مطلوب لغير المدعوين"
+        : null;
+
   async function confirmCheckIn() {
     if (busy || !lookup) return;
+    if (attendanceBlock) {
+      setMsg(attendanceBlock);
+      setMsgError(true);
+      return;
+    }
     setBusy(true);
     setMsg("");
+    setMsgError(false);
     const res = await fetch("/api/attendance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         qrToken: qrToken || undefined,
         beneficiaryId: lookup.beneficiary.id,
-        exception: needsException,
-        exceptionReason: needsException ? exceptionReason : undefined,
+        exception: exceptionActive,
+        exceptionReason: exceptionActive ? exceptionReason : undefined,
       }),
     });
     const json = await res.json();
@@ -99,13 +121,16 @@ export default function AttendancePage() {
     if (res.status === 403) {
       setNeedsException(true);
       setMsg(json.error);
+      setMsgError(true);
       return;
     }
     if (!res.ok) {
       setMsg(json.error || "فشل التسجيل");
+      setMsgError(true);
       return;
     }
     setMsg("تم تسجيل الحضور");
+    setMsgError(false);
     setLookup(null);
     setQrToken("");
     setQ("");
@@ -133,7 +158,7 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {msg ? <p className="msg">{msg}</p> : null}
+      {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
 
       <section className="panel">
         <h2 className="panel-title">المسح / البحث</h2>
@@ -142,6 +167,7 @@ export default function AttendancePage() {
           <input
             className="input-field"
             placeholder="رقم الهوية / الجوال / الاسم"
+            dir="ltr"
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
@@ -184,12 +210,16 @@ export default function AttendancePage() {
               <input
                 id="exception"
                 type="checkbox"
-                checked={needsException}
+                checked={exceptionActive}
+                disabled={exceptionForced || alreadyHere}
                 onChange={(e) => setNeedsException(e.target.checked)}
               />
-              <label htmlFor="exception">تسجيل كاستثناء</label>
+              <label htmlFor="exception">
+                تسجيل كاستثناء
+                {exceptionForced ? " (إلزامي — غير مدعو)" : ""}
+              </label>
             </div>
-            {needsException ? (
+            {exceptionActive ? (
               <div className="full">
                 <label className="label-field">سبب الاستثناء</label>
                 <input
@@ -197,18 +227,21 @@ export default function AttendancePage() {
                   value={exceptionReason}
                   onChange={(e) => setExceptionReason(e.target.value)}
                   required
+                  disabled={alreadyHere}
                 />
               </div>
             ) : null}
           </div>
+          {attendanceBlock ? <p className="msg msg-error">{attendanceBlock}</p> : null}
           <div className="form-actions">
             <button
               type="button"
               className="btn-primary"
-              disabled={busy || !!lookup.attendance}
-              onClick={confirmCheckIn}
+              disabled={busy || Boolean(attendanceBlock)}
+              title={attendanceBlock ?? undefined}
+              onClick={() => void confirmCheckIn()}
             >
-              {busy ? "جاري..." : "تأكيد الحضور"}
+              {busy ? "جاري..." : alreadyHere ? "مسجّل مسبقاً" : "تأكيد الحضور"}
             </button>
           </div>
         </section>
@@ -239,6 +272,13 @@ export default function AttendancePage() {
                   <td data-label="الوقت">{new Date(r.checkedInAt).toLocaleString("ar-SA")}</td>
                 </tr>
               ))}
+              {!recent.length ? (
+                <tr>
+                  <td colSpan={4} className="empty">
+                    لا تسجيلات بعد
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

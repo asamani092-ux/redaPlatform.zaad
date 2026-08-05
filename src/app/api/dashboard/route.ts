@@ -8,7 +8,15 @@ export async function GET() {
   const authz = await requirePermission("dashboard:view");
   if ("error" in authz) return authz.error;
 
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const exhibitionId = exhibition.id;
 
   const [
@@ -50,6 +58,7 @@ export async function GET() {
 
   const topItems = await prisma.dispenseLine.groupBy({
     by: ["inventoryItemId"],
+    where: { dispenseOrder: { exhibitionId } },
     _sum: { quantity: true },
     orderBy: { _sum: { quantity: "desc" } },
     take: 8,

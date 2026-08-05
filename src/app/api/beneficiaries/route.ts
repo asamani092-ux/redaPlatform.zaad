@@ -7,6 +7,7 @@ import {
   NATIONAL_ID_ERROR,
   normalizeNationalId,
 } from "@/lib/national-id";
+import { isValidSaudiMobile, MOBILE_ERROR, normalizeMobile } from "@/lib/mobile";
 import { writeAuditLog } from "@/lib/audit";
 import { Gender } from "@/generated/prisma/enums";
 import { getActiveExhibition } from "@/lib/exhibition";
@@ -92,6 +93,10 @@ export async function POST(req: NextRequest) {
   if (!isValidNationalId(nationalId)) {
     return NextResponse.json({ error: NATIONAL_ID_ERROR }, { status: 400 });
   }
+  const mobile = normalizeMobile(body.data.mobile);
+  if (!isValidSaudiMobile(mobile)) {
+    return NextResponse.json({ error: MOBILE_ERROR }, { status: 400 });
+  }
 
   const existing = await prisma.beneficiary.findUnique({ where: { nationalId } });
   if (existing) {
@@ -102,7 +107,7 @@ export async function POST(req: NextRequest) {
     data: {
       name: body.data.name.trim(),
       nationalId,
-      mobile: body.data.mobile.trim(),
+      mobile,
       gender: body.data.gender ? (body.data.gender as Gender) : null,
       neighborhood: body.data.neighborhood || null,
       city: body.data.city || null,

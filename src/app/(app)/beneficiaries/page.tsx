@@ -287,7 +287,11 @@ export default function BeneficiariesPage() {
           ) : null
         }
       />
-      {msg ? <p className="msg">{msg}</p> : null}
+      {msg ? (
+        <p className={`msg ${msg.includes("فشل") || msg.includes("غير") ? "msg-error" : ""}`}>
+          {msg}
+        </p>
+      ) : null}
 
       <section className="panel">
         <div className="toolbar">
@@ -339,7 +343,7 @@ export default function BeneficiariesPage() {
                     {r.association?.name ?? r.associationOther ?? "—"}
                   </td>
                   <td data-label="الحالة">
-                    <span className="badge badge-muted">{r.statusLabel}</span>
+                    <span className="badge badge-muted">{r.statusLabel ?? "—"}</span>
                   </td>
                   {canManage ? (
                     <td data-label="إجراءات">
@@ -378,7 +382,15 @@ export default function BeneficiariesPage() {
         </div>
       </section>
 
-      <Modal open={open} title="إضافة مستفيد" onClose={() => setOpen(false)} wide>
+      <Modal
+        open={open}
+        title="إضافة مستفيد"
+        onClose={() => {
+          setOpen(false);
+          setUseOther(false);
+        }}
+        wide
+      >
         <form onSubmit={onCreate}>
           {formFields(null)}
           <div className="form-actions">

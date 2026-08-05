@@ -22,6 +22,7 @@ export default function InvitesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState("");
+  const [msgError, setMsgError] = useState(false);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   /** اختيار للدعوة | عرض المدعوين فقط (للطباعة) */
@@ -53,6 +54,7 @@ export default function InvitesPage() {
     if (busy) return;
     setBusy(true);
     setMsg("");
+    setMsgError(false);
     const res = await fetch("/api/invites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -60,16 +62,23 @@ export default function InvitesPage() {
     });
     const json = await res.json();
     setBusy(false);
-    setMsg(
-      res.ok
-        ? `تمت دعوة ${json.invited} مستفيد وإرسال رمز QR عبر واتساب`
-        : json.error || "فشلت الدعوة",
-    );
-    if (res.ok) {
-      setSelected({});
-      load();
-      setView("invited");
+    if (!res.ok) {
+      setMsg(json.error || "فشلت الدعوة");
+      setMsgError(true);
+      return;
     }
+    const failed = Number(json.whatsappFailed ?? 0);
+    const stubbed = Number(json.whatsappStubbed ?? 0);
+    const sent = Number(json.whatsappSent ?? 0);
+    let waNote = "";
+    if (failed > 0) waNote = ` — فشل واتساب: ${failed}`;
+    else if (stubbed > 0) waNote = ` — واتساب تجريبي (stub): ${stubbed}`;
+    else if (sent > 0) waNote = ` — أُرسل واتساب: ${sent}`;
+    setMsg(`تمت دعوة ${json.invited} مستفيد${waNote}`);
+    setMsgError(failed > 0);
+    setSelected({});
+    load();
+    setView("invited");
   }
 
   function printInvited() {
@@ -92,6 +101,7 @@ export default function InvitesPage() {
                 className="btn-primary"
                 type="button"
                 disabled={busy || !selectedIds.length}
+                title={!selectedIds.length ? "حدد مستفيدين من الجدول أولاً" : undefined}
                 onClick={inviteAndSend}
               >
                 {busy ? "جاري الإرسال…" : `دعوة وإرسال QR واتساب (${selectedIds.length})`}
@@ -101,6 +111,7 @@ export default function InvitesPage() {
               className="btn-secondary"
               type="button"
               disabled={!invitedRows.length}
+              title={!invitedRows.length ? "لا يوجد مدعوون للطباعة بعد" : undefined}
               onClick={printInvited}
             >
               طباعة قائمة المدعوين ({invitedRows.length})
@@ -108,7 +119,7 @@ export default function InvitesPage() {
           </>
         }
       />
-      {msg ? <p className="msg">{msg}</p> : null}
+      {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
 
       <section className="panel">
         <div className="toolbar">
@@ -117,6 +128,13 @@ export default function InvitesPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="تصفية بالاسم أو الهوية"
+            dir="ltr"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void load();
+              }
+            }}
           />
           <button className="btn-secondary" type="button" onClick={load}>
             تحديث
@@ -142,7 +160,7 @@ export default function InvitesPage() {
         <h2 className="panel-title">
           {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
         </h2>
-        <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
+        <div className="table-wrap table-wrap--stack">
           <table>
             <thead>
               <tr>
@@ -151,6 +169,9 @@ export default function InvitesPage() {
                     <input
                       type="checkbox"
                       aria-label="تحديد الكل"
+                      checked={
+                        visibleRows.length > 0 && visibleRows.every((r) => selected[r.id])
+                      }
                       onChange={(e) => {
                         const next: Record<string, boolean> = {};
                         if (e.target.checked) visibleRows.forEach((r) => (next[r.id] = true));

@@ -59,7 +59,15 @@ function validateAttributesAgainstSchema(
 export async function GET() {
   const authz = await requirePermission("inventory:manage");
   if ("error" in authz) return authz.error;
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const threshold = exhibition.settings?.lowStockThreshold ?? 10;
   const items = await prisma.inventoryItem.findMany({
     where: { exhibitionId: exhibition.id },
@@ -86,7 +94,15 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const authz = await requirePermission("inventory:manage");
   if ("error" in authz) return authz.error;
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const body = createSchema.safeParse(await req.json());
   if (!body.success) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
@@ -184,7 +200,15 @@ export async function PUT(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const authz = await requirePermission("inventory:manage");
   if ("error" in authz) return authz.error;
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const raw = await req.json().catch(() => ({}));
   const body = movementSchema.safeParse(raw);
   if (!body.success) {
@@ -209,13 +233,17 @@ export async function PATCH(req: NextRequest) {
           data: { quantity: { increment: qty } },
         });
       } else if (body.data.type === "REMOVE") {
-        if (Number(item.quantity) < qty) {
-          throw new Error(`الكمية غير كافية — المتاح ${Number(item.quantity)}`);
-        }
-        await tx.inventoryItem.update({
-          where: { id: item.id },
+        const dec = await tx.inventoryItem.updateMany({
+          where: {
+            id: item.id,
+            exhibitionId: exhibition.id,
+            quantity: { gte: qty },
+          },
           data: { quantity: { decrement: qty } },
         });
+        if (dec.count !== 1) {
+          throw new Error(`الكمية غير كافية — المتاح ${Number(item.quantity)}`);
+        }
       }
 
       await tx.stockMovement.create({

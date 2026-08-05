@@ -7,6 +7,7 @@ import {
   NATIONAL_ID_ERROR,
   normalizeNationalId,
 } from "@/lib/national-id";
+import { isValidSaudiMobile, MOBILE_ERROR, normalizeMobile } from "@/lib/mobile";
 import { writeAuditLog } from "@/lib/audit";
 import { Gender } from "@/generated/prisma/enums";
 
@@ -54,12 +55,20 @@ export async function PATCH(
     }
   }
 
+  let mobile = before.mobile;
+  if (body.data.mobile !== undefined) {
+    mobile = normalizeMobile(body.data.mobile);
+    if (!isValidSaudiMobile(mobile)) {
+      return NextResponse.json({ error: MOBILE_ERROR }, { status: 400 });
+    }
+  }
+
   const updated = await prisma.beneficiary.update({
     where: { id },
     data: {
       name: body.data.name?.trim(),
       nationalId,
-      mobile: body.data.mobile?.trim(),
+      mobile,
       gender:
         body.data.gender === undefined
           ? undefined

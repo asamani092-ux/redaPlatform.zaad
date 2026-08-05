@@ -19,7 +19,15 @@ export async function GET() {
   const authz = await requirePermission("invites:manage");
   if ("error" in authz) return authz.error;
 
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const invites = await prisma.exhibitionInvite.findMany({
     where: { exhibitionId: exhibition.id, invited: true },
     include: { beneficiary: { include: { association: true } } },
@@ -38,7 +46,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "حدد مستفيدين" }, { status: 400 });
   }
 
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const uniqueIds = [...new Set(body.data.beneficiaryIds)];
 
   const result = await prisma.$transaction(async (tx) => {
@@ -89,6 +105,9 @@ export async function POST(req: NextRequest) {
     const tpl =
       exhibition.settings?.whatsappInviteTpl ??
       "مرحباً {{name}}، أنت مدعو إلى {{exhibition}}. الموعد: {{date}} — الموقع: {{location}}";
+    let whatsappSent = 0;
+    let whatsappFailed = 0;
+    let whatsappStubbed = 0;
     for (const t of result.tokens) {
       const b = await prisma.beneficiary.findUnique({ where: { id: t.beneficiaryId } });
       if (!b) continue;
@@ -108,7 +127,7 @@ export async function POST(req: NextRequest) {
       if (!tpl.includes("{{qr_url}}") && !bodyText.includes(qrUrl)) {
         bodyText += `\nرمز الحضور (امسحه عند الدخول):\n${qrUrl}`;
       }
-      await sendWhatsAppMessage({
+      const msg = await sendWhatsAppMessage({
         exhibitionId: exhibition.id,
         beneficiaryId: b.id,
         mobile: b.mobile,
@@ -117,8 +136,17 @@ export async function POST(req: NextRequest) {
         type: OutboundMessageType.INVITATION,
         createdById: authz.userId,
       });
+      if (msg.status === "FAILED") whatsappFailed += 1;
+      else if (msg.status === "STUBBED") whatsappStubbed += 1;
+      else whatsappSent += 1;
     }
+    return NextResponse.json({
+      invited: result.invited,
+      whatsappSent,
+      whatsappFailed,
+      whatsappStubbed,
+    });
   }
 
-  return NextResponse.json({ invited: result.invited });
+  return NextResponse.json({ invited: result.invited, whatsappSent: 0, whatsappFailed: 0, whatsappStubbed: 0 });
 }

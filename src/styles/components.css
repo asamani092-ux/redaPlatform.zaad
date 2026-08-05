@@ -64,6 +64,10 @@
   outline: 2px solid var(--tmkeen-surface-border);
   outline-offset: 2px;
 }
+.btn-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 .btn-danger {
   display: inline-flex;
@@ -104,6 +108,10 @@
 }
 .btn-recommend:hover {
   background: var(--tmkeen-secondary-light);
+}
+.btn-recommend:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .btn-register {

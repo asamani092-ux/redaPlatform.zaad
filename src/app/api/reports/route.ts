@@ -60,7 +60,11 @@ export async function GET(req: NextRequest) {
       association: true,
       invites: { where: { exhibitionId }, take: 1 },
       attendances: { where: { exhibitionId }, take: 1 },
-      dispenseOrders: { where: { exhibitionId }, take: 1 },
+      // كل أوامر الصرف — القطع تراكمية عند إعادة الصرف — O(k) لكل مستفيد
+      dispenseOrders: {
+        where: { exhibitionId },
+        orderBy: { createdAt: "desc" },
+      },
     },
     orderBy: { name: "asc" },
   });
@@ -68,11 +72,13 @@ export async function GET(req: NextRequest) {
   const rows = beneficiaries.map((b) => {
     const invite = b.invites[0];
     const attendance = b.attendances[0];
-    const dispense = b.dispenseOrders[0];
+    const orders = b.dispenseOrders;
+    const latest = orders[0] ?? null;
+    const piecesTotal = orders.reduce((s, o) => s + o.piecesCount, 0);
     const status = resolveStatus({
       invited: invite?.invited,
       attendanceType: attendance?.type ?? null,
-      received: !!dispense,
+      received: orders.length > 0,
     });
     return {
       name: b.name,
@@ -86,11 +92,11 @@ export async function GET(req: NextRequest) {
       familySize: b.dependentsCount,
       status: STATUS_LABELS[status],
       checkedInAt: attendance?.checkedInAt?.toISOString() ?? "",
-      receivedAt: dispense?.createdAt?.toISOString() ?? "",
-      pieces: dispense?.piecesCount ?? 0,
+      receivedAt: latest?.createdAt?.toISOString() ?? "",
+      pieces: piecesTotal,
       exceptionReason: attendance?.exceptionReason ?? "",
-      entitlementOverride: dispense?.entitledOverride ?? null,
-      overrideReason: dispense?.overrideReason ?? "",
+      entitlementOverride: latest?.entitledOverride ?? null,
+      overrideReason: latest?.overrideReason ?? "",
     };
   });
 

@@ -58,21 +58,27 @@ export default function DispensePage() {
   const [overrideReason, setOverrideReason] = useState("");
   const [repeatReason, setRepeatReason] = useState("");
   const [msg, setMsg] = useState("");
+  const [msgError, setMsgError] = useState(false);
   const [scanOn, setScanOn] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/dispense")
+  function loadItems() {
+    return fetch("/api/dispense")
       .then((r) => r.json())
       .then((j) => {
         if (j.items) setItems(j.items.map((i: Item) => ({ ...i, quantity: Number(i.quantity) })));
         if (j.inventorySchema) setSchema(j.inventorySchema);
       })
       .catch(() => undefined);
+  }
+
+  useEffect(() => {
+    void loadItems();
   }, []);
 
   const preview = useCallback(async (params: { qrToken?: string; q?: string }) => {
     setMsg("");
+    setMsgError(false);
     const qs = new URLSearchParams();
     if (params.qrToken) qs.set("qrToken", params.qrToken);
     if (params.q) qs.set("q", params.q);
@@ -81,6 +87,7 @@ export default function DispensePage() {
     if (!res.ok) {
       setLookup(null);
       setMsg(json.error || "تعذر الجلب");
+      setMsgError(true);
       return;
     }
     setLookup(json);
@@ -120,30 +127,34 @@ export default function DispensePage() {
   const totalSelected = selectedLines.reduce((s, l) => s + l.quantity, 0);
   const entitledNow = computed + extraN;
 
+  const blockReason = !lookup
+    ? null
+    : !lookup.attendance
+      ? "الصرف يشترط تسجيل الحضور أولاً"
+      : !items.length
+        ? "لا أصناف متاحة في المخزون — أضف مخزوناً أولاً"
+        : !selectedLines.length
+          ? "حدد كمية لصنف واحد على الأقل"
+          : totalSelected > entitledNow
+            ? `المجموع (${totalSelected}) يتجاوز المسموح (${entitledNow})`
+            : !reasonOk
+              ? "سبب الإضافة فوق الاستحقاق مطلوب"
+              : !repeatOk
+                ? alreadyDispensed && !canOverride
+                  ? "الصرف المتكرر يتطلب صلاحية الاستثناء"
+                  : "سبب الصرف الاستثنائي مطلوب"
+                : null;
+
   async function submit() {
     if (!lookup || busy) return;
-    if (!selectedLines.length) {
-      setMsg("حدد كمية لصنف واحد على الأقل قبل تأكيد الصرف");
-      return;
-    }
-    if (addingExtra && !reasonOk) {
-      setMsg("سبب الإضافة فوق الاستحقاق مطلوب");
-      return;
-    }
-    if (alreadyDispensed && !canOverride) {
-      setMsg("الصرف المتكرر يتطلب صلاحية الاستثناء (توزيع أو مدير)");
-      return;
-    }
-    if (alreadyDispensed && !repeatReason.trim()) {
-      setMsg("سبب الصرف الاستثنائي مطلوب لأن المستفيد صُرف له سابقاً");
-      return;
-    }
-    if (totalSelected > entitledNow) {
-      setMsg(`مجموع الكميات (${totalSelected}) يتجاوز المسموح (${entitledNow})`);
+    if (blockReason) {
+      setMsg(blockReason);
+      setMsgError(true);
       return;
     }
     setBusy(true);
     setMsg("");
+    setMsgError(false);
     const res = await fetch("/api/dispense", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -159,6 +170,7 @@ export default function DispensePage() {
     const json = await res.json().catch(() => ({}));
     setBusy(false);
     setMsg(res.ok ? "تم الصرف بنجاح" : json.error || "فشل الصرف");
+    setMsgError(!res.ok);
     if (res.ok) {
       setLines({});
       setLookup(null);
@@ -166,6 +178,7 @@ export default function DispensePage() {
       setExtraAbove("");
       setOverrideReason("");
       setRepeatReason("");
+      void loadItems();
     }
   }
 
@@ -187,7 +200,7 @@ export default function DispensePage() {
           </button>
         }
       />
-      {msg ? <p className="msg">{msg}</p> : null}
+      {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
 
       <section className="panel">
         <h2 className="panel-title">بحث المستفيد</h2>
@@ -198,8 +211,15 @@ export default function DispensePage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="هوية / جوال / اسم"
+            dir="ltr"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (q.trim()) void preview({ q: q.trim() });
+              }
+            }}
           />
-          <button type="button" className="btn-primary" onClick={() => preview({ q })}>
+          <button type="button" className="btn-primary" onClick={() => preview({ q: q.trim() })}>
             معاينة
           </button>
         </div>
@@ -308,7 +328,7 @@ export default function DispensePage() {
             <p className="msg msg-error">أدخل سبب الصرف الاستثنائي قبل التأكيد</p>
           ) : null}
 
-          <div className="table-wrap" style={{ marginTop: "1rem" }}>
+          <div className="table-wrap table-wrap--stack" style={{ marginTop: "1rem" }}>
             <table>
               <thead>
                 <tr>
@@ -320,14 +340,14 @@ export default function DispensePage() {
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td>
+                    <td data-label="الصنف">
                       <AttrChips
                         attributes={item.attributes ?? item.attributesJson}
                         schema={schema}
                       />
                     </td>
-                    <td>{item.quantity}</td>
-                    <td style={{ maxWidth: 140 }}>
+                    <td data-label="المتاح">{item.quantity}</td>
+                    <td data-label="الكمية" style={{ maxWidth: 140 }}>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -345,24 +365,32 @@ export default function DispensePage() {
                     </td>
                   </tr>
                 ))}
+                {!items.length ? (
+                  <tr>
+                    <td colSpan={3} className="empty">
+                      لا أصناف متاحة في المخزون
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
           <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
             المحدد: {totalSelected} من المسموح {entitledNow} — يجوز الصرف بأقل من الاستحقاق
           </p>
+          {blockReason ? <p className="msg msg-error">{blockReason}</p> : null}
+          {lookup.entitledOverride != null ? (
+            <p className="page-header__desc">
+              ملاحظة: «استثناء معتمد» من صرف سابق للمرجع فقط — المسموح الآن = الاستحقاق المحسوب
+              {addingExtra ? ` + الإضافي ${extraN}` : ""}.
+            </p>
+          ) : null}
           <div className="form-actions">
             <button
               className="btn-primary"
               type="button"
-              disabled={
-                busy ||
-                !lookup.attendance ||
-                !reasonOk ||
-                !repeatOk ||
-                !selectedLines.length ||
-                totalSelected > entitledNow
-              }
+              disabled={busy || Boolean(blockReason)}
+              title={blockReason ?? undefined}
               onClick={() => void submit()}
             >
               {busy ? "جاري..." : alreadyDispensed ? "تأكيد الصرف الاستثنائي" : "تأكيد الصرف"}
