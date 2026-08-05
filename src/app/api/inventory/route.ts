@@ -155,7 +155,15 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const authz = await requirePermission("inventory:manage");
   if ("error" in authz) return authz.error;
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
   const body = updateItemSchema.safeParse(await req.json());
   if (!body.success) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
