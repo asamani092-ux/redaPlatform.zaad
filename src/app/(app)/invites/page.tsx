@@ -70,12 +70,23 @@ export default function InvitesPage() {
     const failed = Number(json.whatsappFailed ?? 0);
     const stubbed = Number(json.whatsappStubbed ?? 0);
     const sent = Number(json.whatsappSent ?? 0);
+    const errors: Array<{ beneficiaryName?: string; reason?: string }> = Array.isArray(
+      json.whatsappErrors,
+    )
+      ? json.whatsappErrors
+      : [];
     let waNote = "";
-    if (failed > 0) waNote = ` — فشل واتساب: ${failed}`;
-    else if (stubbed > 0) waNote = ` — واتساب تجريبي (stub): ${stubbed}`;
+    if (failed > 0) {
+      const reasons = errors
+        .slice(0, 5)
+        .map((e) => `${e.beneficiaryName ?? "مستفيد"}: ${e.reason ?? "فشل"}`)
+        .join(" — ");
+      waNote = ` — فشل واتساب: ${failed}${reasons ? ` (${reasons})` : ""}`;
+      if (json.statusReason && !reasons) waNote += ` — ${json.statusReason}`;
+    } else if (stubbed > 0) waNote = ` — واتساب تجريبي (stub): ${stubbed}`;
     else if (sent > 0) waNote = ` — أُرسل واتساب: ${sent}`;
     setMsg(`تمت دعوة ${json.invited} مستفيد${waNote}`);
-    setMsgError(failed > 0);
+    setMsgError(failed > 0 || json.status === "FAILED" || json.status === "PARTIAL");
     setSelected({});
     load();
     setView("invited");

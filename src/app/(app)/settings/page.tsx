@@ -38,6 +38,7 @@ export default function SettingsPage() {
     sender: "",
   });
   const [waMsg, setWaMsg] = useState("");
+  const [waMsgError, setWaMsgError] = useState(false);
   const [waBusy, setWaBusy] = useState(false);
   const [testMobile, setTestMobile] = useState("");
 
@@ -153,6 +154,7 @@ export default function SettingsPage() {
     if (waBusy || !testMobile.trim()) return;
     setWaBusy(true);
     setWaMsg("");
+    setWaMsgError(false);
     const res = await fetch("/api/settings/whatsapp/test", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -161,6 +163,7 @@ export default function SettingsPage() {
     const json = await res.json();
     setWaBusy(false);
     setWaMsg(res.ok ? json.message : json.error || "فشل الاختبار");
+    setWaMsgError(!res.ok);
   }
 
   function updateField(idx: number, patch: Partial<InventorySchemaField>) {
@@ -500,7 +503,7 @@ export default function SettingsPage() {
       </Modal>
 
       <Modal open={section === "whatsapp"} title="ربط واتساب" onClose={() => setSection(null)} wide>
-        {waMsg ? <p className="msg">{waMsg}</p> : null}
+        {waMsg ? <p className={`msg ${waMsgError ? "msg-error" : ""}`}>{waMsg}</p> : null}
         <div className="form-grid">
           <div>
             <label className="label-field">وضع الإرسال</label>

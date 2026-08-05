@@ -26,17 +26,34 @@ export async function POST(req: NextRequest) {
     createdById: authz.userId,
   });
 
+  const failed = msg.status === OutboundMessageStatus.FAILED;
+  const statusReason = failed
+    ? msg.errorMessage ?? "خطأ غير معروف"
+    : msg.status === OutboundMessageStatus.STUBBED
+      ? "وضع تجريبي (stub)"
+      : null;
+
   await writeAuditLog({
     userId: authz.userId,
     action: "WHATSAPP_TEST",
     entityType: "AppConfig",
     entityId: "app",
-    meta: { mobile: body.data.mobile.trim(), status: msg.status, provider: config.provider },
+    meta: {
+      mobile: body.data.mobile.trim(),
+      provider: config.provider,
+      messageStatus: msg.status,
+    },
+    status: failed ? "FAILED" : "SUCCESS",
+    statusReason,
   });
 
-  if (msg.status === OutboundMessageStatus.FAILED) {
+  if (failed) {
     return NextResponse.json(
-      { error: `فشل الإرسال: ${msg.errorMessage ?? "خطأ غير معروف"}`, status: msg.status },
+      {
+        error: `فشل الإرسال: ${msg.errorMessage ?? "خطأ غير معروف"}`,
+        status: msg.status,
+        statusReason,
+      },
       { status: 502 },
     );
   }

@@ -25,6 +25,7 @@ export default function SurveyPage() {
   const [search, setSearch] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
+  const [msgError, setMsgError] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -44,11 +45,13 @@ export default function SurveyPage() {
 
   async function findBeneficiary() {
     setMsg("");
+    setMsgError(false);
     const res = await fetch(`/api/lookup?q=${encodeURIComponent(search.trim())}`);
     const json = await res.json();
     if (!res.ok) {
       setBeneficiary(null);
       setMsg(json.error || "المستفيد غير موجود");
+      setMsgError(true);
       return;
     }
     setBeneficiary({ id: json.beneficiary.id, name: json.beneficiary.name });
@@ -66,7 +69,8 @@ export default function SurveyPage() {
       body: JSON.stringify({ beneficiaryId: beneficiary.id, answers }),
     });
     const json = await res.json();
-    setMsg(res.ok ? "تم حفظ الاستبيان" : json.error);
+    setMsg(res.ok ? "تم حفظ الاستبيان" : json.error || "فشل الحفظ");
+    setMsgError(!res.ok);
     if (res.ok) {
       setAnswers({});
       setBeneficiary(null);
@@ -78,6 +82,7 @@ export default function SurveyPage() {
   async function sendLink() {
     if (!beneficiary) {
       setMsg("ابحث عن المستفيد أولاً");
+      setMsgError(true);
       return;
     }
     const res = await fetch("/api/survey", {
@@ -86,7 +91,8 @@ export default function SurveyPage() {
       body: JSON.stringify({ beneficiaryId: beneficiary.id, answers: {}, sendLink: true }),
     });
     const json = await res.json();
-    setMsg(res.ok ? "تم تسجيل رسالة الاستبيان للإرسال" : json.error);
+    setMsg(res.ok ? "تم تسجيل رسالة الاستبيان للإرسال" : json.error || "فشل الإرسال");
+    setMsgError(!res.ok);
   }
 
   async function broadcast(audience: "attended" | "received") {
@@ -94,6 +100,7 @@ export default function SurveyPage() {
     if (!window.confirm(`إرسال رابط الاستبيان إلى ${label}؟`)) return;
     setBusy(true);
     setMsg("");
+    setMsgError(false);
     const res = await fetch("/api/survey/broadcast", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -101,7 +108,24 @@ export default function SurveyPage() {
     });
     const json = await res.json();
     setBusy(false);
-    setMsg(res.ok ? `تم تسجيل ${json.sent} رسالة للإرسال (${label})` : json.error);
+    if (!res.ok) {
+      setMsg(json.error || "فشل الإرسال الجماعي");
+      setMsgError(true);
+      return;
+    }
+    const failed = Number(json.failed ?? 0);
+    const errors: Array<{ beneficiaryName?: string; reason?: string }> = Array.isArray(json.errors)
+      ? json.errors
+      : [];
+    const reasons = errors
+      .slice(0, 5)
+      .map((e) => `${e.beneficiaryName ?? "مستفيد"}: ${e.reason ?? "فشل"}`)
+      .join(" — ");
+    let text = `أُرسل ${json.sent} — فشل ${failed} (${label})`;
+    if (reasons) text += ` — ${reasons}`;
+    else if (json.statusReason) text += ` — ${json.statusReason}`;
+    setMsg(text);
+    setMsgError(failed > 0 || json.status === "FAILED" || json.status === "PARTIAL");
   }
 
   function updateQuestion(idx: number, patch: Partial<SurveyQuestion>) {
@@ -162,7 +186,7 @@ export default function SurveyPage() {
           </>
         }
       />
-      {msg ? <p className="msg">{msg}</p> : null}
+      {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
 
       {isAdmin ? (
         <section className="panel">

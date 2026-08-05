@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
+import { statusFromSendCounts } from "@/lib/audit-status";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
@@ -91,13 +92,15 @@ export async function POST(req: NextRequest) {
     return { invited, tokens };
   });
 
-  await writeAuditLog({
-    userId: authz.userId,
-    action: "BULK_INVITE",
-    entityType: "ExhibitionInvite",
-    entityId: exhibition.id,
-    meta: { count: result.invited, beneficiaryIds: uniqueIds },
-  });
+  let whatsappSent = 0;
+  let whatsappFailed = 0;
+  let whatsappStubbed = 0;
+  const whatsappErrors: Array<{
+    beneficiaryId: string;
+    beneficiaryName: string;
+    mobile: string;
+    reason: string;
+  }> = [];
 
   // إرسال واتساب مع QR هو المسار التشغيلي للدعوة
   if (body.data.sendWhatsApp !== false) {
@@ -105,9 +108,6 @@ export async function POST(req: NextRequest) {
     const tpl =
       exhibition.settings?.whatsappInviteTpl ??
       "مرحباً {{name}}، أنت مدعو إلى {{exhibition}}. الموعد: {{date}} — الموقع: {{location}}";
-    let whatsappSent = 0;
-    let whatsappFailed = 0;
-    let whatsappStubbed = 0;
     for (const t of result.tokens) {
       const b = await prisma.beneficiary.findUnique({ where: { id: t.beneficiaryId } });
       if (!b) continue;
@@ -136,17 +136,61 @@ export async function POST(req: NextRequest) {
         type: OutboundMessageType.INVITATION,
         createdById: authz.userId,
       });
-      if (msg.status === "FAILED") whatsappFailed += 1;
-      else if (msg.status === "STUBBED") whatsappStubbed += 1;
-      else whatsappSent += 1;
+      if (msg.status === "FAILED") {
+        whatsappFailed += 1;
+        whatsappErrors.push({
+          beneficiaryId: b.id,
+          beneficiaryName: b.name,
+          mobile: b.mobile,
+          reason: msg.errorMessage || "فشل إرسال واتساب",
+        });
+      } else if (msg.status === "STUBBED") {
+        whatsappStubbed += 1;
+      } else {
+        whatsappSent += 1;
+      }
     }
-    return NextResponse.json({
-      invited: result.invited,
+  }
+
+  const status = statusFromSendCounts({
+    sent: whatsappSent,
+    failed: whatsappFailed,
+    stubbed: whatsappStubbed,
+  });
+  const statusReason =
+    whatsappErrors.length > 0
+      ? whatsappErrors
+          .slice(0, 5)
+          .map((e) => `${e.beneficiaryName}: ${e.reason}`)
+          .join(" | ")
+      : result.invited === 0
+        ? "لم يُدعَ أي مستفيد"
+        : null;
+
+  await writeAuditLog({
+    userId: authz.userId,
+    action: "BULK_INVITE",
+    entityType: "ExhibitionInvite",
+    entityId: exhibition.id,
+    meta: {
+      count: result.invited,
+      beneficiaryIds: uniqueIds,
       whatsappSent,
       whatsappFailed,
       whatsappStubbed,
-    });
-  }
+      errors: whatsappErrors.slice(0, 20),
+    },
+    status: result.invited === 0 ? "FAILED" : status,
+    statusReason,
+  });
 
-  return NextResponse.json({ invited: result.invited, whatsappSent: 0, whatsappFailed: 0, whatsappStubbed: 0 });
+  return NextResponse.json({
+    invited: result.invited,
+    whatsappSent,
+    whatsappFailed,
+    whatsappStubbed,
+    whatsappErrors,
+    status,
+    statusReason,
+  });
 }

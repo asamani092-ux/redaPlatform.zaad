@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { actionLabel, entityLabel } from "@/lib/audit-labels";
+import { auditStatusLabel, resolveAuditStatus } from "@/lib/audit-status";
 import { buildPrintDocument, escapeHtml } from "@/lib/print-html";
 
 export async function GET(req: NextRequest) {
@@ -15,14 +16,29 @@ export async function GET(req: NextRequest) {
     take: format === "pdf" ? 500 : 200,
   });
 
+  const enriched = logs.map((l) => {
+    const meta =
+      l.metaJson && typeof l.metaJson === "object" && !Array.isArray(l.metaJson)
+        ? (l.metaJson as Record<string, unknown>)
+        : null;
+    const { status, statusReason } = resolveAuditStatus(meta);
+    return {
+      ...l,
+      status: status ?? "SUCCESS",
+      statusReason,
+      statusLabel: auditStatusLabel(status ?? "SUCCESS"),
+    };
+  });
+
   if (format === "pdf") {
-    const rowsHtml = logs
+    const rowsHtml = enriched
       .map(
         (l) => `<tr>
           <td class="ltr">${escapeHtml(new Date(l.createdAt).toLocaleString("ar-SA"))}</td>
           <td>${escapeHtml(l.user?.name ?? "—")}</td>
           <td>${escapeHtml(actionLabel(l.action))}</td>
           <td>${escapeHtml(entityLabel(l.entityType))}</td>
+          <td>${escapeHtml(l.statusLabel)}${l.statusReason ? ` — ${escapeHtml(l.statusReason)}` : ""}</td>
           <td class="ltr">${escapeHtml(l.entityId ?? "")}</td>
         </tr>`,
       )
@@ -30,11 +46,11 @@ export async function GET(req: NextRequest) {
 
     const html = buildPrintDocument({
       title: "سجل العمليات",
-      subtitle: `آخر ${logs.length} عملية — تتبع تراكمي لكل التعديلات والحركات`,
+      subtitle: `آخر ${enriched.length} عملية — تتبع تراكمي لكل التعديلات والحركات`,
       sectionsHtml: `
         <table>
           <thead>
-            <tr><th>الوقت</th><th>المستخدم</th><th>الإجراء</th><th>الكيان</th><th>المعرف</th></tr>
+            <tr><th>الوقت</th><th>المستخدم</th><th>الإجراء</th><th>الكيان</th><th>الحالة</th><th>المعرف</th></tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
         </table>`,
@@ -44,5 +60,5 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ data: logs });
+  return NextResponse.json({ data: enriched });
 }

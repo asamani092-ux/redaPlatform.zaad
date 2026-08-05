@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.data.sendLink) {
+    if (!beneficiary.mobile) {
+      return NextResponse.json({ error: "لا يوجد رقم جوال للمستفيد" }, { status: 400 });
+    }
     const config = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
     const msg = await sendWhatsAppMessage({
       exhibitionId: exhibition.id,
@@ -60,6 +63,12 @@ export async function POST(req: NextRequest) {
       type: OutboundMessageType.SURVEY,
       createdById: authz.userId,
     });
+    if (msg.status === "FAILED") {
+      return NextResponse.json(
+        { error: `فشل الإرسال: ${msg.errorMessage || "خطأ غير معروف"}`, status: "FAILED" },
+        { status: 502 },
+      );
+    }
     return NextResponse.json({ message: msg });
   }
 

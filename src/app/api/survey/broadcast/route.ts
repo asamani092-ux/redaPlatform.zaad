@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
+import { statusFromSendCounts } from "@/lib/audit-status";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
@@ -20,7 +21,16 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   const authz = await requirePermission("survey:manage");
   if ("error" in authz) return authz.error;
-  const exhibition = await requireActiveExhibition();
+
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
 
   const body = schema.safeParse(await req.json().catch(() => ({})));
   if (!body.success) {
@@ -45,9 +55,27 @@ export async function POST(req: NextRequest) {
         ).map((d) => d.beneficiary);
 
   let sent = 0;
+  let failed = 0;
+  let stubbed = 0;
+  const errors: Array<{
+    beneficiaryId: string;
+    beneficiaryName: string;
+    mobile: string;
+    reason: string;
+  }> = [];
+
   for (const b of beneficiaries) {
-    if (!b.mobile) continue;
-    await sendWhatsAppMessage({
+    if (!b.mobile) {
+      failed++;
+      errors.push({
+        beneficiaryId: b.id,
+        beneficiaryName: b.name,
+        mobile: "",
+        reason: "لا يوجد رقم جوال",
+      });
+      continue;
+    }
+    const msg = await sendWhatsAppMessage({
       exhibitionId: exhibition.id,
       beneficiaryId: b.id,
       mobile: b.mobile,
@@ -55,16 +83,55 @@ export async function POST(req: NextRequest) {
       type: OutboundMessageType.SURVEY,
       createdById: authz.userId,
     });
-    sent++;
+    if (msg.status === "FAILED") {
+      failed++;
+      errors.push({
+        beneficiaryId: b.id,
+        beneficiaryName: b.name,
+        mobile: b.mobile,
+        reason: msg.errorMessage || "فشل إرسال واتساب",
+      });
+    } else if (msg.status === "STUBBED") {
+      stubbed++;
+    } else {
+      sent++;
+    }
   }
+
+  const status = statusFromSendCounts({ sent, failed, stubbed });
+  const statusReason =
+    errors.length > 0
+      ? errors
+          .slice(0, 5)
+          .map((e) => `${e.beneficiaryName}: ${e.reason}`)
+          .join(" | ")
+      : sent + stubbed === 0
+        ? "لا مستهدفين للإرسال"
+        : null;
 
   await writeAuditLog({
     userId: authz.userId,
     action: "SURVEY_BROADCAST",
     entityType: "SurveyResponse",
     entityId: exhibition.id,
-    meta: { audience: body.data.audience, sent },
+    meta: {
+      audience: body.data.audience,
+      sent,
+      failed,
+      stubbed,
+      errors: errors.slice(0, 20),
+    },
+    status,
+    statusReason,
   });
 
-  return NextResponse.json({ sent, audience: body.data.audience });
+  return NextResponse.json({
+    sent,
+    failed,
+    stubbed,
+    errors,
+    audience: body.data.audience,
+    status,
+    statusReason,
+  });
 }
