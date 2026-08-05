@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
 import { Role } from "@/generated/prisma/enums";
+import { parsePageParams, paginatedPayload } from "@/lib/pagination";
 
 const createSchema = z.object({
   name: z.string().min(2),
@@ -38,22 +39,28 @@ const updateSchema = z.object({
   active: z.boolean().optional(),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const authz = await requirePermission("users:manage");
   if ("error" in authz) return authz.error;
-  const users = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      mobile: true,
-      role: true,
-      active: true,
-      lastActiveAt: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json({ data: users });
+  const { page, pageSize, skip, take } = parsePageParams(req.nextUrl.searchParams);
+  const [total, users] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        mobile: true,
+        role: true,
+        active: true,
+        lastActiveAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+  ]);
+  return NextResponse.json(paginatedPayload(users, page, pageSize, total));
 }
 
 export async function POST(req: NextRequest) {

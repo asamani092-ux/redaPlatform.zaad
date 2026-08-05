@@ -7,6 +7,8 @@ import { Modal } from "@/components/Modal";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
+import { PaginationBar } from "@/components/PaginationBar";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 type Association = { id: string; name: string };
 type Beneficiary = {
@@ -33,6 +35,9 @@ export default function BeneficiariesPage() {
 
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<Beneficiary[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [associations, setAssociations] = useState<Association[]>([]);
   const [msg, setMsg] = useState("");
   const [useOther, setUseOther] = useState(false);
@@ -44,14 +49,21 @@ export default function BeneficiariesPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function load(search = q) {
-    const res = await fetch(`/api/beneficiaries?q=${encodeURIComponent(search)}`);
+  async function load(search = q, p = page) {
+    const res = await fetch(
+      `/api/beneficiaries?q=${encodeURIComponent(search)}&page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`,
+    );
     const json = await res.json();
-    if (res.ok) setRows(json.data);
+    if (res.ok) {
+      setRows(json.data ?? []);
+      setPage(json.page ?? p);
+      setTotalPages(json.totalPages ?? 1);
+      setTotal(json.total ?? 0);
+    }
   }
 
   useEffect(() => {
-    load();
+    void load(q, 1);
     fetch("/api/associations")
       .then((r) => r.json())
       .then((j) => setAssociations(j.data ?? []));
@@ -303,18 +315,18 @@ export default function BeneficiariesPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                void load(q);
+                void load(q, 1);
               }
             }}
           />
-          <button type="button" className="btn-primary" onClick={() => load(q)}>
+          <button type="button" className="btn-primary" onClick={() => void load(q, 1)}>
             بحث
           </button>
         </div>
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">القائمة ({rows.length})</h2>
+        <h2 className="panel-title">القائمة ({total})</h2>
         <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
           <table>
             <thead>
@@ -380,6 +392,14 @@ export default function BeneficiariesPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={DEFAULT_PAGE_SIZE}
+          busy={busy}
+          onPageChange={(p) => void load(q, p)}
+        />
       </section>
 
       <Modal

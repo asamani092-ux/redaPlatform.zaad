@@ -6,6 +6,8 @@ import { AttrChips } from "@/components/AttrChips";
 import { Modal } from "@/components/Modal";
 import type { InventorySchemaField } from "@/lib/inventory-schema";
 import { sanitizeNumericInput, toNumberOrNull } from "@/lib/num";
+import { PaginationBar } from "@/components/PaginationBar";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 type Item = {
   id: string;
@@ -21,6 +23,9 @@ type Item = {
 export default function InventoryPage() {
   const [schema, setSchema] = useState<InventorySchemaField[]>([]);
   const [items, setItems] = useState<Item[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [msg, setMsg] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -31,17 +36,21 @@ export default function InventoryPage() {
   const [quantity, setQuantity] = useState("0");
   const [move, setMove] = useState({ inventoryItemId: "", type: "ADD", quantity: "1", note: "" });
 
-  async function load() {
-    const res = await fetch("/api/inventory");
+  async function load(p = page) {
+    const res = await fetch(`/api/inventory?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
     const json = await res.json();
     if (res.ok) {
       setSchema(json.schema ?? []);
       setItems(json.data ?? []);
+      setPage(json.page ?? p);
+      setTotalPages(json.totalPages ?? 1);
+      setTotal(json.total ?? 0);
     } else setMsg(json.error || "تعذر التحميل");
   }
 
   useEffect(() => {
-    void load();
+    void load(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const defaultAttrs = useMemo(() => {
@@ -209,7 +218,7 @@ export default function InventoryPage() {
       {msg ? <p className="msg">{msg}</p> : null}
 
       <section className="panel">
-        <h2 className="panel-title">الأصناف الحالية</h2>
+        <h2 className="panel-title">الأصناف الحالية ({total})</h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -254,6 +263,14 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={DEFAULT_PAGE_SIZE}
+          busy={busy}
+          onPageChange={(p) => void load(p)}
+        />
       </section>
 
       <Modal open={addOpen} title="إضافة صنف" onClose={() => !busy && setAddOpen(false)} wide>

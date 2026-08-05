@@ -9,6 +9,7 @@ import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
 import { parseSurveyConfig } from "@/lib/survey-questions";
 import { buildSurveyMessage } from "@/lib/survey-message";
+import { buildPageMeta, parsePageParams } from "@/lib/pagination";
 
 const submitSchema = z.object({
   beneficiaryId: z.string(),
@@ -16,21 +17,36 @@ const submitSchema = z.object({
   sendLink: z.boolean().optional(),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const authz = await requirePermission("survey:manage");
   if ("error" in authz) return authz.error;
-  const exhibition = await requireActiveExhibition();
-  const responses = await prisma.surveyResponse.findMany({
-    where: { exhibitionId: exhibition.id },
-    include: { beneficiary: true },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
+  const { page, pageSize, skip, take } = parsePageParams(req.nextUrl.searchParams);
+  const where = { exhibitionId: exhibition.id };
+  const [total, responses] = await Promise.all([
+    prisma.surveyResponse.count({ where }),
+    prisma.surveyResponse.findMany({
+      where,
+      include: { beneficiary: true },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+  ]);
   const config = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
   return NextResponse.json({
     questions: config.questions,
     externalUrl: config.externalUrl,
     responses,
+    ...buildPageMeta(page, pageSize, total),
   });
 }
 

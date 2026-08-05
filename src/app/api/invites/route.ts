@@ -9,6 +9,7 @@ import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
 import { randomUUID } from "crypto";
 import { appOrigin } from "@/lib/app-url";
+import { parsePageParams, paginatedPayload } from "@/lib/pagination";
 
 const bulkSchema = z.object({
   beneficiaryIds: z.array(z.string()).min(1),
@@ -16,7 +17,7 @@ const bulkSchema = z.object({
   sendWhatsApp: z.boolean().optional().default(true),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const authz = await requirePermission("invites:manage");
   if ("error" in authz) return authz.error;
 
@@ -29,13 +30,22 @@ export async function GET() {
       { status: 400 },
     );
   }
-  const invites = await prisma.exhibitionInvite.findMany({
-    where: { exhibitionId: exhibition.id, invited: true },
-    include: { beneficiary: { include: { association: true } } },
-    orderBy: { invitedAt: "desc" },
-    take: 500,
+  const { page, pageSize, skip, take } = parsePageParams(req.nextUrl.searchParams);
+  const where = { exhibitionId: exhibition.id, invited: true };
+  const [total, invites] = await Promise.all([
+    prisma.exhibitionInvite.count({ where }),
+    prisma.exhibitionInvite.findMany({
+      where,
+      include: { beneficiary: { include: { association: true } } },
+      orderBy: { invitedAt: "desc" },
+      skip,
+      take,
+    }),
+  ]);
+  return NextResponse.json({
+    ...paginatedPayload(invites, page, pageSize, total),
+    exhibitionId: exhibition.id,
   });
-  return NextResponse.json({ data: invites, exhibitionId: exhibition.id });
 }
 
 export async function POST(req: NextRequest) {

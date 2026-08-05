@@ -11,6 +11,7 @@ import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
 import { effectiveEntitlement, entitlementWithExtra, isNonEmptyReason } from "@/lib/entitlement";
 import { parseInventorySchema } from "@/lib/inventory-schema";
+import { buildPageMeta, parsePageParams } from "@/lib/pagination";
 
 const lineSchema = z.object({
   inventoryItemId: z.string(),
@@ -73,13 +74,18 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const [recent, items] = await Promise.all([
+  const { page, pageSize, skip, take } = parsePageParams(req.nextUrl.searchParams);
+  const where = { exhibitionId: exhibition.id };
+  const [count, recent, items] = await Promise.all([
+    prisma.dispenseOrder.count({ where }),
     prisma.dispenseOrder.findMany({
-      where: { exhibitionId: exhibition.id },
+      where,
       include: { beneficiary: true, lines: true },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      skip,
+      take,
     }),
+    // أصناف الصرف تبقى كاملة لاختيار الكمية أثناء العملية (عادة قليلة)
     prisma.inventoryItem.findMany({
       where: { exhibitionId: exhibition.id, quantity: { gt: 0 } },
       orderBy: { updatedAt: "desc" },
@@ -97,6 +103,7 @@ export async function GET(req: NextRequest) {
       attributesJson: i.attributesJson,
       quantity: Number(i.quantity),
     })),
+    ...buildPageMeta(page, pageSize, count),
   });
 }
 

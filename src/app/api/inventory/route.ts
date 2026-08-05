@@ -7,6 +7,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { parseInventorySchema } from "@/lib/inventory-schema";
 import { StockMovementType } from "@/generated/prisma/enums";
+import { parsePageParams, paginatedPayload } from "@/lib/pagination";
 
 const createSchema = z.object({
   attributes: z.record(z.string(), z.union([z.string(), z.number()])),
@@ -56,7 +57,7 @@ function validateAttributesAgainstSchema(
   return null;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const authz = await requirePermission("inventory:manage");
   if ("error" in authz) return authz.error;
   let exhibition;
@@ -69,10 +70,17 @@ export async function GET() {
     );
   }
   const threshold = exhibition.settings?.lowStockThreshold ?? 10;
-  const items = await prisma.inventoryItem.findMany({
-    where: { exhibitionId: exhibition.id },
-    orderBy: { updatedAt: "desc" },
-  });
+  const { page, pageSize, skip, take } = parsePageParams(req.nextUrl.searchParams);
+  const where = { exhibitionId: exhibition.id };
+  const [total, items] = await Promise.all([
+    prisma.inventoryItem.count({ where }),
+    prisma.inventoryItem.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take,
+    }),
+  ]);
 
   const schema = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
   const withFlags = items.map((item) => ({
@@ -84,7 +92,7 @@ export async function GET() {
   }));
 
   return NextResponse.json({
-    data: withFlags,
+    ...paginatedPayload(withFlags, page, pageSize, total),
     schema,
     threshold,
     exhibitionName: exhibition.name,

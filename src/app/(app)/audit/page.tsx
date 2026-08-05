@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { PaginationBar } from "@/components/PaginationBar";
 import { actionLabel, entityLabel } from "@/lib/audit-labels";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 type Log = {
   id: string;
@@ -24,18 +26,32 @@ function statusBadgeClass(status?: string | null): string {
 
 export default function AuditPage() {
   const [logs, setLogs] = useState<Log[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async (p: number) => {
+    setBusy(true);
+    const res = await fetch(`/api/audit?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
+    const json = await res.json();
+    setBusy(false);
+    if (!res.ok) return;
+    setLogs(json.data ?? []);
+    setPage(json.page ?? p);
+    setTotalPages(json.totalPages ?? 1);
+    setTotal(json.total ?? 0);
+  }, []);
 
   useEffect(() => {
-    fetch("/api/audit")
-      .then((r) => r.json())
-      .then((j) => setLogs(j.data ?? []));
-  }, []);
+    void load(1);
+  }, [load]);
 
   return (
     <div className="page-stack">
       <PageHeader
         title="سجل العمليات"
-        description="تتبع تراكمي لكل التعديلات والحركات"
+        description="تتبع تراكمي لكل التعديلات والحركات — 50 عملية لكل صفحة"
         actions={
           <a className="btn-secondary" href="/api/audit?format=pdf" target="_blank" rel="noreferrer">
             طباعة PDF
@@ -87,6 +103,14 @@ export default function AuditPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={DEFAULT_PAGE_SIZE}
+          busy={busy}
+          onPageChange={(p) => void load(p)}
+        />
       </section>
     </div>
   );

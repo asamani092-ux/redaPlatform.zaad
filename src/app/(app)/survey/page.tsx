@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
 import type { SurveyQuestion } from "@/lib/survey-questions";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
+import { PaginationBar } from "@/components/PaginationBar";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 type ResponseRow = {
   id: string;
@@ -21,6 +23,9 @@ export default function SurveyPage() {
   const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
   const [externalUrl, setExternalUrl] = useState("");
   const [responses, setResponses] = useState<ResponseRow[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [beneficiary, setBeneficiary] = useState<{ id: string; name: string } | null>(null);
   const [search, setSearch] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -29,18 +34,22 @@ export default function SurveyPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function load() {
-    const res = await fetch("/api/survey");
+  async function load(p = page) {
+    const res = await fetch(`/api/survey?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
     const json = await res.json();
     if (res.ok) {
       setQuestions(json.questions ?? []);
       setExternalUrl(json.externalUrl ?? "");
       setResponses(json.responses ?? []);
+      setPage(json.page ?? p);
+      setTotalPages(json.totalPages ?? 1);
+      setTotal(json.total ?? 0);
     }
   }
 
   useEffect(() => {
-    load();
+    void load(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function findBeneficiary() {
@@ -346,12 +355,12 @@ export default function SurveyPage() {
       <section className="panel">
         <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: "0.75rem" }}>
           <h2 className="panel-title" style={{ margin: 0 }}>
-            الردود ({responses.length})
+            الردود ({total})
           </h2>
           <button
             type="button"
             className="btn-secondary"
-            disabled={!responses.length}
+            disabled={!total}
             onClick={() => window.open("/api/survey/print", "_blank", "noopener,noreferrer")}
           >
             طباعة الردود
@@ -391,6 +400,14 @@ export default function SurveyPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={DEFAULT_PAGE_SIZE}
+          busy={busy}
+          onPageChange={(p) => void load(p)}
+        />
       </section>
 
       <Modal open={previewOpen} title="معاينة الاستبيان" onClose={() => setPreviewOpen(false)}>

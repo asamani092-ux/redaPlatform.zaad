@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { ROLE_LABELS } from "@/lib/rbac";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
+import { PaginationBar } from "@/components/PaginationBar";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 type UserRow = {
   id: string;
@@ -15,6 +17,9 @@ type UserRow = {
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [msg, setMsg] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
@@ -23,14 +28,20 @@ export default function UsersPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function load() {
-    const res = await fetch("/api/users");
+  async function load(p = page) {
+    const res = await fetch(`/api/users?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
     const json = await res.json();
-    if (res.ok) setUsers(json.data);
+    if (res.ok) {
+      setUsers(json.data ?? []);
+      setPage(json.page ?? p);
+      setTotalPages(json.totalPages ?? 1);
+      setTotal(json.total ?? 0);
+    }
   }
 
   useEffect(() => {
-    void load();
+    void load(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
@@ -143,7 +154,7 @@ export default function UsersPage() {
       {msg ? <p className="msg">{msg}</p> : null}
 
       <section className="panel">
-        <h2 className="panel-title">الحسابات</h2>
+        <h2 className="panel-title">الحسابات ({total})</h2>
         <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
           <table>
             <thead>
@@ -197,6 +208,14 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={DEFAULT_PAGE_SIZE}
+          busy={busy}
+          onPageChange={(p) => void load(p)}
+        />
       </section>
 
       <Modal open={open} title="إضافة مستخدم" onClose={() => !busy && setOpen(false)}>

@@ -12,6 +12,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { Gender } from "@/generated/prisma/enums";
 import { getActiveExhibition } from "@/lib/exhibition";
 import { resolveStatus, STATUS_LABELS } from "@/lib/status";
+import { parsePageParams, paginatedPayload } from "@/lib/pagination";
 
 const createSchema = z.object({
   name: z.string().min(2),
@@ -33,32 +34,39 @@ export async function GET(req: NextRequest) {
 
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
   const exhibition = await getActiveExhibition();
+  const { page, pageSize, skip, take } = parsePageParams(req.nextUrl.searchParams);
 
-  const beneficiaries = await prisma.beneficiary.findMany({
-    where: q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { nationalId: { contains: q } },
-            { mobile: { contains: q } },
-          ],
-        }
-      : undefined,
-    include: {
-      association: true,
-      invites: exhibition
-        ? { where: { exhibitionId: exhibition.id }, take: 1 }
-        : false,
-      attendances: exhibition
-        ? { where: { exhibitionId: exhibition.id }, take: 1 }
-        : false,
-      dispenseOrders: exhibition
-        ? { where: { exhibitionId: exhibition.id }, take: 1 }
-        : false,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  const where = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: "insensitive" as const } },
+          { nationalId: { contains: q } },
+          { mobile: { contains: q } },
+        ],
+      }
+    : undefined;
+
+  const [total, beneficiaries] = await Promise.all([
+    prisma.beneficiary.count({ where }),
+    prisma.beneficiary.findMany({
+      where,
+      include: {
+        association: true,
+        invites: exhibition
+          ? { where: { exhibitionId: exhibition.id }, take: 1 }
+          : false,
+        attendances: exhibition
+          ? { where: { exhibitionId: exhibition.id }, take: 1 }
+          : false,
+        dispenseOrders: exhibition
+          ? { where: { exhibitionId: exhibition.id }, take: 1 }
+          : false,
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+  ]);
 
   const rows = beneficiaries.map((b) => {
     const invite = Array.isArray(b.invites) ? b.invites[0] : undefined;
@@ -77,7 +85,7 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  return NextResponse.json({ data: rows });
+  return NextResponse.json(paginatedPayload(rows, page, pageSize, total));
 }
 
 export async function POST(req: NextRequest) {

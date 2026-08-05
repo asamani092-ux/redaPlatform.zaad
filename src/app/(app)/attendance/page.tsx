@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { BeneficiaryCard } from "@/components/BeneficiaryCard";
+import { PaginationBar } from "@/components/PaginationBar";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 type Recent = {
   id: string;
@@ -29,6 +31,9 @@ type Lookup = {
 export default function AttendancePage() {
   const [count, setCount] = useState(0);
   const [recent, setRecent] = useState<Recent[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageRef = useRef(1);
   const [msg, setMsg] = useState("");
   const [msgError, setMsgError] = useState(false);
   const [scanOn, setScanOn] = useState(false);
@@ -39,19 +44,24 @@ export default function AttendancePage() {
   const [exceptionReason, setExceptionReason] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function refresh() {
-    const res = await fetch("/api/attendance");
+  async function refresh(p = pageRef.current) {
+    const res = await fetch(`/api/attendance?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
     const json = await res.json();
     if (res.ok) {
-      setCount(json.count);
-      setRecent(json.recent);
+      setCount(json.count ?? 0);
+      setRecent(json.recent ?? []);
+      const nextPage = json.page ?? p;
+      pageRef.current = nextPage;
+      setPage(nextPage);
+      setTotalPages(json.totalPages ?? 1);
     }
   }
 
   useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, 10000);
+    void refresh(1);
+    const t = setInterval(() => void refresh(), 10000);
     return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const preview = useCallback(async (params: { qrToken?: string; q?: string }) => {
@@ -248,7 +258,7 @@ export default function AttendancePage() {
       ) : null}
 
       <section className="panel">
-        <h2 className="panel-title">آخر التسجيلات</h2>
+        <h2 className="panel-title">آخر التسجيلات ({count})</h2>
         <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
           <table>
             <thead>
@@ -282,6 +292,14 @@ export default function AttendancePage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={count}
+          pageSize={DEFAULT_PAGE_SIZE}
+          busy={busy}
+          onPageChange={(p) => void refresh(p)}
+        />
       </section>
     </div>
   );

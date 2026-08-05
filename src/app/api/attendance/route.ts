@@ -6,6 +6,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { AttendanceType } from "@/generated/prisma/enums";
 import { hasPermission } from "@/lib/rbac";
+import { buildPageMeta, parsePageParams } from "@/lib/pagination";
 
 const checkInSchema = z.object({
   qrToken: z.string().optional(),
@@ -15,7 +16,7 @@ const checkInSchema = z.object({
   exceptionReason: z.string().optional(),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const authz = await requirePermission("attendance:manage");
   if ("error" in authz) return authz.error;
   let exhibition;
@@ -27,14 +28,23 @@ export async function GET() {
       { status: 400 },
     );
   }
-  const count = await prisma.attendance.count({ where: { exhibitionId: exhibition.id } });
-  const recent = await prisma.attendance.findMany({
-    where: { exhibitionId: exhibition.id },
-    include: { beneficiary: true },
-    orderBy: { checkedInAt: "desc" },
-    take: 50,
+  const { page, pageSize, skip, take } = parsePageParams(req.nextUrl.searchParams);
+  const where = { exhibitionId: exhibition.id };
+  const [count, recent] = await Promise.all([
+    prisma.attendance.count({ where }),
+    prisma.attendance.findMany({
+      where,
+      include: { beneficiary: true },
+      orderBy: { checkedInAt: "desc" },
+      skip,
+      take,
+    }),
+  ]);
+  return NextResponse.json({
+    count,
+    recent,
+    ...buildPageMeta(page, pageSize, count),
   });
-  return NextResponse.json({ count, recent });
 }
 
 export async function POST(req: NextRequest) {

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { PaginationBar } from "@/components/PaginationBar";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 type Row = {
   id: string;
@@ -16,7 +18,7 @@ type Row = {
 /**
  * الدعوات = إنشاء رمز QR + إرساله واتساباً.
  * الطباعة = قائمة المدعوين فقط مع QR بهوية المنصة.
- * العرض: جدول عادي، وعلى الشاشات الصغيرة يتحول إلى صفوف مكدّسة — O(n).
+ * التصفح: 50 لكل صفحة — O(pageSize).
  */
 export default function InvitesPage() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -25,22 +27,99 @@ export default function InvitesPage() {
   const [msgError, setMsgError] = useState(false);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
-  /** اختيار للدعوة | عرض المدعوين فقط (للطباعة) */
   const [view, setView] = useState<"pick" | "invited">("pick");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [invitedTotal, setInvitedTotal] = useState(0);
 
-  async function load() {
-    const res = await fetch(`/api/beneficiaries?q=${encodeURIComponent(q)}`);
+  async function loadPick(search = q, p = 1) {
+    setBusy(true);
+    const res = await fetch(
+      `/api/beneficiaries?q=${encodeURIComponent(search)}&page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`,
+    );
     const json = await res.json();
-    if (res.ok) setRows(json.data);
+    setBusy(false);
+    if (!res.ok) return;
+    setRows(
+      (json.data ?? []).map(
+        (r: {
+          id: string;
+          name: string;
+          nationalId: string;
+          mobile: string;
+          dependentsCount?: number;
+          statusLabel?: string;
+          qrToken?: string | null;
+        }) => ({
+          id: r.id,
+          name: r.name,
+          nationalId: r.nationalId,
+          mobile: r.mobile,
+          dependentsCount: r.dependentsCount,
+          statusLabel: r.statusLabel,
+          qrToken: r.qrToken,
+        }),
+      ),
+    );
+    setPage(json.page ?? p);
+    setTotalPages(json.totalPages ?? 1);
+    setTotal(json.total ?? 0);
+  }
+
+  async function loadInvited(p = 1) {
+    setBusy(true);
+    const res = await fetch(`/api/invites?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
+    const json = await res.json();
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(json.error || "تعذر جلب المدعوين");
+      setMsgError(true);
+      return;
+    }
+    setRows(
+      (json.data ?? []).map(
+        (inv: {
+          qrToken: string;
+          beneficiary: {
+            id: string;
+            name: string;
+            nationalId: string;
+            mobile: string;
+            dependentsCount?: number;
+          };
+        }) => ({
+          id: inv.beneficiary.id,
+          name: inv.beneficiary.name,
+          nationalId: inv.beneficiary.nationalId,
+          mobile: inv.beneficiary.mobile,
+          dependentsCount: inv.beneficiary.dependentsCount,
+          statusLabel: "مدعو",
+          qrToken: inv.qrToken,
+        }),
+      ),
+    );
+    setPage(json.page ?? p);
+    setTotalPages(json.totalPages ?? 1);
+    setTotal(json.total ?? 0);
+    setInvitedTotal(json.total ?? 0);
+  }
+
+  async function load(p = page) {
+    if (view === "invited") return loadInvited(p);
+    return loadPick(q, p);
   }
 
   useEffect(() => {
-    load();
+    void loadPick("", 1);
+    fetch(`/api/invites?page=1&pageSize=1`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (typeof j.total === "number") setInvitedTotal(j.total);
+      })
+      .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const invitedRows = useMemo(() => rows.filter((r) => !!r.qrToken), [rows]);
-  const visibleRows = view === "invited" ? invitedRows : rows;
 
   const selectedIds = Object.entries(selected)
     .filter(([, v]) => v)
@@ -49,6 +128,7 @@ export default function InvitesPage() {
   async function inviteAndSend() {
     if (!selectedIds.length) {
       setMsg("حدد مستفيدين أولاً");
+      setMsgError(true);
       return;
     }
     if (busy) return;
@@ -88,16 +168,24 @@ export default function InvitesPage() {
     setMsg(`تمت دعوة ${json.invited} مستفيد${waNote}`);
     setMsgError(failed > 0 || json.status === "FAILED" || json.status === "PARTIAL");
     setSelected({});
-    load();
     setView("invited");
+    await loadInvited(1);
   }
 
   function printInvited() {
-    if (!invitedRows.length) {
+    if (!invitedTotal) {
       setMsg("لا يوجد مدعوون للطباعة بعد");
+      setMsgError(true);
       return;
     }
     window.open("/api/invites/print", "_blank", "noopener,noreferrer");
+  }
+
+  async function switchView(next: "pick" | "invited") {
+    setView(next);
+    setSelected({});
+    if (next === "invited") await loadInvited(1);
+    else await loadPick(q, 1);
   }
 
   return (
@@ -121,11 +209,11 @@ export default function InvitesPage() {
             <button
               className="btn-secondary"
               type="button"
-              disabled={!invitedRows.length}
-              title={!invitedRows.length ? "لا يوجد مدعوون للطباعة بعد" : undefined}
+              disabled={!invitedTotal}
+              title={!invitedTotal ? "لا يوجد مدعوون للطباعة بعد" : undefined}
               onClick={printInvited}
             >
-              طباعة قائمة المدعوين ({invitedRows.length})
+              طباعة قائمة المدعوين ({invitedTotal})
             </button>
           </>
         }
@@ -140,36 +228,42 @@ export default function InvitesPage() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="تصفية بالاسم أو الهوية"
             dir="ltr"
+            disabled={view === "invited"}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && view === "pick") {
                 e.preventDefault();
-                void load();
+                void loadPick(q, 1);
               }
             }}
           />
-          <button className="btn-secondary" type="button" onClick={load}>
+          <button
+            className="btn-secondary"
+            type="button"
+            disabled={view === "invited"}
+            onClick={() => void loadPick(q, 1)}
+          >
             تحديث
           </button>
           <button
             type="button"
             className={view === "pick" ? "btn-primary" : "btn-secondary"}
-            onClick={() => setView("pick")}
+            onClick={() => void switchView("pick")}
           >
             اختيار للدعوة
           </button>
           <button
             type="button"
             className={view === "invited" ? "btn-primary" : "btn-secondary"}
-            onClick={() => setView("invited")}
+            onClick={() => void switchView("invited")}
           >
-            المدعوون فقط ({invitedRows.length})
+            المدعوون فقط ({invitedTotal})
           </button>
         </div>
       </section>
 
       <section className="panel">
         <h2 className="panel-title">
-          {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"}
+          {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"} ({total})
         </h2>
         <div className="table-wrap table-wrap--stack">
           <table>
@@ -180,12 +274,11 @@ export default function InvitesPage() {
                     <input
                       type="checkbox"
                       aria-label="تحديد الكل"
-                      checked={
-                        visibleRows.length > 0 && visibleRows.every((r) => selected[r.id])
-                      }
+                      checked={rows.length > 0 && rows.every((r) => selected[r.id])}
                       onChange={(e) => {
-                        const next: Record<string, boolean> = {};
-                        if (e.target.checked) visibleRows.forEach((r) => (next[r.id] = true));
+                        const next: Record<string, boolean> = { ...selected };
+                        if (e.target.checked) rows.forEach((r) => (next[r.id] = true));
+                        else rows.forEach((r) => delete next[r.id]);
                         setSelected(next);
                       }}
                     />
@@ -202,7 +295,7 @@ export default function InvitesPage() {
               </tr>
             </thead>
             <tbody>
-              {visibleRows.map((r, idx) => (
+              {rows.map((r, idx) => (
                 <tr key={r.id}>
                   {view === "pick" ? (
                     <td data-label="اختيار">
@@ -216,7 +309,7 @@ export default function InvitesPage() {
                       />
                     </td>
                   ) : (
-                    <td data-label="#">{idx + 1}</td>
+                    <td data-label="#">{(page - 1) * DEFAULT_PAGE_SIZE + idx + 1}</td>
                   )}
                   <td data-label="الاسم">{r.name}</td>
                   <td data-label="الهوية" dir="ltr">
@@ -239,7 +332,7 @@ export default function InvitesPage() {
                   </td>
                 </tr>
               ))}
-              {!visibleRows.length ? (
+              {!rows.length ? (
                 <tr>
                   <td colSpan={7} className="empty">
                     {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
@@ -249,6 +342,14 @@ export default function InvitesPage() {
             </tbody>
           </table>
         </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={DEFAULT_PAGE_SIZE}
+          busy={busy}
+          onPageChange={(p) => void load(p)}
+        />
       </section>
     </div>
   );
