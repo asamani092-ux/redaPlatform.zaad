@@ -8,7 +8,6 @@ import type { InventorySchemaField } from "@/lib/inventory-schema";
 import { sanitizeNumericInput, toNumberOrNull } from "@/lib/num";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable } from "@/components/ui/DataTable";
 import { Chip } from "@/components/ui/Chip";

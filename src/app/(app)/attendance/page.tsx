@@ -66,7 +66,6 @@ export default function AttendancePage() {
     void refresh(1);
     const t = setInterval(() => void refresh(), 10000);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const preview = useCallback(async (params: { qrToken?: string; q?: string }) => {

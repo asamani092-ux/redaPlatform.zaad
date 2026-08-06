@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
@@ -510,9 +511,9 @@ export default function BeneficiariesPage() {
           05xxxxxxxx.
         </p>
         <div className="form-actions" style={{ marginBottom: "0.85rem" }}>
-          <a className="btn-secondary" href="/api/beneficiaries/import/template">
+          <Link className="btn-secondary" href="/api/beneficiaries/import/template">
             تحميل نموذج Excel
-          </a>
+          </Link>
         </div>
         <form
           onSubmit={onImport}
