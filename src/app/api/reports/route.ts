@@ -1,3 +1,5 @@
+import { readFile } from "fs/promises";
+import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +16,7 @@ import {
   sharesToRecord,
 } from "@/lib/report-metrics";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
+import { buildZadPresentationReport } from "@/lib/zad-presentation-report";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -193,6 +196,37 @@ export async function GET(req: NextRequest) {
       summary,
       rows: safeRows,
       identityFieldsRedacted: !exportFullIdentity,
+    });
+  }
+
+  if (format === "presentation") {
+    const report = buildZadPresentationReport(summary);
+    const asHtml = req.nextUrl.searchParams.get("html") === "1";
+    if (!asHtml) {
+      return NextResponse.json({ report });
+    }
+    const templatePath = path.join(
+      process.cwd(),
+      "public/zad-presentation/builder.html",
+    );
+    let html = await readFile(templatePath, "utf8");
+    const payload = JSON.stringify(report).replace(/</g, "\\u003c");
+    if (!html.includes("<!--ZAD_REPORT_INJECT-->")) {
+      return NextResponse.json(
+        { error: "قالب منشئ العرض غير جاهز" },
+        { status: 500 },
+      );
+    }
+    html = html.replace(
+      "<!--ZAD_REPORT_INJECT-->",
+      `<script>window.ZAD_REPORT=${payload};</script>`,
+    );
+    return new NextResponse(html, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
     });
   }
 
