@@ -96,12 +96,14 @@ export async function GET(req: NextRequest) {
       orderBy: { updatedAt: "desc" },
     }),
   ]);
+  const surveyConfig = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
   return NextResponse.json({
     recent,
     baseEntitlement: base,
     dependentsEntitlement: perDep,
     entitledPieces: base,
     inventorySchema: parseInventorySchema(exhibition.settings?.inventorySchemaJson),
+    surveyAutoSendOnDispense: surveyConfig.autoSendOnDispense,
     items: items.map((i) => ({
       id: i.id,
       attributes: i.attributesJson,
@@ -342,12 +344,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (body.data.sendSurvey) {
+    const surveyConfig = parseSurveyConfig(settings.surveyQuestionsJson);
+    const wantSurvey =
+      body.data.sendSurvey !== undefined
+        ? body.data.sendSurvey
+        : surveyConfig.autoSendOnDispense;
+    if (wantSurvey) {
       if (!order.beneficiary.mobile) {
         surveyStatus = "FAILED";
         surveyError = "لا يوجد رقم جوال للمستفيد";
       } else {
-        const surveyConfig = parseSurveyConfig(settings.surveyQuestionsJson);
         const surveyMsg = await sendWhatsAppMessage({
           exhibitionId: exhibition.id,
           beneficiaryId: order.beneficiaryId,

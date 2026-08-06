@@ -1,6 +1,6 @@
 /**
  * إعداد الاستبيان المخزن في surveyQuestionsJson — يدعم الشكلين:
- * مصفوفة أسئلة قديمة، أو غلاف { questions, externalUrl }.
+ * مصفوفة أسئلة قديمة، أو غلاف { questions, externalUrl, autoSendOnDispense }.
  * O(n) بعدد الأسئلة.
  */
 export type SurveyQuestion = {
@@ -14,6 +14,8 @@ export type SurveyQuestion = {
 export type SurveyConfig = {
   questions: SurveyQuestion[];
   externalUrl: string | null;
+  /** إرسال رابط الاستبيان تلقائياً عبر واتساب عند صرف القطع */
+  autoSendOnDispense: boolean;
 };
 
 function asQuestion(raw: unknown): SurveyQuestion | null {
@@ -35,6 +37,7 @@ export function parseSurveyConfig(raw: unknown): SurveyConfig {
     return {
       questions: raw.map(asQuestion).filter((q): q is SurveyQuestion => !!q),
       externalUrl: null,
+      autoSendOnDispense: false,
     };
   }
   if (raw && typeof raw === "object") {
@@ -46,7 +49,8 @@ export function parseSurveyConfig(raw: unknown): SurveyConfig {
       typeof r.externalUrl === "string" && r.externalUrl.trim()
         ? r.externalUrl.trim()
         : null;
-    return { questions, externalUrl };
+    const autoSendOnDispense = r.autoSendOnDispense === true;
+    return { questions, externalUrl, autoSendOnDispense };
   }
-  return { questions: [], externalUrl: null };
+  return { questions: [], externalUrl: null, autoSendOnDispense: false };
 }

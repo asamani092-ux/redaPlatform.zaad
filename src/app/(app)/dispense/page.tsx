@@ -65,7 +65,7 @@ export default function DispensePage() {
   const [msgError, setMsgError] = useState(false);
   const [scanOn, setScanOn] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [sendSurvey, setSendSurvey] = useState(true);
+  const [sendSurvey, setSendSurvey] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const toast = useToast();
 
@@ -75,6 +75,9 @@ export default function DispensePage() {
       .then((j) => {
         if (j.items) setItems(j.items.map((i: Item) => ({ ...i, quantity: Number(i.quantity) })));
         if (j.inventorySchema) setSchema(j.inventorySchema);
+        if (typeof j.surveyAutoSendOnDispense === "boolean") {
+          setSendSurvey(j.surveyAutoSendOnDispense);
+        }
       })
       .catch(() => undefined);
   }
@@ -425,7 +428,7 @@ export default function DispensePage() {
               checked={sendSurvey}
               onChange={(e) => setSendSurvey(e.target.checked)}
             />
-            إرسال رابط الاستبيان عبر واتساب بعد الاستلام (مفعّل افتراضياً)
+            إرسال رابط الاستبيان عبر واتساب بعد الاستلام (حسب إعداد الاستبيان — قابل للتغيير هنا)
           </label>
           {blockReason ? <p className="msg msg-error">{blockReason}</p> : null}
           {lookup.entitledOverride != null ? (

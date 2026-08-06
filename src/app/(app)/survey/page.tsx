@@ -31,6 +31,7 @@ export default function SurveyPage() {
 
   const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
   const [externalUrl, setExternalUrl] = useState("");
+  const [autoSendOnDispense, setAutoSendOnDispense] = useState(false);
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -49,6 +50,7 @@ export default function SurveyPage() {
     if (res.ok) {
       setQuestions(json.questions ?? []);
       setExternalUrl(json.externalUrl ?? "");
+      setAutoSendOnDispense(Boolean(json.autoSendOnDispense));
       setResponses(json.responses ?? []);
       setPage(json.page ?? p);
       setTotalPages(json.totalPages ?? 1);
@@ -111,6 +113,7 @@ export default function SurveyPage() {
       body: JSON.stringify({
         surveyQuestions: questions.filter((q) => q.text.trim()),
         surveyExternalUrl: externalUrl.trim() || null,
+        surveyAutoSendOnDispense: autoSendOnDispense,
       }),
     });
     const json = await res.json();
@@ -132,7 +135,7 @@ export default function SurveyPage() {
     <div className="page-stack">
       <PageHeader
         title="استبيان الرضا"
-        description="يُرسل الرابط تلقائياً عبر واتساب بعد الصرف — هنا إعداد الأسئلة ومتابعة الردود"
+        description="إعداد الأسئلة ومتابعة الردود — ويمكن تفعيل الإرسال التلقائي بعد استلام القطع"
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الاستبيان" }]}
         actions={
           <>
@@ -161,8 +164,8 @@ export default function SurveyPage() {
       {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
 
       <p className="page-header__desc">
-        المسار التشغيلي: صرف القطع ← خيار إرسال الاستبيان ← رسالة واتساب للمستفيد ← حفظ الردود هنا إن
-        كان الاستبيان داخلياً.
+        المسار التشغيلي: تفعيل الإرسال التلقائي من الإعداد ← صرف القطع للمستفيد ← واتساب ← حفظ الردود
+        هنا إن كان الاستبيان داخلياً. يمكن أيضاً إعادة الإرسال الجماعي من الأزرار أعلاه.
       </p>
 
       <Tabs
@@ -267,6 +270,19 @@ export default function SurveyPage() {
                 value={externalUrl}
                 onChange={(e) => setExternalUrl(e.target.value)}
               />
+            </div>
+            <div className="full">
+              <label className="check-field" style={{ marginTop: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={autoSendOnDispense}
+                  onChange={(e) => setAutoSendOnDispense(e.target.checked)}
+                />
+                إرسال تلقائي لرابط الاستبيان عبر واتساب عند استلام المستفيد للقطع
+              </label>
+              <p className="page-header__desc" style={{ marginTop: "var(--space-2)" }}>
+                عند التفعيل يصبح الخيار محدّداً افتراضياً في شاشة الصرف، مع إمكانية تغييره لكل عملية.
+              </p>
             </div>
           </div>
 

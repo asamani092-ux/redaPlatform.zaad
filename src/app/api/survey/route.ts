@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     questions: config.questions,
     externalUrl: config.externalUrl,
+    autoSendOnDispense: config.autoSendOnDispense,
     responses,
     ...buildPageMeta(page, pageSize, total),
   });

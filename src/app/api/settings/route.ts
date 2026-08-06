@@ -35,6 +35,7 @@ const settingsSchema = z.object({
   whatsappThanksTpl: z.string().optional().nullable(),
   surveyQuestions: z.array(z.record(z.string(), z.unknown())).optional(),
   surveyExternalUrl: z.string().optional().nullable(),
+  surveyAutoSendOnDispense: z.boolean().optional(),
   associations: z
     .array(z.object({ id: z.string().optional(), name: z.string().min(1), active: z.boolean().optional() }))
     .optional(),
@@ -131,9 +132,13 @@ export async function PUT(req: NextRequest) {
     }));
   }
 
-  // إعداد الاستبيان يُخزن كغلاف { questions, externalUrl } مع الحفاظ على القائم عند غياب أحدهما
+  // إعداد الاستبيان يُخزن كغلاف { questions, externalUrl, autoSendOnDispense }
   let surveyPayload: Prisma.InputJsonValue | undefined;
-  if (body.data.surveyQuestions !== undefined || body.data.surveyExternalUrl !== undefined) {
+  if (
+    body.data.surveyQuestions !== undefined ||
+    body.data.surveyExternalUrl !== undefined ||
+    body.data.surveyAutoSendOnDispense !== undefined
+  ) {
     const current = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
     surveyPayload = {
       questions: (body.data.surveyQuestions ?? current.questions) as unknown[],
@@ -141,6 +146,10 @@ export async function PUT(req: NextRequest) {
         body.data.surveyExternalUrl !== undefined
           ? body.data.surveyExternalUrl?.trim() || null
           : current.externalUrl,
+      autoSendOnDispense:
+        body.data.surveyAutoSendOnDispense !== undefined
+          ? body.data.surveyAutoSendOnDispense
+          : current.autoSendOnDispense,
     } as unknown as Prisma.InputJsonValue;
   }
 
@@ -165,7 +174,11 @@ export async function PUT(req: NextRequest) {
       inventorySchemaJson: (schemaPayload ?? DEFAULT_INVENTORY_SCHEMA) as unknown as Prisma.InputJsonValue,
       whatsappInviteTpl: body.data.whatsappInviteTpl,
       whatsappThanksTpl: body.data.whatsappThanksTpl,
-      surveyQuestionsJson: (surveyPayload ?? { questions: [], externalUrl: null }) as Prisma.InputJsonValue,
+      surveyQuestionsJson: (surveyPayload ?? {
+        questions: [],
+        externalUrl: null,
+        autoSendOnDispense: false,
+      }) as Prisma.InputJsonValue,
     },
   });
 
