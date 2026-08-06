@@ -5,6 +5,13 @@ import { Providers } from "@/components/Providers";
 export const metadata: Metadata = {
   title: "منصة رداء",
   description: "منصة إدارة معارض رداء للمستفيدين والحضور والصرف والمخزون",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png", sizes: "128x128" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "128x128", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
