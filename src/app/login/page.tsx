@@ -31,8 +31,8 @@ function LoginForm() {
   }
 
   return (
-    <div className="login-screen">
-      <div className="login-card">
+    <div className="login-screen page-shell">
+      <div className="login-card card page-container-narrow">
         <div className="login-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.webp" alt="رداء" width={80} height={80} />
@@ -60,13 +60,19 @@ function LoginForm() {
             </label>
             <input id="password" name="password" type="password" className="input-field" dir="ltr" required />
           </div>
-          {error ? <p className="msg msg-error">{error}</p> : null}
-          <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading}>
+          {error ? <p className="msg msg-error" role="alert">{error}</p> : null}
+          <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading} aria-busy={loading}>
             {loading ? "جاري الدخول..." : "دخول"}
           </button>
           <Link
             href="/forgot-password"
-            style={{ textAlign: "center", display: "block", marginTop: "0.35rem", fontSize: "0.9rem" }}
+            style={{
+              textAlign: "center",
+              display: "block",
+              marginTop: "var(--space-2)",
+              fontSize: "var(--text-sm)",
+              color: "var(--text-link)",
+            }}
           >
             نسيت كلمة المرور؟
           </Link>

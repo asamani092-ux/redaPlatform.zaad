@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { IdleWarning } from "@/components/IdleWarning";
+import { ProfileDrawer } from "@/components/ui/ProfileDrawer";
 import { ROLE_LABELS, navItemsForRole } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -19,6 +20,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [activeExhibition, setActiveExhibition] = useState<{
     name: string;
     location?: string | null;
@@ -138,10 +140,49 @@ export function AppShell({
             <img src="/logo.webp" alt="" width={28} height={28} />
             <span>{activeExhibition ? activeExhibition.name : "منصة رداء"}</span>
           </div>
-          <div className="app-topbar__user">{user.name}</div>
+          <button
+            type="button"
+            className="btn-secondary app-topbar__user"
+            onClick={() => setProfileOpen(true)}
+            aria-label="ملف المستخدم"
+          >
+            {user.name}
+          </button>
         </header>
         <main className="app-content">{children}</main>
       </div>
+
+      <ProfileDrawer open={profileOpen} title="ملف المستخدم" onClose={() => setProfileOpen(false)}>
+        <div className="form-grid">
+          <div className="field-cell">
+            <div className="field-cell-row">
+              <span className="field-cell-label">الاسم</span>
+              <span className="field-cell-value">{user.name}</span>
+            </div>
+          </div>
+          <div className="field-cell">
+            <div className="field-cell-row">
+              <span className="field-cell-label">الجوال</span>
+              <span className="field-cell-value" dir="ltr">
+                {user.mobile}
+              </span>
+            </div>
+          </div>
+          <div className="field-cell">
+            <div className="field-cell-row">
+              <span className="field-cell-label">الدور</span>
+              <span className="zad-badge zad-badge--brand">{ROLE_LABELS[user.role]}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            تسجيل الخروج
+          </button>
+        </div>
+      </ProfileDrawer>
 
       <IdleWarning userName={user.name} />
     </div>

@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   EXHIBITION_STATUS_LABELS,
   exhibitionLifecycle,
@@ -30,6 +33,8 @@ export default function ExhibitionsPage() {
   const [msg, setMsg] = useState("");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const toast = useToast();
 
   async function load() {
     const res = await fetch("/api/exhibitions");
@@ -61,6 +66,7 @@ export default function ExhibitionsPage() {
     const json = await res.json();
     setBusy(false);
     setMsg(res.ok ? "تم إنشاء المعرض" : json.error || "فشل الإنشاء");
+    toast.push({ title: res.ok ? "تم إنشاء المعرض" : (json.error || "فشل الإنشاء"), tone: res.ok ? "success" : "danger" });
     if (res.ok) {
       setOpen(false);
       e.currentTarget.reset();
@@ -75,6 +81,7 @@ export default function ExhibitionsPage() {
     const json = await res.json();
     setBusy(false);
     setMsg(res.ok ? "تم تفعيل المعرض" : json.error || "فشل التفعيل");
+    toast.push({ title: res.ok ? "تم تفعيل المعرض" : (json.error || "فشل التفعيل"), tone: res.ok ? "success" : "danger" });
     if (res.ok) load();
   }
 
@@ -83,6 +90,7 @@ export default function ExhibitionsPage() {
       <PageHeader
         title="المعارض"
         description="حالة زمنية (قادم / جاري / منتهٍ) ومعرض تشغيلي واحد نشط"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "المعارض" }]}
         actions={
           <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
             إضافة معرض
@@ -134,7 +142,7 @@ export default function ExhibitionsPage() {
                           type="button"
                           className="btn-secondary"
                           disabled={busy || status === "ended"}
-                          onClick={() => activate(r.id)}
+                          onClick={() => setConfirmId(r.id)}
                           title={status === "ended" ? "المعرض منتهٍ" : "تفعيل تشغيلي"}
                         >
                           تفعيل
@@ -146,8 +154,8 @@ export default function ExhibitionsPage() {
               })}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={5} className="empty">
-                    لا معارض بعد — أضف معرضاً للبدء
+                  <td colSpan={5}>
+                    <EmptyState title="لا معارض بعد" body="أضف معرضاً للبدء في التشغيل." />
                   </td>
                 </tr>
               ) : null}
@@ -187,6 +195,20 @@ export default function ExhibitionsPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={Boolean(confirmId)}
+        title="تفعيل المعرض"
+        body="سيصبح هذا المعرض هو النشط تشغيلياً. هل تريد المتابعة؟"
+        confirmLabel="تفعيل"
+        busy={busy}
+        onClose={() => setConfirmId(null)}
+        onConfirm={() => {
+          const id = confirmId;
+          setConfirmId(null);
+          if (id) void activate(id);
+        }}
+      />
     </div>
   );
 }

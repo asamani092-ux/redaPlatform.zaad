@@ -6,6 +6,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { AvatarGroup } from "@/components/ui/AvatarGroup";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type UserRow = {
   id: string;
@@ -145,6 +147,7 @@ export default function UsersPage() {
       <PageHeader
         title="المستخدمون"
         description="إدارة حسابات الموظفين والصلاحيات"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "المستخدمون" }]}
         actions={
           <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
             إضافة مستخدم
@@ -154,7 +157,12 @@ export default function UsersPage() {
       {msg ? <p className="msg">{msg}</p> : null}
 
       <section className="panel">
-        <h2 className="panel-title">الحسابات ({total})</h2>
+        <div className="toolbar" style={{ marginBottom: "var(--space-3)" }}>
+          <h2 className="panel-title" style={{ margin: 0 }}>
+            الحسابات ({total})
+          </h2>
+          <AvatarGroup names={users.map((u) => u.name)} max={5} />
+        </div>
         <div className="table-wrap table-wrap--stack table-wrap--sticky-name">
           <table>
             <thead>
@@ -208,6 +216,7 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+        {!users.length ? <EmptyState title="لا مستخدمون" body="أضف أول حساب موظف." /> : null}
         <PaginationBar
           page={page}
           totalPages={totalPages}

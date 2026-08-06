@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { Accordion } from "@/components/ui/Accordion";
+import { useToast } from "@/components/ui/Toast";
 import {
   TRIAL_EVAL_RATINGS,
   buildTrialEvalReport,
@@ -23,6 +26,7 @@ export function TrialEvalClient() {
   const [state, setState] = useState<Record<string, RowState>>({});
   const [copied, setCopied] = useState("");
   const [reportText, setReportText] = useState("");
+  const toast = useToast();
 
   useEffect(() => {
     try {
@@ -67,8 +71,10 @@ export function TrialEvalClient() {
     try {
       await navigator.clipboard.writeText(text);
       setCopied("تم نسخ التقرير كاملاً — يمكن لصقه لمراجعة الإصلاحات");
+      toast.push({ title: "تم نسخ التقرير", tone: "success" });
     } catch {
       setCopied("تعذر النسخ التلقائي — حدد النص من المربع أدناه وانسخه يدوياً");
+      toast.push({ title: "تعذر النسخ التلقائي", tone: "warning" });
       const el = document.getElementById("trial-eval-report") as HTMLTextAreaElement | null;
       if (el) {
         el.focus();
@@ -87,6 +93,7 @@ export function TrialEvalClient() {
       <PageHeader
         title="تقييم أدوات التجربة"
         description="قائمة مستخرجة من التنقل والمسارات الفعلية — للتقييم قبل الإطلاق ثم تُحذف الصفحة"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "تقييم التجربة" }]}
         actions={
           <button type="button" className="btn-primary" onClick={() => void copyReport()}>
             نسخ التقرير كاملاً
@@ -96,25 +103,30 @@ export function TrialEvalClient() {
 
       <section className="panel">
         <h2 className="panel-title">ما تبقّى قبل بدء التجربة على السيرفر</h2>
-        <ol style={{ margin: 0, paddingInlineStart: "1.25rem", display: "grid", gap: "0.45rem" }}>
-          <li>ضبط خدمة النشر على جذر المشروع (بدون مجلد فرعي قديم) وإعادة النشر من الفرع الرئيسي.</li>
-          <li>
-            تعبئة متغيرات التشغيل: رابط قاعدة البيانات، سر الجلسة، رابط الموقع العام، وتفعيل مضيف موثوق؛ وتغيير كلمة مرور المدير الافتراضية.
-          </li>
-          <li>تفعيل هذه الصفحة في بيئة التجربة فقط عبر المتغير المخصص، وإيقافه أو حذف مسار الصفحة قبل الإطلاق النهائي.</li>
-          <li>
-            بعد الدخول بحساب المدير: إنشاء مستخدمي الأدوار، ضبط إعدادات المعرض والمخزون، استيراد المستفيدين، إرسال الدعوات، ثم مسار التشغيل (حضور ثم صرف).
-          </li>
-          <li>رسائل واتساب ما زالت تجريبية (تسجيل داخلي بلا إرسال حقيقي) — مقبول لفترة التجربة.</li>
-        </ol>
+        <Accordion
+          items={[
+            {
+              id: "deploy",
+              title: "النشر والمتغيرات",
+              body: "ضبط خدمة النشر على جذر المشروع، وملء رابط قاعدة البيانات وسر الجلسة ورابط الموقع العام، وتغيير كلمة مرور المدير الافتراضية.",
+            },
+            {
+              id: "trial",
+              title: "مسار التجربة",
+              body: "تفعيل الصفحة في بيئة التجربة فقط، ثم إنشاء المستخدمين وضبط المعرض والمخزون واستيراد المستفيدين ومسار الحضور/الصرف.",
+            },
+            {
+              id: "wa",
+              title: "واتساب",
+              body: "رسائل واتساب ما زالت تجريبية (تسجيل داخلي بلا إرسال حقيقي) — مقبول لفترة التجربة.",
+            },
+          ]}
+        />
       </section>
 
       <div className="stat-grid">
         {summary.map((s) => (
-          <div key={s.label} className="stat-tile">
-            <div className="value">{s.count}</div>
-            <div className="label">{s.label}</div>
-          </div>
+          <KpiCard key={s.label} label={s.label} value={s.count} />
         ))}
       </div>
 

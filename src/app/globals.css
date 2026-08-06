@@ -1,20 +1,21 @@
 @import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap");
 @import "tailwindcss";
-@import "../styles/tokens.css";
-@import "../styles/components.css";
+@import "@zaad/design-system/tokens.css";
+@import "@zaad/design-system/components.css";
+@import "../styles/zaad-addons.css";
 
 @theme inline {
-  --color-primary: #8b1538;
-  --color-primary-dark: #6e102c;
-  --color-primary-light: #a31a44;
-  --color-secondary: #f2b824;
-  --color-secondary-dark: #d9a31f;
-  --color-secondary-light: #f5c84d;
-  --color-brand-gray: #706f6f;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f5f5f5;
-  --color-surface-border: #e8e8e8;
-  --font-sans: "Tajawal", Tahoma, Arial, sans-serif;
+  --color-primary: var(--brand-primary);
+  --color-primary-dark: var(--primary-800);
+  --color-primary-light: var(--primary-500);
+  --color-secondary: var(--brand-secondary);
+  --color-secondary-dark: var(--secondary-600);
+  --color-secondary-light: var(--secondary-300);
+  --color-brand-gray: var(--neutral-500);
+  --color-surface: var(--surface-raised);
+  --color-surface-muted: var(--surface-base);
+  --color-surface-border: var(--border-subtle);
+  --font-sans: var(--font-arabic);
 }
 
 *,
@@ -39,14 +40,14 @@ body {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
-  font-family: var(--tmkeen-font-sans);
+  font-family: var(--font-arabic);
   background:
-    linear-gradient(180deg, rgba(139, 21, 56, 0.04), transparent 220px),
-    var(--tmkeen-surface-muted);
-  color: #4a4a4a;
+    linear-gradient(180deg, color-mix(in srgb, var(--brand-primary) 4%, transparent), transparent 220px),
+    var(--surface-base);
+  color: var(--text-primary);
   direction: rtl;
   text-align: start;
-  line-height: 1.6;
+  line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1139,12 +1140,12 @@ button {
 /* ── Live display screen (public TV / manager link) ── */
 .live-screen {
   min-height: 100vh;
-  padding: 1.25rem clamp(1rem, 3vw, 2.5rem) 2rem;
+  padding: var(--space-5) clamp(var(--space-4), 3vw, var(--space-10)) var(--space-8);
   background:
-    radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--tmkeen-primary) 12%, transparent), transparent 55%),
-    linear-gradient(180deg, #faf7f5 0%, #f3eee8 100%);
-  color: #1f1a17;
-  font-family: "Tajawal", Tahoma, sans-serif;
+    radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--brand-primary) 12%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--surface-base) 0%, var(--surface-sunken) 100%);
+  color: var(--text-primary);
+  font-family: var(--font-arabic);
 }
 .live-screen__header {
   display: flex;
@@ -1187,10 +1188,10 @@ button {
   margin-bottom: 1.25rem;
 }
 .live-screen__tile {
-  background: #fff;
-  border: 1px solid var(--tmkeen-surface-border, #e8e8e8);
-  border-radius: 0.75rem;
-  padding: 0.9rem 1rem;
+  background: var(--surface-raised);
+  border: var(--border-hairline) solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 .live-screen__value {
   font-size: clamp(1.5rem, 2.5vw, 2rem);
@@ -1209,10 +1210,10 @@ button {
   gap: 0.9rem;
 }
 .live-screen__panel {
-  background: #fff;
-  border: 1px solid var(--tmkeen-surface-border, #e8e8e8);
-  border-radius: 0.75rem;
-  padding: 1rem 1.1rem;
+  background: var(--surface-raised);
+  border: var(--border-hairline) solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 .live-screen__panel h2 {
   margin: 0 0 0.75rem;
@@ -1233,15 +1234,15 @@ button {
   font-weight: 600;
 }
 .live-screen__bar {
-  height: 0.4rem;
-  border-radius: 999px;
-  background: #eee;
+  height: var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
   overflow: hidden;
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 .live-screen__bar > span {
   display: block;
   height: 100%;
-  background: var(--tmkeen-primary);
+  background: var(--brand-primary);
 }
 

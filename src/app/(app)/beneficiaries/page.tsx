@@ -9,6 +9,11 @@ import type { Role } from "@/generated/prisma/enums";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { FilterBar } from "@/components/ui/FilterBar";
+import { Dropzone } from "@/components/ui/Dropzone";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
+import { ProfileDrawer } from "@/components/ui/ProfileDrawer";
 
 type Association = { id: string; name: string };
 type Beneficiary = {
@@ -48,6 +53,9 @@ export default function BeneficiariesPage() {
   const [deleting, setDeleting] = useState<Beneficiary | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [drawerId, setDrawerId] = useState<string | null>(null);
+  const toast = useToast();
+  const drawerRow = rows.find((r) => r.id === drawerId) ?? null;
 
   async function load(search = q, p = page) {
     const res = await fetch(
@@ -286,6 +294,7 @@ export default function BeneficiariesPage() {
       <PageHeader
         title="المستفيدون"
         description={canManage ? "بحث وإضافة وتعديل واستيراد" : "بحث وعرض فقط"}
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "المستفيدون" }]}
         actions={
           canManage ? (
             <>
@@ -306,7 +315,17 @@ export default function BeneficiariesPage() {
       ) : null}
 
       <section className="panel">
-        <div className="toolbar">
+        <FilterBar
+          chips={q.trim() ? [{ key: "q", label: `بحث: ${q.trim()}` }] : []}
+          onClear={
+            q
+              ? () => {
+                  setQ("");
+                  void load("", 1);
+                }
+              : undefined
+          }
+        >
           <input
             className="input-field"
             placeholder="الاسم / الهوية / الجوال"
@@ -322,7 +341,7 @@ export default function BeneficiariesPage() {
           <button type="button" className="btn-primary" onClick={() => void load(q, 1)}>
             بحث
           </button>
-        </div>
+        </FilterBar>
       </section>
 
       <section className="panel">
@@ -343,7 +362,16 @@ export default function BeneficiariesPage() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td data-label="الاسم">{r.name}</td>
+                  <td data-label="الاسم">
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ paddingInline: "var(--space-3)" }}
+                      onClick={() => setDrawerId(r.id)}
+                    >
+                      {r.name}
+                    </button>
+                  </td>
                   <td data-label="الهوية" dir="ltr">
                     {r.nationalId}
                   </td>
@@ -384,8 +412,8 @@ export default function BeneficiariesPage() {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={canManage ? 7 : 6} className="empty">
-                    لا توجد نتائج
+                  <td colSpan={canManage ? 7 : 6}>
+                    <EmptyState title="لا توجد نتائج" body="جرّب تعديل كلمات البحث أو أضف مستفيداً جديداً." />
                   </td>
                 </tr>
               ) : null}
@@ -486,8 +514,25 @@ export default function BeneficiariesPage() {
             تحميل نموذج Excel
           </a>
         </div>
-        <form onSubmit={onImport} className="toolbar">
-          <input type="file" name="file" accept=".xlsx,.xls,.csv" required className="input-field" />
+        <form
+          onSubmit={onImport}
+          className="form-grid"
+          onDragOver={(e) => e.preventDefault()}
+        >
+          <Dropzone
+            accept=".xlsx,.xls,.csv"
+            title="اسحب ملف Excel هنا أو اختر للتصفح"
+            body="الصيغ: xlsx / xls / csv"
+            onFiles={(files) => {
+              const input = document.getElementById("beneficiary-import-file") as HTMLInputElement | null;
+              if (!input) return;
+              const dt = new DataTransfer();
+              dt.items.add(files[0]);
+              input.files = dt.files;
+              toast.push({ title: "تم اختيار الملف", body: files[0]?.name, tone: "info" });
+            }}
+          />
+          <input id="beneficiary-import-file" type="file" name="file" accept=".xlsx,.xls,.csv" required hidden />
           <button className="btn-primary" type="submit" disabled={busy}>
             {busy ? "جاري..." : "رفع الملف"}
           </button>
@@ -508,6 +553,62 @@ export default function BeneficiariesPage() {
           </div>
         ) : null}
       </Modal>
+
+      <ProfileDrawer
+        open={!!drawerRow}
+        title={drawerRow?.name ?? "بطاقة مستفيد"}
+        onClose={() => setDrawerId(null)}
+      >
+        {drawerRow ? (
+          <div className="form-grid">
+            <div className="field-cell">
+              <div className="field-cell-row">
+                <span className="field-cell-label">الهوية</span>
+                <span className="field-cell-value" dir="ltr">
+                  {drawerRow.nationalId}
+                </span>
+              </div>
+            </div>
+            <div className="field-cell">
+              <div className="field-cell-row">
+                <span className="field-cell-label">الجوال</span>
+                <span className="field-cell-value" dir="ltr">
+                  {drawerRow.mobile}
+                </span>
+              </div>
+            </div>
+            <div className="field-cell">
+              <div className="field-cell-row">
+                <span className="field-cell-label">التابعون</span>
+                <span className="field-cell-value">{drawerRow.dependentsCount ?? 0}</span>
+              </div>
+            </div>
+            <div className="field-cell">
+              <div className="field-cell-row">
+                <span className="field-cell-label">الجمعية</span>
+                <span className="field-cell-value">
+                  {drawerRow.association?.name ?? drawerRow.associationOther ?? "—"}
+                </span>
+              </div>
+            </div>
+            {drawerRow.statusLabel ? (
+              <span className="zad-badge zad-badge--brand">{drawerRow.statusLabel}</span>
+            ) : null}
+            {canManage ? (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  setDrawerId(null);
+                  openEdit(drawerRow);
+                }}
+              >
+                تعديل
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </ProfileDrawer>
     </div>
   );
 }

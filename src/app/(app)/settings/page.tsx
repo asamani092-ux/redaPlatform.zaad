@@ -10,6 +10,9 @@ import {
   REQUIRED_INVENTORY_ATTR_LABELS,
 } from "@/lib/inventory-schema";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
+import { Accordion } from "@/components/ui/Accordion";
+import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Association = { id?: string; name: string; active?: boolean };
 type Section = "exhibition" | "schema" | "associations" | "templates" | "whatsapp" | null;
@@ -41,6 +44,8 @@ export default function SettingsPage() {
   const [waMsgError, setWaMsgError] = useState(false);
   const [waBusy, setWaBusy] = useState(false);
   const [testMobile, setTestMobile] = useState("");
+  const [removeIdx, setRemoveIdx] = useState<number | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     fetch("/api/settings/whatsapp")
@@ -110,6 +115,10 @@ export default function SettingsPage() {
     const json = await res.json();
     setBusy(false);
     setMsg(res.ok ? "تم حفظ الإعدادات" : json.error || "فشل الحفظ");
+    toast.push({
+      title: res.ok ? "تم حفظ الإعدادات" : json.error || "فشل الحفظ",
+      tone: res.ok ? "success" : "danger",
+    });
     if (res.ok) {
       setSchema(cleanedSchema);
       setSection(null);
@@ -148,6 +157,7 @@ export default function SettingsPage() {
       hasToken: !!json.hasToken,
     }));
     setWaMsg("تم حفظ إعداد واتساب");
+    toast.push({ title: "تم حفظ إعداد واتساب", tone: "success" });
   }
 
   async function testWhatsApp() {
@@ -164,6 +174,7 @@ export default function SettingsPage() {
     setWaBusy(false);
     setWaMsg(res.ok ? json.message : json.error || "فشل الاختبار");
     setWaMsgError(!res.ok);
+    toast.push({ title: res.ok ? "اختبار واتساب" : "فشل الاختبار", body: res.ok ? json.message : (json.error || "فشل الاختبار"), tone: res.ok ? "success" : "danger" });
   }
 
   function updateField(idx: number, patch: Partial<InventorySchemaField>) {
@@ -233,6 +244,7 @@ export default function SettingsPage() {
       <PageHeader
         title={exhibitionName ? `إعدادات: ${exhibitionName}` : "الإعدادات"}
         description="أقسام مختصرة — افتح النافذة المطلوبة وعدّل ثم احفظ"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الإعدادات" }]}
       />
       {msg ? <p className="msg">{msg}</p> : null}
 
@@ -259,6 +271,29 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">دليل سريع</h2>
+        <Accordion
+          items={[
+            {
+              id: "ex",
+              title: "المعرض والاستحقاق",
+              body: "حدّد اسم المعرض والموقع وقطع الاستحقاق وعتبة النفاد من البطاقة أعلاه.",
+            },
+            {
+              id: "sch",
+              title: "سمات المخزون",
+              body: "اللون والوحدة معتمدتان. أضف خيارات عربية دون إظهار المفاتيح التقنية.",
+            },
+            {
+              id: "wa",
+              title: "واتساب",
+              body: "احفظ المزوّد والتوكن ثم اختبر برقم جوال قبل إرسال الدعوات الجماعية.",
+            },
+          ]}
+        />
       </section>
 
       <Modal
@@ -365,7 +400,7 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       className="btn-danger"
-                      onClick={() => removeAttribute(idx)}
+                      onClick={() => setRemoveIdx(idx)}
                     >
                       حذف السمة
                     </button>
@@ -574,6 +609,19 @@ export default function SettingsPage() {
           </button>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={removeIdx != null}
+        title="حذف السمة"
+        body="سيتم حذف السمة من مخطط المخزون. لا يُحذف تاريخ الأصناف الحالية تلقائياً."
+        confirmLabel="حذف"
+        destructive
+        onClose={() => setRemoveIdx(null)}
+        onConfirm={() => {
+          if (removeIdx != null) removeAttribute(removeIdx);
+          setRemoveIdx(null);
+        }}
+      />
     </div>
   );
 }

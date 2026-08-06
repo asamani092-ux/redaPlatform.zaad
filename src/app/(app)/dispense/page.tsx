@@ -10,6 +10,10 @@ import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 import type { InventorySchemaField } from "@/lib/inventory-schema";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
+import { Stepper } from "@/components/ui/Stepper";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Item = {
   id: string;
@@ -62,6 +66,8 @@ export default function DispensePage() {
   const [scanOn, setScanOn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sendSurvey, setSendSurvey] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const toast = useToast();
 
   function loadItems() {
     return fetch("/api/dispense")
@@ -194,6 +200,11 @@ export default function DispensePage() {
     }
     setMsg(notes.join(" — "));
     setMsgError(err);
+    toast.push({
+      title: err ? "الصرف مع تنبيهات" : "تم الصرف بنجاح",
+      body: notes.join(" — "),
+      tone: err ? "warning" : "success",
+    });
     setLines({});
     setLookup(null);
     setQ("");
@@ -215,11 +226,20 @@ export default function DispensePage() {
       <PageHeader
         title="صرف القطع"
         description="يشترط الحضور — امسح أو ابحث ثم أكّد بعد المعاينة. يجوز الصرف بأقل من الاستحقاق"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الصرف" }]}
         actions={
           <button type="button" className="btn-recommend" onClick={() => setScanOn((v) => !v)}>
             {scanOn ? "إيقاف الكاميرا" : "مسح بالكاميرا"}
           </button>
         }
+      />
+      <Stepper
+        steps={[
+          { id: "search", label: "بحث" },
+          { id: "select", label: "اختيار الكميات" },
+          { id: "confirm", label: "تأكيد" },
+        ]}
+        currentId={lookup ? "select" : "search"}
       />
       {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
 
@@ -281,7 +301,7 @@ export default function DispensePage() {
           />
 
           {lookup.dispensed ? (
-            <div className="panel" style={{ marginTop: "1rem", borderColor: "var(--warning, #d97706)" }}>
+            <div className="panel" style={{ marginTop: "var(--space-4)", borderColor: "var(--warning-border, var(--warning-text))" }}>
               <p className="page-header__desc">
                 صُرف لهذا المستفيد سابقاً
                 {typeof lookup.dispenseCount === "number" ? ` (${lookup.dispenseCount} مرة)` : ""}
@@ -388,8 +408,8 @@ export default function DispensePage() {
                 ))}
                 {!items.length ? (
                   <tr>
-                    <td colSpan={3} className="empty">
-                      لا أصناف متاحة في المخزون
+                    <td colSpan={3}>
+                      <EmptyState title="لا أصناف متاحة" body="أضف أصنافاً من شاشة المخزون أولاً." />
                     </td>
                   </tr>
                 ) : null}
@@ -428,13 +448,27 @@ export default function DispensePage() {
               type="button"
               disabled={busy || Boolean(blockReason)}
               title={blockReason ?? undefined}
-              onClick={() => void submit()}
+              onClick={() => setConfirmOpen(true)}
             >
               {busy ? "جاري..." : alreadyDispensed ? "تأكيد الصرف الاستثنائي" : "تأكيد الصرف"}
             </button>
           </div>
         </section>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title={lookup?.dispensed ? "تأكيد الصرف الاستثنائي" : "تأكيد الصرف"}
+        body="سيتم تسجيل الصرف تراكمياً. هل تريد المتابعة؟"
+        confirmLabel="نعم، تأكيد"
+        busy={busy}
+        destructive={Boolean(lookup?.dispensed)}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          void submit();
+        }}
+      />
     </div>
   );
 }

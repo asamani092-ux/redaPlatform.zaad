@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
 import { AttrChips } from "@/components/AttrChips";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
 import type { ShareRow } from "@/lib/report-metrics";
@@ -70,6 +74,7 @@ export default function ReportsPage() {
   const [liveMsg, setLiveMsg] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
   const [newLabel, setNewLabel] = useState("");
+  const toast = useToast();
 
   const load = useCallback(async (id?: string) => {
     setError("");
@@ -133,6 +138,7 @@ export default function ReportsPage() {
     }
     setNewLabel("");
     setLiveMsg("تم إنشاء رابط العرض الحي");
+    toast.push({ title: "تم إنشاء رابط العرض الحي", tone: "success" });
     await loadLiveLinks(exhibitionId);
   }
 
@@ -168,6 +174,7 @@ export default function ReportsPage() {
       <PageHeader
         title="التقارير والإحصاءات"
         description="ملخصات قابلة للتصدير — التشغيل يبقى على المعرض النشط"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "التقارير" }]}
         actions={
           <>
             <a className="btn-primary" href={`/api/reports?format=xlsx${exportQs}`}>
@@ -229,10 +236,7 @@ export default function ReportsPage() {
               ["حضور استثنائي", summary.exceptionAttendance ?? 0],
               ["صرف استثنائي", summary.overrideDispenses ?? 0],
             ].map(([label, value]) => (
-              <div key={String(label)} className="stat-tile">
-                <div className="value">{value as number | string}</div>
-                <div className="label">{label as string}</div>
-              </div>
+              <KpiCard key={String(label)} label={String(label)} value={value as number | string} />
             ))}
           </div>
 
@@ -379,8 +383,12 @@ export default function ReportsPage() {
             </section>
           ) : null}
         </>
+      ) : error ? (
+        <EmptyState title="تعذر تحميل التقرير" body={error} />
       ) : (
-        !error && <div className="panel empty">جاري التحميل...</div>
+        <div className="panel">
+          <Skeleton lines={6} height="2.5rem" />
+        </div>
       )}
     </div>
   );
