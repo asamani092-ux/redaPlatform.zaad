@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
       <div className="login-card card page-container-narrow">
         <div className="login-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.webp" alt="رداء" width={80} height={80} />
+          <img src="/logo.webp" alt="رداء" width={80} height={48} />
           <h1>استعادة كلمة المرور</h1>
           <p>أدخل الجوال ثم عدّل كلمة المرور مباشرة بعد رمز التحقق</p>
         </div>
