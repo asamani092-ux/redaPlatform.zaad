@@ -38,6 +38,8 @@ export const WRITE_PATHS: WritePathSpec[] = [
   { id: "password.reset", entityType: "User", action: "PASSWORD_RESET", route: "POST /api/password/reset", audited: true },
   { id: "whatsapp.settings", entityType: "AppConfig", action: "WHATSAPP_SETTINGS_UPDATE", route: "PUT /api/settings/whatsapp", audited: true },
   { id: "whatsapp.test", entityType: "AppConfig", action: "WHATSAPP_TEST", route: "POST /api/settings/whatsapp/test", audited: true },
+  { id: "liveLink.create", entityType: "LiveDisplayLink", action: "LIVE_LINK_CREATE", route: "POST /api/live-links", audited: true },
+  { id: "liveLink.delete", entityType: "LiveDisplayLink", action: "LIVE_LINK_DELETE", route: "DELETE /api/live-links", audited: true },
   {
     id: "password.forgot",
     entityType: "PasswordReset",

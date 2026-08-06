@@ -1136,3 +1136,112 @@ button {
   margin-top: 0.35rem;
 }
 
+/* ── Live display screen (public TV / manager link) ── */
+.live-screen {
+  min-height: 100vh;
+  padding: 1.25rem clamp(1rem, 3vw, 2.5rem) 2rem;
+  background:
+    radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--tmkeen-primary) 12%, transparent), transparent 55%),
+    linear-gradient(180deg, #faf7f5 0%, #f3eee8 100%);
+  color: #1f1a17;
+  font-family: "Tajawal", Tahoma, sans-serif;
+}
+.live-screen__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.live-screen__brand {
+  margin: 0;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--tmkeen-primary);
+  letter-spacing: 0.04em;
+}
+.live-screen__title {
+  margin: 0.2rem 0 0;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 800;
+}
+.live-screen__sub {
+  margin: 0.25rem 0 0;
+  color: var(--tmkeen-brand-gray);
+  font-weight: 600;
+}
+.live-screen__meta {
+  text-align: center;
+  min-width: 8rem;
+}
+.live-screen__rate {
+  font-size: clamp(2.4rem, 5vw, 3.5rem);
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+  line-height: 1;
+}
+.live-screen__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.live-screen__tile {
+  background: #fff;
+  border: 1px solid var(--tmkeen-surface-border, #e8e8e8);
+  border-radius: 0.75rem;
+  padding: 0.9rem 1rem;
+}
+.live-screen__value {
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+}
+.live-screen__label {
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--tmkeen-brand-gray);
+}
+.live-screen__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.9rem;
+}
+.live-screen__panel {
+  background: #fff;
+  border: 1px solid var(--tmkeen-surface-border, #e8e8e8);
+  border-radius: 0.75rem;
+  padding: 1rem 1.1rem;
+}
+.live-screen__panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.live-screen__panel ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+.live-screen__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-weight: 600;
+}
+.live-screen__bar {
+  height: 0.4rem;
+  border-radius: 999px;
+  background: #eee;
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+.live-screen__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--tmkeen-primary);
+}
+

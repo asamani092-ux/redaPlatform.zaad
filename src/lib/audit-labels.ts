@@ -31,6 +31,8 @@ export const ACTION_LABELS: Record<string, string> = {
   PASSWORD_RESET: "استعادة كلمة مرور",
   WHATSAPP_SETTINGS_UPDATE: "تحديث إعداد واتساب",
   WHATSAPP_TEST: "اختبار إرسال واتساب",
+  LIVE_LINK_CREATE: "إنشاء رابط عرض حي",
+  LIVE_LINK_DELETE: "حذف رابط عرض حي",
 };
 
 export const ENTITY_LABELS: Record<string, string> = {
@@ -47,6 +49,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   SurveyResponse: "رد استبيان",
   OutboundMessage: "رسالة صادرة",
   AppConfig: "إعدادات المنصة",
+  LiveDisplayLink: "رابط عرض حي",
 };
 
 export function actionLabel(action: string): string {

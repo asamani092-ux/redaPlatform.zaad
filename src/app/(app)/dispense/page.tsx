@@ -61,6 +61,7 @@ export default function DispensePage() {
   const [msgError, setMsgError] = useState(false);
   const [scanOn, setScanOn] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sendSurvey, setSendSurvey] = useState(false);
 
   function loadItems() {
     return fetch("/api/dispense")
@@ -165,21 +166,41 @@ export default function DispensePage() {
         overrideReason: addingExtra ? overrideReason.trim() : undefined,
         repeatReason: alreadyDispensed ? repeatReason.trim() : undefined,
         sendThanks: true,
+        sendSurvey,
       }),
     });
     const json = await res.json().catch(() => ({}));
     setBusy(false);
-    setMsg(res.ok ? "تم الصرف بنجاح" : json.error || "فشل الصرف");
-    setMsgError(!res.ok);
-    if (res.ok) {
-      setLines({});
-      setLookup(null);
-      setQ("");
-      setExtraAbove("");
-      setOverrideReason("");
-      setRepeatReason("");
-      void loadItems();
+    if (!res.ok) {
+      setMsg(json.error || "فشل الصرف");
+      setMsgError(true);
+      return;
     }
+    const notes: string[] = ["تم الصرف بنجاح"];
+    let err = false;
+    if (json.thanksStatus === "FAILED") {
+      notes.push(`فشل رسالة الشكر: ${json.thanksError || "خطأ"}`);
+      err = true;
+    }
+    if (sendSurvey) {
+      if (json.surveyStatus === "FAILED") {
+        notes.push(`فشل إرسال الاستبيان: ${json.surveyError || "خطأ"}`);
+        err = true;
+      } else if (json.surveyStatus === "STUBBED") {
+        notes.push("سُجّل الاستبيان للإرسال (وضع تجريبي)");
+      } else if (json.surveyStatus) {
+        notes.push("أُرسل رابط الاستبيان");
+      }
+    }
+    setMsg(notes.join(" — "));
+    setMsgError(err);
+    setLines({});
+    setLookup(null);
+    setQ("");
+    setExtraAbove("");
+    setOverrideReason("");
+    setRepeatReason("");
+    void loadItems();
   }
 
   // الفعلي المعروض = المحسوب (أساسي + تابعون × وحدة) — لا يُستبدل باستثناء صرف سابق
@@ -378,6 +399,22 @@ export default function DispensePage() {
           <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
             المحدد: {totalSelected} من المسموح {entitledNow} — يجوز الصرف بأقل من الاستحقاق
           </p>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              marginTop: "0.75rem",
+              fontWeight: 600,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={sendSurvey}
+              onChange={(e) => setSendSurvey(e.target.checked)}
+            />
+            إرسال رابط الاستبيان عبر واتساب بعد الاستلام
+          </label>
           {blockReason ? <p className="msg msg-error">{blockReason}</p> : null}
           {lookup.entitledOverride != null ? (
             <p className="page-header__desc">

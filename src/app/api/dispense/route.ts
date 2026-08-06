@@ -12,6 +12,8 @@ import { OutboundMessageType } from "@/generated/prisma/enums";
 import { effectiveEntitlement, entitlementWithExtra, isNonEmptyReason } from "@/lib/entitlement";
 import { parseInventorySchema } from "@/lib/inventory-schema";
 import { buildPageMeta, parsePageParams } from "@/lib/pagination";
+import { parseSurveyConfig } from "@/lib/survey-questions";
+import { buildSurveyMessage } from "@/lib/survey-message";
 
 const lineSchema = z.object({
   inventoryItemId: z.string(),
@@ -29,6 +31,8 @@ const dispenseSchema = z.object({
   /** إلزامي عند صرف لاحق لمستفيد صُرف له سابقاً */
   repeatReason: z.string().optional(),
   sendThanks: z.boolean().optional(),
+  /** إرسال رابط الاستبيان واتساباً بعد نجاح الصرف */
+  sendSurvey: z.boolean().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -320,11 +324,16 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    let thanksStatus: string | null = null;
+    let thanksError: string | null = null;
+    let surveyStatus: string | null = null;
+    let surveyError: string | null = null;
+
     if (body.data.sendThanks) {
       const tpl =
         settings.whatsappThanksTpl ??
         "شكراً لزيارتك معرض رداء، {{name}}.";
-      await sendWhatsAppMessage({
+      const thanksMsg = await sendWhatsAppMessage({
         exhibitionId: exhibition.id,
         beneficiaryId: order.beneficiaryId,
         mobile: order.beneficiary.mobile,
@@ -332,9 +341,47 @@ export async function POST(req: NextRequest) {
         type: OutboundMessageType.THANK_YOU,
         createdById: authz.userId,
       });
+      thanksStatus = thanksMsg.status;
+      if (thanksMsg.status === "FAILED") {
+        thanksError = thanksMsg.errorMessage || "فشل إرسال رسالة الشكر";
+      }
     }
 
-    return NextResponse.json({ data: order }, { status: 201 });
+    if (body.data.sendSurvey) {
+      if (!order.beneficiary.mobile) {
+        surveyStatus = "FAILED";
+        surveyError = "لا يوجد رقم جوال للمستفيد";
+      } else {
+        const surveyConfig = parseSurveyConfig(settings.surveyQuestionsJson);
+        const surveyMsg = await sendWhatsAppMessage({
+          exhibitionId: exhibition.id,
+          beneficiaryId: order.beneficiaryId,
+          mobile: order.beneficiary.mobile,
+          body: buildSurveyMessage(
+            order.beneficiary.name,
+            exhibition.name,
+            surveyConfig.externalUrl,
+          ),
+          type: OutboundMessageType.SURVEY,
+          createdById: authz.userId,
+        });
+        surveyStatus = surveyMsg.status;
+        if (surveyMsg.status === "FAILED") {
+          surveyError = surveyMsg.errorMessage || "فشل إرسال الاستبيان";
+        }
+      }
+    }
+
+    return NextResponse.json(
+      {
+        data: order,
+        thanksStatus,
+        thanksError,
+        surveyStatus,
+        surveyError,
+      },
+      { status: 201 },
+    );
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "فشل الصرف" },

@@ -13,6 +13,8 @@ export default auth((req) => {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/password") ||
     pathname.startsWith("/api/qr/public") ||
+    pathname.startsWith("/api/live/") ||
+    pathname.startsWith("/live/") ||
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||

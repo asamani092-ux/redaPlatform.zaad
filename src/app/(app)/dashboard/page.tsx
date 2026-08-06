@@ -131,7 +131,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="panel">
-          <h2 className="panel-title">الأصناف الأكثر صرفاً</h2>
+          <h2 className="panel-title">أعلى 5 قطع مصروفة</h2>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "0.75rem" }}>
             {data.topItems.map((t) => (
               <li

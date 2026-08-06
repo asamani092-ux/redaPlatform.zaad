@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { DEFAULT_INVENTORY_SCHEMA, parseInventorySchema } from "@/lib/inventory-schema";
+import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 
 export async function GET() {
   const authz = await requirePermission("dashboard:view");
@@ -56,24 +57,7 @@ export async function GET() {
     attended > 0 ? Math.min(100, Math.round((received / attended) * 100)) : 0;
   const threshold = exhibition.settings?.lowStockThreshold ?? 10;
 
-  const topItems = await prisma.dispenseLine.groupBy({
-    by: ["inventoryItemId"],
-    where: { dispenseOrder: { exhibitionId } },
-    _sum: { quantity: true },
-    orderBy: { _sum: { quantity: "desc" } },
-    take: 8,
-  });
-
-  const topDetailed = await Promise.all(
-    topItems.map(async (t) => {
-      const item = await prisma.inventoryItem.findUnique({ where: { id: t.inventoryItemId } });
-      return {
-        inventoryItemId: t.inventoryItemId,
-        quantity: Number(t._sum.quantity ?? 0),
-        attributes: item?.attributesJson ?? {},
-      };
-    }),
-  );
+  const topDetailed = await fetchTopDispensedItems(exhibitionId, 5);
 
   const schema = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
   const attributeLabels = Object.fromEntries(

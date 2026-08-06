@@ -8,6 +8,12 @@ import { hasPermission } from "@/lib/rbac";
 import { canExportFullIdentity, redactIdentityFields } from "@/lib/pii";
 import { Role } from "@/generated/prisma/enums";
 import { buildPrintDocument, escapeHtml } from "@/lib/print-html";
+import {
+  buildBreakdownShares,
+  householdSize,
+  sharesToRecord,
+} from "@/lib/report-metrics";
+import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -60,7 +66,6 @@ export async function GET(req: NextRequest) {
       association: true,
       invites: { where: { exhibitionId }, take: 1 },
       attendances: { where: { exhibitionId }, take: 1 },
-      // كل أوامر الصرف — القطع تراكمية عند إعادة الصرف — O(k) لكل مستفيد
       dispenseOrders: {
         where: { exhibitionId },
         orderBy: { createdAt: "desc" },
@@ -89,7 +94,7 @@ export async function GET(req: NextRequest) {
       neighborhood: b.neighborhood ?? "",
       association: b.association?.name ?? b.associationOther ?? "",
       dependentsCount: b.dependentsCount,
-      familySize: b.dependentsCount,
+      familySize: householdSize(b.dependentsCount),
       status: STATUS_LABELS[status],
       checkedInAt: attendance?.checkedInAt?.toISOString() ?? "",
       receivedAt: latest?.createdAt?.toISOString() ?? "",
@@ -100,10 +105,19 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  const byGender = groupCount(rows.map((r) => r.gender || "غير محدد"));
-  const byCity = groupCount(rows.map((r) => r.city || "غير محدد"));
-  const byNeighborhood = groupCount(rows.map((r) => r.neighborhood || "غير محدد"));
-  const byFamilySize = groupCount(rows.map((r) => String(r.familySize ?? 0)));
+  const breakdowns = buildBreakdownShares({
+    associations: rows.map((r) => r.association),
+    neighborhoods: rows.map((r) => r.neighborhood),
+    cities: rows.map((r) => r.city),
+    genders: rows.map((r) => r.gender),
+    dependentsCounts: rows.map((r) => r.dependentsCount),
+  });
+
+  const byGender = sharesToRecord(breakdowns.byGender);
+  const byCity = sharesToRecord(breakdowns.byCity);
+  const byNeighborhood = sharesToRecord(breakdowns.byNeighborhood);
+  const byFamilySize = sharesToRecord(breakdowns.households.byHouseholdSize);
+  const byAssociation = sharesToRecord(breakdowns.byAssociation);
 
   if ((format === "xlsx" || format === "pdf") && !exportFullIdentity) {
     return NextResponse.json(
@@ -114,39 +128,64 @@ export async function GET(req: NextRequest) {
 
   const safeRows = redactIdentityFields(rows, exportFullIdentity);
 
+  const [
+    invited,
+    attended,
+    receivedGroups,
+    exceptionAttendance,
+    overrideDispenses,
+    piecesAgg,
+    inventoryRemaining,
+    topItems,
+  ] = await Promise.all([
+    prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
+    prisma.attendance.count({ where: { exhibitionId } }),
+    prisma.dispenseOrder.groupBy({
+      by: ["beneficiaryId"],
+      where: { exhibitionId },
+    }),
+    prisma.attendance.count({
+      where: { exhibitionId, type: "EXCEPTION" },
+    }),
+    prisma.dispenseOrder.count({
+      where: { exhibitionId, entitledOverride: { not: null } },
+    }),
+    prisma.dispenseOrder.aggregate({
+      where: { exhibitionId },
+      _sum: { piecesCount: true },
+    }),
+    prisma.inventoryItem.findMany({ where: { exhibitionId } }),
+    fetchTopDispensedItems(exhibitionId, 5),
+  ]);
+
   const summary = {
     exhibitionId: exhibition.id,
     exhibitionName: exhibition.name,
     exhibitionActive: exhibition.active,
     totalBeneficiaries: beneficiaries.length,
-    invited: await prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
-    attended: await prisma.attendance.count({ where: { exhibitionId } }),
-    received: (
-      await prisma.dispenseOrder.groupBy({
-        by: ["beneficiaryId"],
-        where: { exhibitionId },
-      })
-    ).length,
-    exceptionAttendance: await prisma.attendance.count({
-      where: { exhibitionId, type: "EXCEPTION" },
-    }),
-    overrideDispenses: await prisma.dispenseOrder.count({
-      where: { exhibitionId, entitledOverride: { not: null } },
-    }),
-    piecesDispensed:
-      (
-        await prisma.dispenseOrder.aggregate({
-          where: { exhibitionId },
-          _sum: { piecesCount: true },
-        })
-      )._sum.piecesCount ?? 0,
-    inventoryRemaining: (
-      await prisma.inventoryItem.findMany({ where: { exhibitionId } })
-    ).map((i) => ({ attributes: i.attributesJson, quantity: Number(i.quantity) })),
+    invited,
+    attended,
+    received: receivedGroups.length,
+    exceptionAttendance,
+    overrideDispenses,
+    piecesDispensed: piecesAgg._sum.piecesCount ?? 0,
+    inventoryRemaining: inventoryRemaining.map((i) => ({
+      attributes: i.attributesJson,
+      quantity: Number(i.quantity),
+    })),
+    beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
+    avgHouseholdSize: breakdowns.households.avgHouseholdSize,
     byGender,
     byCity,
     byNeighborhood,
     byFamilySize,
+    byAssociation,
+    byGenderShares: breakdowns.byGender,
+    byCityShares: breakdowns.byCity,
+    byNeighborhoodShares: breakdowns.byNeighborhood,
+    byAssociationShares: breakdowns.byAssociation,
+    byHouseholdSizeShares: breakdowns.households.byHouseholdSize,
+    topItems,
   };
 
   if (format === "json") {
@@ -164,6 +203,8 @@ export async function GET(req: NextRequest) {
       ["المؤشر", "القيمة"],
       ["المعرض", exhibition.name],
       ["إجمالي المستفيدين", summary.totalBeneficiaries],
+      ["عدد الأسر المستفيدة", summary.beneficiaryFamilies],
+      ["متوسط حجم الأسرة", summary.avgHouseholdSize],
       ["المدعوون", summary.invited],
       ["الحضور", summary.attended],
       ["المستلمون", summary.received],
@@ -180,6 +221,7 @@ export async function GET(req: NextRequest) {
       "الحي",
       "الجمعية",
       "عدد التابعين",
+      "حجم الأسرة",
       "الحالة",
       "وقت الحضور",
       "وقت الاستلام",
@@ -206,6 +248,7 @@ export async function GET(req: NextRequest) {
           "الحي",
           "الجمعية",
           "عدد التابعين",
+          "حجم الأسرة",
           "الحالة",
           "وقت الحضور",
           "وقت الاستلام",
@@ -225,6 +268,7 @@ export async function GET(req: NextRequest) {
         r.neighborhood,
         r.association,
         r.dependentsCount,
+        r.familySize,
         r.status,
         r.checkedInAt,
         r.receivedAt,
@@ -236,17 +280,22 @@ export async function GET(req: NextRequest) {
       countInSheet++;
     }
 
-    const familySheet = wb.addWorksheet("حسب حجم الأسرة");
-    familySheet.addRow(["عدد التابعين", "العدد"]);
-    Object.entries(byFamilySize).forEach(([k, v]) => familySheet.addRow([k, v]));
+    const addShareSheet = (name: string, rowsShare: typeof breakdowns.byAssociation) => {
+      const sheet = wb.addWorksheet(name);
+      sheet.addRow(["الفئة", "العدد", "النسبة %"]);
+      rowsShare.forEach((r) => sheet.addRow([r.key, r.count, r.percent]));
+    };
+    addShareSheet("حسب الجمعية", breakdowns.byAssociation);
+    addShareSheet("حسب حجم الأسرة", breakdowns.households.byHouseholdSize);
+    addShareSheet("حسب الحي", breakdowns.byNeighborhood);
+    addShareSheet("حسب الجنس", breakdowns.byGender);
+    addShareSheet("حسب المدينة", breakdowns.byCity);
 
-    const genderSheet = wb.addWorksheet("حسب الجنس");
-    genderSheet.addRow(["الجنس", "العدد"]);
-    Object.entries(byGender).forEach(([k, v]) => genderSheet.addRow([k, v]));
-
-    const citySheet = wb.addWorksheet("حسب المدينة");
-    citySheet.addRow(["المدينة", "العدد"]);
-    Object.entries(byCity).forEach(([k, v]) => citySheet.addRow([k, v]));
+    const topSheet = wb.addWorksheet("أعلى 5 قطع");
+    topSheet.addRow(["الترتيب", "الكمية", "السمات"]);
+    topItems.forEach((t, i) =>
+      topSheet.addRow([i + 1, t.quantity, JSON.stringify(t.attributes)]),
+    );
 
     const buf = await wb.xlsx.writeBuffer();
     return new NextResponse(buf, {
@@ -261,6 +310,44 @@ export async function GET(req: NextRequest) {
   if (format === "pdf") {
     const pageSize = 40;
     const sections: string[] = [];
+
+    const shareTable = (title: string, shares: typeof breakdowns.byAssociation) => `
+      <section>
+        <h2>${escapeHtml(title)}</h2>
+        <table>
+          <thead><tr><th>الفئة</th><th>العدد</th><th>النسبة</th></tr></thead>
+          <tbody>
+            ${shares
+              .map(
+                (r) =>
+                  `<tr><td>${escapeHtml(r.key)}</td><td>${r.count}</td><td>${r.percent}%</td></tr>`,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </section>`;
+
+    sections.push(shareTable("التوزيع حسب الجمعية", breakdowns.byAssociation));
+    sections.push(shareTable("التوزيع حسب الحي", breakdowns.byNeighborhood));
+    sections.push(
+      shareTable("توزيع حجم الأسرة", breakdowns.households.byHouseholdSize),
+    );
+    sections.push(`
+      <section>
+        <h2>أعلى 5 قطع مصروفة</h2>
+        <table>
+          <thead><tr><th>#</th><th>الكمية</th><th>السمات</th></tr></thead>
+          <tbody>
+            ${topItems
+              .map(
+                (t, i) =>
+                  `<tr><td>${i + 1}</td><td>${t.quantity}</td><td>${escapeHtml(JSON.stringify(t.attributes))}</td></tr>`,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </section>`);
+
     for (let i = 0; i < safeRows.length; i += pageSize) {
       const slice = safeRows.slice(i, i + pageSize);
       const isLast = i + pageSize >= safeRows.length;
@@ -291,6 +378,8 @@ export async function GET(req: NextRequest) {
       subtitle: exhibition.active ? "المعرض النشط حالياً" : "معرض غير نشط (أرشيف)",
       tiles: [
         { label: "إجمالي المستفيدين", value: summary.totalBeneficiaries },
+        { label: "الأسر المستفيدة", value: summary.beneficiaryFamilies },
+        { label: "متوسط حجم الأسرة", value: summary.avgHouseholdSize },
         { label: "المدعوون", value: summary.invited },
         { label: "الحاضرون", value: summary.attended },
         { label: "استلموا", value: summary.received },
@@ -307,11 +396,4 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ error: "صيغة غير مدعومة" }, { status: 400 });
-}
-
-function groupCount(values: string[]) {
-  return values.reduce<Record<string, number>>((acc, v) => {
-    acc[v] = (acc[v] ?? 0) + 1;
-    return acc;
-  }, {});
 }

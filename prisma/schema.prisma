@@ -135,8 +135,25 @@ model Exhibition {
   stockMovements   StockMovement[]
   surveyResponses  SurveyResponse[]
   outboundMessages OutboundMessage[]
+  liveDisplayLinks LiveDisplayLink[]
 
   @@index([active])
+}
+
+/// رابط عرض حي فريد للشاشات — بلا تسجيل دخول؛ يُحذف لإيقافه
+model LiveDisplayLink {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  exhibitionId String
+  label        String?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  revokedAt    DateTime?
+
+  exhibition Exhibition @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+
+  @@index([exhibitionId, createdAt])
+  @@index([revokedAt])
 }
 
 model ExhibitionSettings {
