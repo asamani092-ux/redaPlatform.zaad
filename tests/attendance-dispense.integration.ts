@@ -48,7 +48,7 @@ async function main() {
     },
   });
 
-  console.log("=== duplicate disbursement rejected ===");
+  console.log("=== re-dispense allowed (cumulative history) ===");
   await prisma.dispenseOrder.create({
     data: {
       exhibitionId: exhibition.id,
@@ -58,7 +58,8 @@ async function main() {
       lines: { create: [{ inventoryItemId: item.id, quantity: 1 }] },
     },
   });
-  let dupDisp = false;
+  // بعد 0006_dispense_repeat: لا قيد فريد — الصرف الاستثنائي اللاحق تراكمي
+  let reDispOk = true;
   try {
     await prisma.dispenseOrder.create({
       data: {
@@ -66,12 +67,17 @@ async function main() {
         beneficiaryId: beneficiary.id,
         piecesCount: 1,
         createdById: distributor.id,
+        lines: { create: [{ inventoryItemId: item.id, quantity: 1 }] },
       },
     });
   } catch {
-    dupDisp = true;
+    reDispOk = false;
   }
-  assert(dupDisp, "duplicate dispense must fail at DB unique");
+  assert(reDispOk, "re-dispense must be allowed (no unique on beneficiary+exhibition)");
+  const dispenseCount = await prisma.dispenseOrder.count({
+    where: { exhibitionId: exhibition.id, beneficiaryId: beneficiary.id },
+  });
+  assert(dispenseCount === 2, "two cumulative dispense orders expected");
 
   console.log("=== concurrency 10 on qty 5 ===");
   const raceEx = await prisma.exhibition.create({
