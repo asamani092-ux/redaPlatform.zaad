@@ -8,6 +8,11 @@ import type { SurveyQuestion } from "@/lib/survey-questions";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { Stepper } from "@/components/ui/Stepper";
+import { Tabs } from "@/components/ui/Tabs";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type ResponseRow = {
   id: string;
@@ -33,6 +38,9 @@ export default function SurveyPage() {
   const [msgError, setMsgError] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"entry" | "responses" | "admin">("entry");
+  const [broadcastTarget, setBroadcastTarget] = useState<"attended" | "received" | null>(null);
+  const toast = useToast();
 
   async function load(p = page) {
     const res = await fetch(`/api/survey?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
@@ -80,6 +88,7 @@ export default function SurveyPage() {
     const json = await res.json();
     setMsg(res.ok ? "تم حفظ الاستبيان" : json.error || "فشل الحفظ");
     setMsgError(!res.ok);
+    toast.push({ title: res.ok ? "تم حفظ الاستبيان" : (json.error || "فشل الحفظ"), tone: res.ok ? "success" : "danger" });
     if (res.ok) {
       setAnswers({});
       setBeneficiary(null);
@@ -163,6 +172,7 @@ export default function SurveyPage() {
     const json = await res.json();
     setBusy(false);
     setMsg(res.ok ? "تم حفظ إعداد الاستبيان" : json.error || "فشل الحفظ");
+    toast.push({ title: res.ok ? "تم حفظ إعداد الاستبيان" : (json.error || "فشل الحفظ"), tone: res.ok ? "success" : "danger" });
     if (res.ok) load();
   }
 
@@ -171,6 +181,7 @@ export default function SurveyPage() {
       <PageHeader
         title="استبيان الرضا"
         description="تحرير الأسئلة، تسجيل الإجابات، أو إرسال الرابط جماعياً"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الاستبيان" }]}
         actions={
           <>
             <button type="button" className="btn-secondary" onClick={() => setPreviewOpen(true)}>
@@ -180,7 +191,7 @@ export default function SurveyPage() {
               type="button"
               className="btn-recommend"
               disabled={busy}
-              onClick={() => broadcast("attended")}
+              onClick={() => setBroadcastTarget("attended")}
             >
               إرسال لكل الحضور
             </button>
@@ -188,7 +199,7 @@ export default function SurveyPage() {
               type="button"
               className="btn-recommend"
               disabled={busy}
-              onClick={() => broadcast("received")}
+              onClick={() => setBroadcastTarget("received")}
             >
               إرسال لمن استلم
             </button>
@@ -197,7 +208,17 @@ export default function SurveyPage() {
       />
       {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
 
-      {isAdmin ? (
+      <Tabs
+        items={[
+          { id: "entry", label: "إدخال إجابات" },
+          { id: "responses", label: "الردود" },
+          ...(isAdmin ? [{ id: "admin", label: "تحرير الأسئلة" }] : []),
+        ]}
+        value={tab}
+        onChange={(id) => setTab(id as typeof tab)}
+      />
+
+      {isAdmin && tab === "admin" ? (
         <section className="panel">
           <h2 className="panel-title">أسئلة الاستبيان (تحرير — مدير)</h2>
           <div style={{ display: "grid", gap: "0.85rem" }}>
@@ -299,8 +320,17 @@ export default function SurveyPage() {
         </section>
       ) : null}
 
+      {tab === "entry" ? (
       <section className="panel">
         <h2 className="panel-title">إدخال إجابات</h2>
+        <Stepper
+          steps={[
+            { id: "find", label: "بحث المستفيد" },
+            { id: "answer", label: "الإجابات" },
+            { id: "done", label: "حفظ / إرسال" },
+          ]}
+          currentId={beneficiary ? "answer" : "find"}
+        />
         <div className="toolbar">
           <input
             className="input-field"
@@ -349,9 +379,13 @@ export default function SurveyPage() {
               </button>
             </div>
           </form>
-        ) : null}
+        ) : (
+          <EmptyState title="ابحث عن مستفيد" body="أدخل الهوية أو الجوال لبدء تعبئة الاستبيان." />
+        )}
       </section>
+      ) : null}
 
+      {tab === "responses" ? (
       <section className="panel">
         <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: "0.75rem" }}>
           <h2 className="panel-title" style={{ margin: 0 }}>
@@ -392,8 +426,8 @@ export default function SurveyPage() {
               ))}
               {!responses.length ? (
                 <tr>
-                  <td colSpan={3} className="empty">
-                    لا ردود بعد
+                  <td colSpan={3}>
+                    <EmptyState title="لا ردود بعد" body="ستظهر الردود هنا بعد الحفظ أو الإرسال." />
                   </td>
                 </tr>
               ) : null}
@@ -409,6 +443,7 @@ export default function SurveyPage() {
           onPageChange={(p) => void load(p)}
         />
       </section>
+      ) : null}
 
       <Modal open={previewOpen} title="معاينة الاستبيان" onClose={() => setPreviewOpen(false)}>
         {questions.length ? (
@@ -432,7 +467,7 @@ export default function SurveyPage() {
             ))}
           </div>
         ) : (
-          <p className="empty">لا أسئلة بعد</p>
+          <EmptyState title="لا أسئلة بعد" body="أضف أسئلة من تبويب التحرير." />
         )}
         {externalUrl ? (
           <p className="msg" style={{ marginTop: "0.75rem" }} dir="ltr">
@@ -440,6 +475,20 @@ export default function SurveyPage() {
           </p>
         ) : null}
       </Modal>
+
+      <ConfirmDialog
+        open={Boolean(broadcastTarget)}
+        title={broadcastTarget === "received" ? "إرسال لمن استلم" : "إرسال لكل الحضور"}
+        body="سيتم إرسال رابط الاستبيان جماعياً عبر واتساب. هل تريد المتابعة؟"
+        confirmLabel="إرسال"
+        busy={busy}
+        onClose={() => setBroadcastTarget(null)}
+        onConfirm={() => {
+          const target = broadcastTarget;
+          setBroadcastTarget(null);
+          if (target) void broadcast(target);
+        }}
+      />
     </div>
   );
 }

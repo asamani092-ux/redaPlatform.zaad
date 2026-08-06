@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { AttrChips } from "@/components/AttrChips";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { Progress } from "@/components/ui/Progress";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type DashboardData = {
   exhibition: { name: string; location?: string | null };
@@ -49,8 +53,11 @@ export default function DashboardPage() {
   if (error) {
     return (
       <div className="page-stack">
-        <PageHeader title="لوحة التحكم" />
-        <p className="msg msg-error">{error}</p>
+        <PageHeader
+          title="لوحة التحكم"
+          breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "لوحة التحكم" }]}
+        />
+        <EmptyState title="تعذر التحميل" body={error} />
       </div>
     );
   }
@@ -59,7 +66,9 @@ export default function DashboardPage() {
     return (
       <div className="page-stack">
         <PageHeader title="لوحة التحكم" />
-        <div className="panel empty">جاري تحميل لوحة التحكم...</div>
+        <div className="panel">
+          <Skeleton lines={5} height="2.5rem" />
+        </div>
       </div>
     );
   }
@@ -73,7 +82,6 @@ export default function DashboardPage() {
     { label: "القطع المصروفة", value: data.stats.piecesDispensed },
     { label: "حضور استثنائي", value: data.stats.exceptions },
     { label: "صرف استثنائي", value: data.stats.overrideDispenses ?? 0 },
-    { label: "نسبة الاستلام من الحضور %", value: data.stats.completionRate },
   ];
 
   return (
@@ -81,21 +89,26 @@ export default function DashboardPage() {
       <PageHeader
         title={data.exhibition.name}
         description={data.exhibition.location || "لوحة متابعة لحظية أثناء تشغيل المعرض"}
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "لوحة التحكم" }]}
       />
+
+      <div className="zad-card" style={{ marginBottom: "var(--space-4)" }}>
+        <Progress
+          value={data.stats.completionRate}
+          label={`نسبة الاستلام من الحضور: ${data.stats.completionRate}%`}
+        />
+      </div>
 
       <div className="stat-grid">
         {tiles.map((t) => (
-          <div key={t.label} className="stat-tile">
-            <div className="value">{t.value}</div>
-            <div className="label">{t.label}</div>
-          </div>
+          <KpiCard key={t.label} label={t.label} value={t.value} />
         ))}
       </div>
 
       <div className="split-2">
-        <section className="panel">
+        <section className="panel zad-card">
           <h2 className="panel-title">الكميات المتبقية</h2>
-          <div className="table-wrap">
+          <div className="table-wrap zad-table-wrap">
             <table>
               <thead>
                 <tr>
@@ -112,45 +125,41 @@ export default function DashboardPage() {
                     </td>
                     <td>{i.quantity}</td>
                     <td>
-                      <span className={`badge ${i.lowStock ? "badge-warning" : "badge-success"}`}>
+                      <span className={`zad-badge ${i.lowStock ? "zad-badge--warning" : "zad-badge--success"}`}>
                         {i.lowStock ? "قرب النفاد" : "متوفر"}
                       </span>
                     </td>
                   </tr>
                 ))}
-                {!data.inventory.length ? (
-                  <tr>
-                    <td colSpan={3} className="empty">
-                      لا توجد أصناف بعد
-                    </td>
-                  </tr>
-                ) : null}
               </tbody>
             </table>
           </div>
+          {!data.inventory.length ? (
+            <EmptyState title="لا توجد أصناف بعد" body="أضف أصناف المخزون من شاشة المخزون." />
+          ) : null}
         </section>
 
-        <section className="panel">
+        <section className="panel zad-card">
           <h2 className="panel-title">أعلى 5 قطع مصروفة</h2>
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "0.75rem" }}>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-3)" }}>
             {data.topItems.map((t) => (
               <li
                 key={t.inventoryItemId}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  gap: "1rem",
+                  gap: "var(--space-4)",
                   alignItems: "center",
-                  paddingBottom: "0.75rem",
-                  borderBottom: "1px solid var(--tmkeen-surface-border)",
+                  paddingBottom: "var(--space-3)",
+                  borderBottom: "var(--border-hairline) solid var(--border-subtle)",
                 }}
               >
                 <AttrChips attributes={t.attributes} labels={data.attributeLabels} />
-                <strong style={{ color: "var(--tmkeen-primary)", flexShrink: 0 }}>{t.quantity}</strong>
+                <strong style={{ color: "var(--text-brand)", flexShrink: 0 }}>{t.quantity}</strong>
               </li>
             ))}
-            {!data.topItems.length ? <li className="empty">لا بيانات بعد</li> : null}
           </ul>
+          {!data.topItems.length ? <EmptyState title="لا بيانات صرف بعد" /> : null}
         </section>
       </div>
     </div>

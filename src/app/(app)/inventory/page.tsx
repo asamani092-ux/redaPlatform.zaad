@@ -8,6 +8,9 @@ import type { InventorySchemaField } from "@/lib/inventory-schema";
 import { sanitizeNumericInput, toNumberOrNull } from "@/lib/num";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { useToast } from "@/components/ui/Toast";
+import { DataTable } from "@/components/ui/DataTable";
+import { Chip } from "@/components/ui/Chip";
 
 type Item = {
   id: string;
@@ -35,6 +38,7 @@ export default function InventoryPage() {
   const [attrs, setAttrs] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState("0");
   const [move, setMove] = useState({ inventoryItemId: "", type: "ADD", quantity: "1", note: "" });
+  const toast = useToast();
 
   async function load(p = page) {
     const res = await fetch(`/api/inventory?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
@@ -109,6 +113,10 @@ export default function InventoryPage() {
     const json = await res.json();
     setBusy(false);
     setMsg(res.ok ? "تمت إضافة الصنف" : json.error || "فشل الإضافة");
+    toast.push({
+      title: res.ok ? "تمت إضافة الصنف" : json.error || "فشل الإضافة",
+      tone: res.ok ? "success" : "danger",
+    });
     if (res.ok) {
       setAddOpen(false);
       await load();
@@ -128,6 +136,10 @@ export default function InventoryPage() {
     const json = await res.json();
     setBusy(false);
     setMsg(res.ok ? "تم تعديل الصنف" : json.error || "فشل التعديل");
+    toast.push({
+      title: res.ok ? "تم تعديل الصنف" : json.error || "فشل التعديل",
+      tone: res.ok ? "success" : "danger",
+    });
     if (res.ok) {
       setEditOpen(false);
       setEditingId(null);
@@ -161,13 +173,13 @@ export default function InventoryPage() {
     });
     const json = await res.json();
     setBusy(false);
-    setMsg(
-      res.ok
+    const moveOk = res.ok
         ? move.type === "REMOVE"
           ? "تم حذف الكمية من المخزون"
           : "تم تحديث الكمية"
-        : json.error || "فشل التحديث",
-    );
+        : json.error || "فشل التحديث";
+    setMsg(moveOk);
+    toast.push({ title: moveOk, tone: res.ok ? "success" : "danger" });
     if (res.ok) {
       setMoveOpen(false);
       await load();
@@ -199,6 +211,7 @@ export default function InventoryPage() {
       <PageHeader
         title="المخزون"
         description="إضافة الأصناف وتعديل سماتها وحركات الكمية أثناء التشغيل"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "المخزون" }]}
         actions={
           <>
             <button type="button" className="btn-primary" onClick={openAdd}>
@@ -219,14 +232,18 @@ export default function InventoryPage() {
 
       <section className="panel">
         <h2 className="panel-title">الأصناف الحالية ({total})</h2>
-        <div className="table-wrap">
+        <DataTable
+          empty={!items.length}
+          emptyTitle="لا أصناف بعد"
+          emptyBody="أضف صنفاً جديداً لبدء تتبع المخزون."
+        >
           <table>
             <thead>
               <tr>
-                <th>السمات</th>
-                <th>الكمية</th>
-                <th>تنبيه</th>
-                <th>إجراءات</th>
+                <th scope="col">السمات</th>
+                <th scope="col">الكمية</th>
+                <th scope="col">تنبيه</th>
+                <th scope="col">إجراءات</th>
               </tr>
             </thead>
             <tbody>
@@ -237,9 +254,10 @@ export default function InventoryPage() {
                   </td>
                   <td>{i.quantity}</td>
                   <td>
-                    <span className={`badge ${i.lowStock ? "badge-warning" : "badge-success"}`}>
-                      {i.lowStock ? "قرب النفاد" : "متوفر"}
-                    </span>
+                    <Chip
+                      tone={i.lowStock ? "warning" : "success"}
+                      label={i.lowStock ? "قرب النفاد" : "متوفر"}
+                    />
                   </td>
                   <td>
                     <div className="row-actions">
@@ -253,16 +271,9 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ))}
-              {!items.length ? (
-                <tr>
-                  <td colSpan={4} className="empty">
-                    لا أصناف بعد
-                  </td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
-        </div>
+        </DataTable>
         <PaginationBar
           page={page}
           totalPages={totalPages}

@@ -6,6 +6,10 @@ import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { BeneficiaryCard } from "@/components/BeneficiaryCard";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Stepper } from "@/components/ui/Stepper";
+import { useToast } from "@/components/ui/Toast";
 
 type Recent = {
   id: string;
@@ -43,6 +47,7 @@ export default function AttendancePage() {
   const [needsException, setNeedsException] = useState(false);
   const [exceptionReason, setExceptionReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const toast = useToast();
 
   async function refresh(p = pageRef.current) {
     const res = await fetch(`/api/attendance?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
@@ -61,7 +66,6 @@ export default function AttendancePage() {
     void refresh(1);
     const t = setInterval(() => void refresh(), 10000);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const preview = useCallback(async (params: { qrToken?: string; q?: string }) => {
@@ -141,6 +145,7 @@ export default function AttendancePage() {
     }
     setMsg("تم تسجيل الحضور");
     setMsgError(false);
+    toast.push({ title: "تم تسجيل الحضور", tone: "success" });
     setLookup(null);
     setQrToken("");
     setQ("");
@@ -154,6 +159,7 @@ export default function AttendancePage() {
       <PageHeader
         title="تسجيل الحضور"
         description="امسح بالكاميرا أو ابحث بالهوية أو الجوال ثم أكّد بعد ظهور بيانات المستفيد"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الحضور" }]}
         actions={
           <button type="button" className="btn-recommend" onClick={() => setScanOn((v) => !v)}>
             {scanOn ? "إيقاف الكاميرا" : "مسح بالكاميرا"}
@@ -161,11 +167,17 @@ export default function AttendancePage() {
         }
       />
 
+      <Stepper
+        steps={[
+          { id: "scan", label: "مسح / بحث" },
+          { id: "preview", label: "معاينة" },
+          { id: "confirm", label: "تأكيد" },
+        ]}
+        currentId={lookup ? "confirm" : (q || qrToken || scanOn) ? "preview" : "scan"}
+      />
+
       <div className="stat-grid">
-        <div className="stat-tile">
-          <div className="value">{count}</div>
-          <div className="label">الحاضرون الآن</div>
-        </div>
+        <KpiCard label="الحاضرون الآن" value={count} />
       </div>
 
       {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
@@ -284,8 +296,8 @@ export default function AttendancePage() {
               ))}
               {!recent.length ? (
                 <tr>
-                  <td colSpan={4} className="empty">
-                    لا تسجيلات بعد
+                  <td colSpan={4}>
+                    <EmptyState title="لا تسجيلات بعد" body="ستظهر هنا آخر عمليات الحضور." />
                   </td>
                 </tr>
               ) : null}

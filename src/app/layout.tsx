@@ -16,8 +16,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ar" dir="rtl">
-      <body className="antialiased" style={{ fontFamily: "Tajawal, Tahoma, Arial, sans-serif" }}>
+    <html lang="ar" dir="rtl" data-theme="light">
+      <body className="zad-root antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -138,7 +138,9 @@ export function AppShell({
             <img src="/logo.webp" alt="" width={28} height={28} />
             <span>{activeExhibition ? activeExhibition.name : "منصة رداء"}</span>
           </div>
-          <div className="app-topbar__user">{user.name}</div>
+          <span className="app-topbar__user" title={`${user.name} — ${ROLE_LABELS[user.role]}`}>
+            {user.name}
+          </span>
         </header>
         <main className="app-content">{children}</main>
       </div>

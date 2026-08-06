@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
+import { Chip } from "@/components/ui/Chip";
 
 type Row = {
   id: string;
@@ -17,13 +20,6 @@ type Row = {
   whatsappStatusLabel?: string | null;
   whatsappError?: string | null;
 };
-
-function waBadgeClass(status?: string | null): string {
-  if (status === "SENT") return "badge badge-success";
-  if (status === "STUBBED") return "badge badge-warning";
-  if (status === "FAILED") return "badge badge-danger";
-  return "badge badge-muted";
-}
 
 /**
  * الدعوات = إنشاء رمز QR + إرساله واتساباً.
@@ -42,6 +38,7 @@ export default function InvitesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [invitedTotal, setInvitedTotal] = useState(0);
+  const toast = useToast();
 
   async function loadPick(search = q, p = 1) {
     setBusy(true);
@@ -171,6 +168,11 @@ export default function InvitesPage() {
         : `أُعيد الإرسال لـ ${json.resent ?? 0} مستفيد`;
     setMsg(`${head}${waNote}`);
     setMsgError(failed > 0 || json.status === "FAILED" || json.status === "PARTIAL");
+    toast.push({
+      title: head,
+      body: waNote.replace(/^ — /, "") || undefined,
+      tone: failed > 0 ? "danger" : stubbed > 0 ? "warning" : "success",
+    });
   }
 
   async function inviteAndSend() {
@@ -246,6 +248,7 @@ export default function InvitesPage() {
       <PageHeader
         title="الدعوات الجماعية"
         description="دعوة عبر واتساب مع QR — حالة الإرسال ظاهرة لكل مدعو مع إعادة الإرسال"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الدعوات" }]}
         actions={
           <>
             {view === "pick" ? (
@@ -386,18 +389,24 @@ export default function InvitesPage() {
                   </td>
                   {view === "invited" ? (
                     <td data-label="إرسال واتساب">
-                      <span
-                        className={waBadgeClass(r.whatsappStatus)}
-                        title={r.whatsappError ?? undefined}
-                      >
-                        {r.whatsappStatusLabel ?? "لم يُرسل"}
-                      </span>
+                      <Chip
+                        label={r.whatsappStatusLabel ?? "لم يُرسل"}
+                        tone={
+                          r.whatsappStatus === "SENT"
+                            ? "success"
+                            : r.whatsappStatus === "FAILED"
+                              ? "danger"
+                              : r.whatsappStatus === "STUBBED"
+                                ? "warning"
+                                : "neutral"
+                        }
+                      />
                       {r.whatsappError ? (
                         <div
                           style={{
                             fontSize: "0.78rem",
                             marginTop: "0.25rem",
-                            color: "var(--tmkeen-danger, #b42318)",
+                            color: "var(--danger-text)",
                             maxWidth: 220,
                           }}
                         >
@@ -430,8 +439,15 @@ export default function InvitesPage() {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={view === "invited" ? 10 : 8} className="empty">
-                    {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
+                  <td colSpan={view === "invited" ? 10 : 8}>
+                    <EmptyState
+                      title={view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
+                      body={
+                        view === "invited"
+                          ? "ادعُ مستفيدين من تبويب الاختيار أولاً."
+                          : "حدّث البحث أو أضف مستفيدين."
+                      }
+                    />
                   </td>
                 </tr>
               ) : null}

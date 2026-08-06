@@ -23,7 +23,7 @@ export function PaginationBar({
   const to = Math.min(page * pageSize, total);
 
   return (
-    <div className="pagination-bar" role="navigation" aria-label="تصفح الصفحات">
+    <div className="pagination-bar zad-filter-bar" role="navigation" aria-label="تصفح الصفحات">
       <span className="pagination-bar__meta">
         {from}–{to} من {total}
       </span>
@@ -32,17 +32,19 @@ export function PaginationBar({
           type="button"
           className="btn-secondary"
           disabled={busy || page <= 1}
+          aria-label="الصفحة السابقة"
           onClick={() => onPageChange(page - 1)}
         >
           السابق
         </button>
-        <span className="pagination-bar__page">
+        <span className="pagination-bar__page" aria-current="page">
           صفحة {page} / {totalPages}
         </span>
         <button
           type="button"
           className="btn-secondary"
           disabled={busy || page >= totalPages}
+          aria-label="الصفحة التالية"
           onClick={() => onPageChange(page + 1)}
         >
           التالي

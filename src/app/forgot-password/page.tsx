@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Stepper } from "@/components/ui/Stepper";
 
 /**
  * نسيت كلمة المرور: إدخال الجوال ثم فتح نموذج التغيير مباشرة.
@@ -68,14 +69,22 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="login-screen">
-      <div className="login-card">
+    <div className="login-screen page-shell">
+      <div className="login-card card page-container-narrow">
         <div className="login-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.webp" alt="رداء" width={80} height={80} />
+          <img src="/logo.webp" alt="رداء" width={80} height={48} />
           <h1>استعادة كلمة المرور</h1>
           <p>أدخل الجوال ثم عدّل كلمة المرور مباشرة بعد رمز التحقق</p>
         </div>
+
+        <Stepper
+          steps={[
+            { id: "mobile", label: "الجوال" },
+            { id: "reset", label: "كلمة المرور" },
+          ]}
+          currentId={step === 1 ? "mobile" : "reset"}
+        />
 
         {msg ? <p className="msg">{msg}</p> : null}
         {error ? <p className="msg msg-error">{error}</p> : null}

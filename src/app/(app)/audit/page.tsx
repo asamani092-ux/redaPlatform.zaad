@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { PaginationBar } from "@/components/PaginationBar";
+import { DataTable } from "@/components/ui/DataTable";
 import { actionLabel, entityLabel } from "@/lib/audit-labels";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
@@ -30,12 +31,14 @@ export default function AuditPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async (p: number) => {
     setBusy(true);
     const res = await fetch(`/api/audit?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
     const json = await res.json();
     setBusy(false);
+    setLoaded(true);
     if (!res.ok) return;
     setLogs(json.data ?? []);
     setPage(json.page ?? p);
@@ -52,6 +55,7 @@ export default function AuditPage() {
       <PageHeader
         title="سجل العمليات"
         description="تتبع تراكمي لكل التعديلات والحركات — 50 عملية لكل صفحة"
+        breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "سجل العمليات" }]}
         actions={
           <a className="btn-secondary" href="/api/audit?format=pdf" target="_blank" rel="noreferrer">
             طباعة PDF
@@ -59,16 +63,22 @@ export default function AuditPage() {
         }
       />
       <section className="panel">
-        <div className="table-wrap table-wrap--stack">
+        <DataTable
+          loading={!loaded && busy}
+          empty={loaded && !logs.length}
+          emptyTitle="لا سجلات بعد"
+          emptyBody="ستظهر هنا العمليات التراكمية عند بدء الاستخدام."
+          className="table-wrap--stack"
+        >
           <table>
             <thead>
               <tr>
-                <th>الوقت</th>
-                <th>المستخدم</th>
-                <th>الإجراء</th>
-                <th>الكيان</th>
-                <th>الحالة</th>
-                <th>المعرف</th>
+                <th scope="col">الوقت</th>
+                <th scope="col">المستخدم</th>
+                <th scope="col">الإجراء</th>
+                <th scope="col">الكيان</th>
+                <th scope="col">الحالة</th>
+                <th scope="col">المعرف</th>
               </tr>
             </thead>
             <tbody>
@@ -83,26 +93,19 @@ export default function AuditPage() {
                       {l.statusLabel ?? "نجاح"}
                     </span>
                     {l.statusReason ? (
-                      <div style={{ fontSize: "0.78rem", marginTop: "0.25rem", opacity: 0.85 }}>
+                      <div className="page-header__desc" style={{ marginTop: "var(--space-1)" }}>
                         {l.statusReason}
                       </div>
                     ) : null}
                   </td>
-                  <td data-label="المعرف" dir="ltr" style={{ fontSize: "0.78rem" }}>
+                  <td data-label="المعرف" dir="ltr" className="page-header__desc">
                     {l.entityId}
                   </td>
                 </tr>
               ))}
-              {!logs.length ? (
-                <tr>
-                  <td colSpan={6} className="empty">
-                    لا سجلات بعد
-                  </td>
-                </tr>
-              ) : null}
             </tbody>
           </table>
-        </div>
+        </DataTable>
         <PaginationBar
           page={page}
           totalPages={totalPages}

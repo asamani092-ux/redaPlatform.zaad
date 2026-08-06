@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { AttrChips } from "@/components/AttrChips";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { Progress } from "@/components/ui/Progress";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { ShareRow } from "@/lib/report-metrics";
 
 type LivePayload = {
@@ -59,18 +63,16 @@ export default function LiveDisplayPage() {
 
   if (error) {
     return (
-      <main className="live-screen">
-        <p className="msg msg-error" style={{ fontSize: "1.25rem" }}>
-          {error}
-        </p>
+      <main className="live-screen zad-root">
+        <EmptyState title="تعذر التحميل" body={error} />
       </main>
     );
   }
 
   if (!data) {
     return (
-      <main className="live-screen">
-        <p className="empty">جاري تحديث المؤشرات…</p>
+      <main className="live-screen zad-root">
+        <Skeleton lines={6} height="3rem" />
       </main>
     );
   }
@@ -78,7 +80,7 @@ export default function LiveDisplayPage() {
   const { stats } = data;
 
   return (
-    <main className="live-screen">
+    <main className="live-screen zad-root">
       <header className="live-screen__header">
         <div>
           <p className="live-screen__brand">منصة رداء</p>
@@ -88,9 +90,8 @@ export default function LiveDisplayPage() {
           ) : null}
         </div>
         <div className="live-screen__meta">
-          <div className="live-screen__rate">{stats.completionRate}%</div>
-          <div className="live-screen__sub">نسبة الإنجاز</div>
-          <div className="live-screen__sub" style={{ marginTop: "0.5rem" }}>
+          <Progress value={stats.completionRate} label={`نسبة الإنجاز ${stats.completionRate}%`} />
+          <div className="live-screen__sub" style={{ marginTop: "var(--space-2)" }}>
             تحديث: {new Date(data.updatedAt).toLocaleTimeString("ar-SA")}
           </div>
         </div>
@@ -107,10 +108,7 @@ export default function LiveDisplayPage() {
           ["القطع المصروفة", stats.piecesDispensed],
           ["حضور استثنائي", stats.exceptions],
         ].map(([label, value]) => (
-          <div key={String(label)} className="live-screen__tile">
-            <div className="live-screen__value">{value}</div>
-            <div className="live-screen__label">{label}</div>
-          </div>
+          <KpiCard key={String(label)} label={String(label)} value={value as number | string} />
         ))}
       </section>
 
@@ -130,7 +128,11 @@ export default function LiveDisplayPage() {
                 <AttrChips attributes={t.attributes} />
               </li>
             ))}
-            {!data.topItems.length ? <li className="empty">لا بيانات بعد</li> : null}
+            {!data.topItems.length ? (
+              <li>
+                <EmptyState title="لا بيانات بعد" />
+              </li>
+            ) : null}
           </ul>
         </div>
       </section>
@@ -151,12 +153,16 @@ function SharePanel({ title, rows }: { title: string; rows: ShareRow[] }) {
                 {r.count} ({r.percent}%)
               </strong>
             </div>
-            <div className="live-screen__bar">
+            <div className="live-screen__bar" aria-hidden>
               <span style={{ width: `${Math.min(100, r.percent)}%` }} />
             </div>
           </li>
         ))}
-        {!rows.length ? <li className="empty">لا بيانات</li> : null}
+        {!rows.length ? (
+          <li>
+            <EmptyState title="لا بيانات" />
+          </li>
+        ) : null}
       </ul>
     </div>
   );

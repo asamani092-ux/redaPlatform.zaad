@@ -30,9 +30,13 @@ export function AttrChips({
   if (!entries.length) return <span>—</span>;
   const labelMap = { ...labelsFromSchema(schema), ...(labels ?? {}) };
   return (
-    <div className="attr-chips">
+    <div className="attr-chips" style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
       {entries.map(([key, value]) => (
-        <span key={key} className="attr-chip" title={`${labelMap[key] ?? key}: ${String(value)}`}>
+        <span
+          key={key}
+          className="attr-chip zad-chip zad-chip--neutral"
+          title={`${labelMap[key] ?? key}: ${String(value)}`}
+        >
           <b>{labelMap[key] ?? key}</b>
           <span>{String(value)}</span>
         </span>

@@ -1,20 +1,21 @@
 @import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap");
 @import "tailwindcss";
-@import "../styles/tokens.css";
-@import "../styles/components.css";
+@import "@zaad/design-system/tokens.css";
+@import "@zaad/design-system/components.css";
+@import "../styles/zaad-addons.css";
 
 @theme inline {
-  --color-primary: #8b1538;
-  --color-primary-dark: #6e102c;
-  --color-primary-light: #a31a44;
-  --color-secondary: #f2b824;
-  --color-secondary-dark: #d9a31f;
-  --color-secondary-light: #f5c84d;
-  --color-brand-gray: #706f6f;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f5f5f5;
-  --color-surface-border: #e8e8e8;
-  --font-sans: "Tajawal", Tahoma, Arial, sans-serif;
+  --color-primary: var(--brand-primary);
+  --color-primary-dark: var(--primary-800);
+  --color-primary-light: var(--primary-500);
+  --color-secondary: var(--brand-secondary);
+  --color-secondary-dark: var(--secondary-600);
+  --color-secondary-light: var(--secondary-300);
+  --color-brand-gray: var(--neutral-500);
+  --color-surface: var(--surface-raised);
+  --color-surface-muted: var(--surface-base);
+  --color-surface-border: var(--border-subtle);
+  --font-sans: var(--font-arabic);
 }
 
 *,
@@ -39,14 +40,14 @@ body {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
-  font-family: var(--tmkeen-font-sans);
+  font-family: var(--font-arabic);
   background:
-    linear-gradient(180deg, rgba(139, 21, 56, 0.04), transparent 220px),
-    var(--tmkeen-surface-muted);
-  color: #4a4a4a;
+    linear-gradient(180deg, color-mix(in srgb, var(--brand-primary) 4%, transparent), transparent 220px),
+    var(--surface-base);
+  color: var(--text-primary);
   direction: rtl;
   text-align: start;
-  line-height: 1.6;
+  line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -87,8 +88,24 @@ button {
   max-width: 100%;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
   overflow-x: clip;
+}
+
+@media (min-width: 1400px) {
+  .app-frame {
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  }
+
+  .app-content {
+    max-width: min(1400px, 100%);
+    padding-inline: clamp(1.25rem, 3vw, 2rem);
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
 }
 
 .app-frame.is-nav-open {
@@ -350,12 +367,27 @@ button {
 
 .form-grid {
   display: grid;
-  gap: 0.9rem;
+  gap: var(--space-4);
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  width: 100%;
+}
+
+.form-grid > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .form-grid .full {
   grid-column: 1 / -1;
+}
+
+.form-grid .label-field,
+.form-grid .input-field,
+.form-grid select.input-field,
+.form-grid textarea.input-field {
+  width: 100%;
+  max-width: 100%;
 }
 
 /* شبكات فرعية تتكيّف دون inline styles تكسر الجوال */
@@ -393,24 +425,44 @@ button {
 
 .input-field {
   width: 100%;
-  border: 1px solid var(--tmkeen-surface-border);
-  border-radius: 0.65rem;
-  background: #fff;
-  padding: 0.7rem 0.9rem;
-  color: #333;
+  max-width: 100%;
+  min-height: var(--touch-min);
+  border: 1px solid var(--border-subtle, var(--tmkeen-surface-border));
+  border-radius: var(--radius-md, 0.65rem);
+  background: var(--surface-raised, #fff);
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-primary, #333);
+  text-align: start;
+  box-sizing: border-box;
 }
 
 .input-field:focus {
-  outline: 2px solid rgba(139, 21, 56, 0.28);
-  border-color: var(--tmkeen-primary);
+  outline: none;
+  border-color: var(--border-focus, var(--tmkeen-primary));
+  box-shadow: var(--shadow-focus);
+}
+
+.input-field:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+select.input-field {
+  min-height: var(--touch-min);
+}
+
+textarea.input-field {
+  min-height: calc(var(--touch-min) * 2);
+  resize: vertical;
 }
 
 .label-field {
   display: block;
-  margin-bottom: 0.35rem;
-  font-weight: 700;
-  color: var(--tmkeen-primary);
-  font-size: 0.86rem;
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-bold, 700);
+  color: var(--text-brand, var(--tmkeen-primary));
+  font-size: var(--text-sm, 0.86rem);
+  text-align: start;
 }
 
 .table-wrap {
@@ -945,13 +997,27 @@ button {
   box-shadow: 0 10px 30px rgba(80, 20, 40, 0.06);
 }
 
+/* يتفوق على .card { text-align: start } من نظام الزاد */
+.login-card.card .login-brand,
 .login-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  margin-bottom: 1.5rem;
+  width: 100%;
+  margin-bottom: var(--space-6);
 }
 
+.login-card.card .login-brand img,
 .login-brand img {
-  margin-bottom: 0.75rem;
+  display: block;
+  margin-inline: auto;
+  margin-bottom: var(--space-3);
+  width: 5rem;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 
 .login-brand h1 {
@@ -1025,18 +1091,24 @@ button {
 .modal-panel {
   position: relative;
   z-index: 1;
-  width: min(100%, 520px);
-  max-height: min(90vh, 720px);
+  width: min(100%, 36rem);
+  max-height: min(90vh, 45rem);
   overflow: auto;
-  background: #fff;
-  border-radius: 1rem;
-  border: 1px solid var(--tmkeen-surface-border);
+  background: var(--surface-raised, #fff);
+  border-radius: var(--radius-xl, 1rem);
+  border: var(--border-hairline, 1px) solid var(--border-subtle, var(--tmkeen-surface-border));
   box-shadow: 0 16px 48px rgba(40, 10, 20, 0.18);
   padding: 1.1rem 1.2rem 1.25rem;
 }
 
 .modal-panel--wide {
-  width: min(100%, 720px);
+  width: min(100%, 48rem);
+}
+
+@media (min-width: 1100px) {
+  .modal-panel--wide .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .modal-header {
@@ -1139,12 +1211,12 @@ button {
 /* ── Live display screen (public TV / manager link) ── */
 .live-screen {
   min-height: 100vh;
-  padding: 1.25rem clamp(1rem, 3vw, 2.5rem) 2rem;
+  padding: var(--space-5) clamp(var(--space-4), 3vw, var(--space-10)) var(--space-8);
   background:
-    radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--tmkeen-primary) 12%, transparent), transparent 55%),
-    linear-gradient(180deg, #faf7f5 0%, #f3eee8 100%);
-  color: #1f1a17;
-  font-family: "Tajawal", Tahoma, sans-serif;
+    radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--brand-primary) 12%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--surface-base) 0%, var(--surface-sunken) 100%);
+  color: var(--text-primary);
+  font-family: var(--font-arabic);
 }
 .live-screen__header {
   display: flex;
@@ -1187,10 +1259,10 @@ button {
   margin-bottom: 1.25rem;
 }
 .live-screen__tile {
-  background: #fff;
-  border: 1px solid var(--tmkeen-surface-border, #e8e8e8);
-  border-radius: 0.75rem;
-  padding: 0.9rem 1rem;
+  background: var(--surface-raised);
+  border: var(--border-hairline) solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 .live-screen__value {
   font-size: clamp(1.5rem, 2.5vw, 2rem);
@@ -1209,10 +1281,10 @@ button {
   gap: 0.9rem;
 }
 .live-screen__panel {
-  background: #fff;
-  border: 1px solid var(--tmkeen-surface-border, #e8e8e8);
-  border-radius: 0.75rem;
-  padding: 1rem 1.1rem;
+  background: var(--surface-raised);
+  border: var(--border-hairline) solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
 }
 .live-screen__panel h2 {
   margin: 0 0 0.75rem;
@@ -1233,15 +1305,15 @@ button {
   font-weight: 600;
 }
 .live-screen__bar {
-  height: 0.4rem;
-  border-radius: 999px;
-  background: #eee;
+  height: var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
   overflow: hidden;
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 .live-screen__bar > span {
   display: block;
   height: 100%;
-  background: var(--tmkeen-primary);
+  background: var(--brand-primary);
 }
 
