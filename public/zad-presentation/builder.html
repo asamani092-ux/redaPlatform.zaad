@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--ZAD_REPORT_INJECT-->
+<script src="/zad-presentation/support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="icon" type="image/png" href="/zad-presentation/assets/favicon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&amp;family=Rubik:wght@500;700&amp;display=swap" rel="stylesheet">
+  <template id="__bundler_thumbnail" data-bg-color="#951740">
+    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1200" height="800" fill="#951740"></rect>
+      <rect x="360" y="300" width="480" height="24" rx="12" fill="#e9b221"></rect>
+      <circle cx="600" cy="230" r="70" fill="#e9b221"></circle>
+    </svg>
+  </template>
+  <style>
+    body { margin: 0; }
+    * { box-sizing: border-box; }
+    @keyframes zrp-fade { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    .zrp-slide { animation: zrp-fade 0.5s cubic-bezier(.16,1,.3,1); }
+    @keyframes zrp-pop { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+    .zrp-detail { animation: zrp-pop 0.24s cubic-bezier(.16,1,.3,1); }
+    @keyframes zrp-slidein { from { transform: translateX(-100%); } to { transform: none; } }
+    .zrp-panel { animation: zrp-slidein 0.28s cubic-bezier(.16,1,.3,1); }
+    @keyframes zrp-expand { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+    .zrp-inline { animation: zrp-expand 0.22s ease; overflow: hidden; }
+    @keyframes zrp-float-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
+    .zrp-float { animation: zrp-float-in 0.26s cubic-bezier(.16,1,.3,1); border-radius: 18px; }
+    @keyframes zrp-in-down { from { opacity: 0; transform: translateY(-14px); clip-path: inset(0 0 100% 0); } to { opacity: 1; transform: none; clip-path: inset(0 0 0 0); } }
+    .zrp-exp-down { animation: zrp-in-down 0.42s cubic-bezier(.22,1,.36,1); transform-origin: top; }
+    .zrp-slide > div { width: 100%; max-width: min(1500px, 94%); margin-inline: auto; }
+    .zrp-cover-title { font-size: clamp(32px, 5vw, 72px) !important; }
+    .zrp-slide-title { font-size: clamp(24px, 3.4vw, 52px) !important; }
+    @media (max-width: 720px) {
+      .zrp-kpis { grid-template-columns: 1fr 1fr !important; }
+      .zrp-evidence { grid-template-columns: 1fr 1fr !important; }
+    }
+    @media (max-width: 520px) {
+      .zrp-kpis { grid-template-columns: 1fr !important; }
+      .zrp-evidence { grid-template-columns: 1fr 1fr !important; }
+      .zrp-dist { gap: 28px !important; justify-content: center; }
+      .zrp-controls { padding: 14px 18px !important; }
+    }
+  </style>
+</helmet>
+
+<div dir="rtl" style="font-family: 'Tajawal', Tahoma, Arial, sans-serif; background: #f4f1f2; min-height: 100vh; color: #3e3a3c;">
+
+  <!-- ===== BUILDER ===== -->
+  <sc-if value="{{ isBuilder }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width: 60rem; margin-inline: auto; padding: 40px 24px 80px;">
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 8px;">
+        <img src="/zad-presentation/assets/favicon.png" alt="" style="width: 46px; height: 46px; object-fit: contain;">
+        <div>
+          <h1 style="margin: 0; font-size: 26px; font-weight: 800; color: #951740;">مُنشئ العرض التقديمي للتقارير</h1>
+          <div style="font-size: 13px; color: #6b7280;">اختر مكوّنات العرض، ثم اعرضه مباشرة أو صدّره كملف HTML يعمل على أي جهاز.</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 28px;">
+        <!-- Components -->
+        <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; box-shadow: 0 8px 24px rgba(68,13,34,0.06);">
+          <div style="font-size: 13px; font-weight: 800; color: #951740; margin-bottom: 4px;">مكوّنات العرض</div>
+          <div style="font-size: 12px; color: #6b7280; margin-bottom: 16px;">الغلاف والخاتمة يظهران دائماً. فعّل ما تريد إظهاره بينهما.</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <sc-for list="{{ toggles }}" as="t" hint-placeholder-count="5">
+              <div style="border: 1px solid {{ t.border }}; border-radius: 12px; background: {{ t.rowBg }}; overflow: hidden;">
+                <label style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; cursor: pointer;">
+                  <span style="display: flex; align-items: center; gap: 10px;"><span style="width: 34px; height: 34px; border-radius: 9px; background: {{ t.iconBg }}; color: {{ t.iconColor }}; display: flex; align-items: center; justify-content: center;">{{ t.svg }}</span><span style="font-size: 14px; font-weight: 700; color: #3e3a3c;">{{ t.label }}</span></span>
+                  <button onClick="{{ t.toggle }}" type="button" role="switch" aria-checked="{{ t.on }}" style="position: relative; width: 46px; height: 26px; border-radius: 9999px; border: none; cursor: pointer; background: {{ t.trackBg }}; transition: background 0.15s ease; padding: 0; flex-shrink: 0;"><span style="position: absolute; top: 3px; inset-inline-start: {{ t.knob }}; width: 20px; height: 20px; border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.2); transition: inset-inline-start 0.15s ease;"></span></button>
+                </label>
+                <sc-if value="{{ t.on }}" hint-placeholder-val="{{ true }}">
+                  <div style="display: flex; align-items: center; gap: 6px; padding: 0 14px 12px 14px;">
+                    <span style="font-size: 11px; color: #9ca3af; margin-inline-end: 4px;">طريقة العرض:</span>
+                    <sc-for list="{{ t.revOpts }}" as="o" hint-placeholder-count="3">
+                      <button onClick="{{ o.set }}" type="button" style="border-radius: 8px; border: 1px solid {{ o.border }}; background: {{ o.bg }}; color: {{ o.color }}; padding: 5px 10px; cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 700;">{{ o.lbl }}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <button onClick="{{ selectAll }}" style="margin-top: 14px; background: transparent; border: none; color: #951740; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: underline;">تفعيل الكل</button>
+        </div>
+
+        <!-- Settings + preview -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; box-shadow: 0 8px 24px rgba(68,13,34,0.06);">
+            <div style="font-size: 13px; font-weight: 800; color: #951740; margin-bottom: 14px;">المظهر</div>
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+              <button onClick="{{ setLight }}" style="flex: 1; border-radius: 12px; border: 2px solid {{ lightBorder }}; background: #fff; padding: 14px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 13px; color: #3e3a3c; display: flex; flex-direction: column; align-items: center; gap: 8px;"><span style="width: 100%; height: 34px; border-radius: 8px; background: linear-gradient(135deg,#fff,#f1e6ea); border: 1px solid #e5e7eb;"></span>نهاري</button>
+              <button onClick="{{ setDark }}" style="flex: 1; border-radius: 12px; border: 2px solid {{ darkBorder }}; background: #fff; padding: 14px; cursor: pointer; font-family: inherit; font-weight: 700; font-size: 13px; color: #3e3a3c; display: flex; flex-direction: column; align-items: center; gap: 8px;"><span style="width: 100%; height: 34px; border-radius: 8px; background: radial-gradient(circle at 50% 40%,#401126,#1b0610);"></span>ليلي</button>
+            </div>
+            <div style="margin-top: 16px;">
+              <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">عنوان التقرير</label>
+              <input value="{{ titleVal }}" onInput="{{ onTitle }}" style="width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 11px 14px; font-family: inherit; font-size: 14px; outline: none;" style-focus="border-color: #951740;">
+              <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin: 12px 0 6px;">الفترة</label>
+              <input value="{{ periodVal }}" onInput="{{ onPeriod }}" style="width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 11px 14px; font-family: inherit; font-size: 14px; outline: none;" style-focus="border-color: #951740;">
+            </div>
+          </div>
+          <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; box-shadow: 0 8px 24px rgba(68,13,34,0.06); display: flex; flex-direction: column; gap: 10px;">
+            <div style="font-size: 13px; color: #6b7280;">عدد الشرائح: <strong style="color: #951740;">{{ deckCount }}</strong></div>
+            <button onClick="{{ startPresent }}" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; background: #951740; color: #fff; border: none; padding: 14px; font-family: inherit; font-weight: 700; font-size: 15px; cursor: pointer;" style-hover="background: #65102a;">{{ playIcon }} بدء العرض</button>
+            <button onClick="{{ startPresent }}" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; background: #e9b221; color: #65102a; border: none; padding: 12px; font-family: inherit; font-weight: 700; font-size: 14px; cursor: pointer;">{{ linkIcon }} معاينة الرابط</button>
+            <div style="font-size: 11px; color: #9ca3af; line-height: 1.7;">التصدير كملف HTML مستقل يعمل محلياً على أي جهاز متاح عبر زر التصدير في المنصة بعد اعتماد العرض.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===== PRESENTATION ===== -->
+  <sc-if value="{{ isPresenting }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; inset: 0; z-index: 100; background: {{ stageBg }}; display: flex; flex-direction: column;">
+      <!-- progress -->
+      <div style="height: 4px; background: rgba(255,255,255,0.12);"><div style="height: 100%; width: {{ progressPct }}; background: #e9b221; transition: width 0.35s ease;"></div></div>
+      <!-- slide -->
+      <div style="flex: 1; position: relative; overflow: hidden;">
+        <img class="zrp-logo-light" src="/zad-presentation/assets/logo-full.png" alt="" style="position: absolute; top: 30px; inset-inline-end: 40px; height: 46px; width: auto; z-index: 3; display: {{ logoLightDisp }};">
+        <img class="zrp-logo-dark" src="/zad-presentation/assets/logo-white.png" alt="" style="position: absolute; top: 26px; inset-inline-end: 40px; height: 56px; width: auto; z-index: 3; display: {{ logoDarkDisp }};">
+
+        <div class="zrp-slide" style="position: absolute; inset: 0; padding: 108px 8vw 90px; display: flex; flex-direction: column; justify-content: center; color: {{ textMain }};">
+          <sc-if value="{{ sCover }}" hint-placeholder-val="{{ true }}">
+            <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px;">
+              <div style="width: 96px; height: 8px; border-radius: 99px; background: #e9b221;"></div>
+              <h1 class="zrp-cover-title" style="margin: 0; font-family: 'Rubik','Tajawal',sans-serif; font-size: 54px; font-weight: 700; line-height: 1.4; color: {{ headMain }};">{{ titleVal }}</h1>
+              <div style="font-size: 22px; font-weight: 500; opacity: 0.85;">{{ periodVal }}</div>
+              <div style="font-size: 15px; opacity: 0.7; margin-top: 8px;">جمعية الزاد · إدارة الأداء والنمو</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sSummary }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">الملخّص التنفيذي</h2>
+              <div style="display: flex; flex-direction: column; gap: 14px;">
+                <sc-for list="{{ summaryPoints }}" as="p" hint-placeholder-count="4">
+                  <button onClick="{{ p.click }}" style="display: flex; flex-direction: column; gap: 0; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 14px; padding: 18px 20px; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }};" style-hover="border-color: #e9b221;">
+                    <sc-if value="{{ p.isUp }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-up" style="margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 8px; width: 100%;"><sc-for list="{{ p.rowsList }}" as="row" hint-placeholder-count="3"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 16px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6;">{{ p.note }}</div></div></sc-if>
+                    <div style="display: flex; align-items: flex-start; gap: 14px; width: 100%;"><span style="width: 10px; height: 10px; border-radius: 9999px; background: #e9b221; margin-top: 8px; flex-shrink: 0;"></span><span style="font-size: 19px; line-height: 1.6; flex: 1;">{{ p.text }}</span><span style="color: #e9b221; opacity: 0.8; display: flex; margin-top: 3px; flex-shrink: 0;">{{ infoIcon }}</span></div>
+                    <sc-if value="{{ p.isDown }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-down" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 8px; width: 100%;"><sc-for list="{{ p.rowsList }}" as="row" hint-placeholder-count="3"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 16px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6;">{{ p.note }}</div></div></sc-if>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sKpi }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 28px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">المؤشرات الرئيسية</h2>
+              <div class="zrp-kpis" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;">
+                <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                  <button onClick="{{ k.click }}" style="text-align: start; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; font-family: inherit; position: relative; color: {{ textMain }};" style-hover="border-color: #e9b221;">
+                    <span style="position: absolute; top: 14px; inset-inline-end: 14px; color: #e9b221; opacity: 0.8; display: flex;">{{ infoIcon }}</span>
+                    <sc-if value="{{ k.isUp }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-up" style="margin-bottom: 6px; padding-bottom: 12px; border-bottom: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 7px; width: 100%;"><sc-for list="{{ k.rowsList }}" as="row" hint-placeholder-count="3"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 14px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 9px 11px; font-size: 12px; line-height: 1.55;">{{ k.note }}</div></div></sc-if>
+                    <div style="font-size: 15px; opacity: 0.8; color: {{ textMain }};">{{ k.label }}</div>
+                    <div style="font-size: 44px; font-weight: 800; color: {{ headMain }}; line-height: 1;">{{ k.value }}</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #e9b221;">{{ k.delta }}</div>
+                    <sc-if value="{{ k.isDown }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-down" style="margin-top: 6px; padding-top: 12px; border-top: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 7px; width: 100%;"><sc-for list="{{ k.rowsList }}" as="row" hint-placeholder-count="3"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 14px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 9px 11px; font-size: 12px; line-height: 1.55;">{{ k.note }}</div></div></sc-if>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sDist }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 28px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">توزيع الحالات</h2>
+              <div class="zrp-dist" style="display: flex; align-items: center; gap: 56px; flex-wrap: wrap;">
+                <div style="position: relative; width: 260px; height: 260px; flex-shrink: 0;">
+                  <div style="width: 100%; height: 100%; border-radius: 9999px; background: {{ distGradient }};"></div>
+                  <div style="position: absolute; inset: 26%; border-radius: 9999px; background: {{ stageBg }}; display: flex; align-items: center; justify-content: center;"><span style="font-size: 15px; opacity: 0.8;">التوزيع</span></div>
+                </div>
+                <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 12px;">
+                  <sc-for list="{{ dist }}" as="x" hint-placeholder-count="3">
+                    <button onClick="{{ x.click }}" style="display: flex; flex-direction: column; gap: 0; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 12px; padding: 14px 16px; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }};" style-hover="border-color: #e9b221;">
+                      <div style="display: flex; align-items: center; gap: 12px; width: 100%;"><span style="width: 16px; height: 16px; border-radius: 5px; background: {{ x.color }}; flex-shrink: 0;"></span><span style="font-size: 18px; font-weight: 600; flex: 1;">{{ x.label }}</span><span style="font-size: 20px; font-weight: 800; color: {{ headMain }};">{{ x.value }}</span><span style="color: #e9b221; opacity: 0.8; display: flex;">{{ infoIcon }}</span></div>
+                      <sc-if value="{{ x.isDown }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-down" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 8px; width: 100%;"><sc-for list="{{ x.rowsList }}" as="row" hint-placeholder-count="2"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 15px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6;">{{ x.note }}</div></div></sc-if>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sFunnel }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">قِمع المراحل</h2>
+              <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                <sc-for list="{{ funnel }}" as="f" hint-placeholder-count="4">
+                  <button onClick="{{ f.click }}" style="width: {{ f.width }}; min-width: 46%; background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }}; display: block;">
+                    <div style="background: linear-gradient(135deg,#951740,#c0563a); border-radius: 14px; padding: 18px 26px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 6px 18px rgba(149,23,64,0.25);"><span style="font-size: 20px; font-weight: 700; color: #fff;">{{ f.stage }}</span><span style="display: inline-flex; align-items: center; gap: 10px;"><span style="font-size: 22px; font-weight: 800; color: #e9b221;">{{ f.value }}</span><span style="color: rgba(255,255,255,0.85); display: flex;">{{ infoIcon }}</span></span></div>
+                    <sc-if value="{{ f.isDown }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-down" style="margin-top: 10px; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;"><sc-for list="{{ f.rowsList }}" as="row" hint-placeholder-count="2"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 15px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6;">{{ f.note }}</div></div></sc-if>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sProgress }}" hint-placeholder-val="{{ false }}">  <div style="display: flex; flex-direction: column; gap: 28px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">نسب الإنجاز</h2>
+              <div style="display: flex; flex-direction: column; gap: 22px;">
+                <sc-for list="{{ progress }}" as="p" hint-placeholder-count="3">
+                  <button onClick="{{ p.click }}" style="background: transparent; border: none; padding: 6px; margin: -6px; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }}; display: block; width: 100%;">
+                    <sc-if value="{{ p.isUp }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-up" style="margin-bottom: 12px; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;"><sc-for list="{{ p.rowsList }}" as="row" hint-placeholder-count="3"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 16px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6;">{{ p.note }}</div></div></sc-if>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 19px; font-weight: 600; margin-bottom: 10px;"><span style="display: inline-flex; align-items: center; gap: 8px;">{{ p.label }}<span style="color: #e9b221; opacity: 0.8; display: flex;">{{ infoIcon }}</span></span><span style="color: #e9b221;">{{ p.pct }}٪</span></div>
+                    <div style="height: 16px; border-radius: 9999px; background: {{ trackBg }}; overflow: hidden;"><div style="width: {{ p.pct }}%; height: 100%; background: linear-gradient(90deg,#e9b221,#d46a2e); border-radius: 9999px;"></div></div>
+                    <sc-if value="{{ p.isDown }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-down" style="margin-top: 12px; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;"><sc-for list="{{ p.rowsList }}" as="row" hint-placeholder-count="3"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 16px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6;">{{ p.note }}</div></div></sc-if>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sTable }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">أداء البرامج</h2>
+              <div style="border: 1px solid {{ borderMain }}; border-radius: 16px; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 19px;">
+                  <thead><tr style="background: {{ theadBg }}; color: {{ headMain }};"><th style="padding: 16px 20px; text-align: start;">البرنامج</th><th style="padding: 16px 20px; text-align: start;">المستفيدون</th><th style="padding: 16px 20px; text-align: start;">المكتمل</th><th style="padding: 16px 20px; text-align: start;">النسبة</th></tr></thead>
+                  <tbody>
+                    <sc-for list="{{ programs }}" as="r" hint-placeholder-count="3">
+                      <sc-if value="{{ r.isUp }}" hint-placeholder-val="{{ false }}"><tr style="border-top: 1px solid {{ borderMain }}; background: {{ panelBg }};"><td colspan="4" style="padding: 16px 20px;"><div class="zrp-exp-up" style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center;"><sc-for list="{{ r.rowsList }}" as="row" hint-placeholder-count="3"><span style="font-size: 16px;"><span style="opacity: 0.75;">{{ row.k }}:</span> <strong style="color: {{ headMain }};">{{ row.v }}</strong></span></sc-for><span style="flex-basis: 100%; height: 0;"></span><span style="font-size: 14px; opacity: 0.85; line-height: 1.6;">{{ r.note }}</span></div></td></tr></sc-if>
+                      <tr onClick="{{ r.click }}" style="border-top: 1px solid {{ borderMain }}; cursor: pointer;" style-hover="background: {{ theadBg }};"><td style="padding: 15px 20px; font-weight: 600;"><span style="display: inline-flex; align-items: center; gap: 8px;">{{ r.prog }}<span style="color: #e9b221; opacity: 0.7; display: flex;">{{ infoIcon }}</span></span></td><td style="padding: 15px 20px;">{{ r.total }}</td><td style="padding: 15px 20px;">{{ r.done }}</td><td style="padding: 15px 20px; color: #e9b221; font-weight: 700;">{{ r.pct }}</td></tr>
+                      <sc-if value="{{ r.isDown }}" hint-placeholder-val="{{ false }}"><tr style="border-top: 1px solid {{ borderMain }}; background: {{ panelBg }};"><td colspan="4" style="padding: 16px 20px;"><div class="zrp-exp-down" style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center;"><sc-for list="{{ r.rowsList }}" as="row" hint-placeholder-count="3"><span style="font-size: 16px;"><span style="opacity: 0.75;">{{ row.k }}:</span> <strong style="color: {{ headMain }};">{{ row.v }}</strong></span></sc-for><span style="flex-basis: 100%; height: 0;"></span><span style="font-size: 14px; opacity: 0.85; line-height: 1.6;">{{ r.note }}</span></div></td></tr></sc-if>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sTimeline }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">الخط الزمني</h2>
+              <div style="display: flex; flex-direction: column;">
+                <sc-for list="{{ timeline }}" as="e" hint-placeholder-count="4">
+                  <button onClick="{{ e.click }}" style="display: flex; gap: 18px; background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }}; width: 100%;">
+                    <div style="display: flex; flex-direction: column; align-items: center; flex-shrink: 0;"><div style="width: 20px; height: 20px; border-radius: 9999px; background: #e9b221; border: 4px solid {{ cardBg }}; box-shadow: 0 0 0 2px #e9b221;"></div><sc-if value="{{ e.last }}" hint-placeholder-val="{{ true }}"><div style="width: 3px; flex: 1; min-height: 40px; background: {{ borderMain }};"></div></sc-if></div>
+                    <div style="flex: 1; padding-bottom: 26px;">
+                      <div style="display: flex; align-items: center; gap: 10px;"><span style="font-size: 22px; font-weight: 700; color: {{ headMain }};">{{ e.title }}</span><span style="color: #e9b221; opacity: 0.8; display: flex;">{{ infoIcon }}</span></div>
+                      <div style="font-size: 15px; opacity: 0.75; margin-top: 4px;">{{ e.time }}</div>
+                      <sc-if value="{{ e.isDown }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-down" style="margin-top: 12px; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;"><sc-for list="{{ e.rowsList }}" as="row" hint-placeholder-count="2"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 15px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6;">{{ e.note }}</div></div></sc-if>
+                    </div>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sEvidence }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">معرض الشواهد</h2>
+              <div class="zrp-evidence" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;">
+                <sc-for list="{{ evidence }}" as="e" hint-placeholder-count="4">
+                  <button onClick="{{ e.click }}" style="background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 16px; overflow: hidden; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }}; display: flex; flex-direction: column; padding: 0;" style-hover="border-color: #e9b221;">
+                    <div style="aspect-ratio: 4 / 3; width: 100%; background: linear-gradient(135deg, rgba(149,23,64,0.12), rgba(233,178,33,0.12)); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                      <sc-if value="{{ e.hasImg }}" hint-placeholder-val="{{ false }}"><img src="{{ e.imgSrc }}" alt="{{ e.caption }}" style="width: 100%; height: 100%; object-fit: cover;"></sc-if>
+                      <sc-if value="{{ e.hasImg }}" hint-placeholder-val="{{ true }}"><span style="color: #e9b221; opacity: 0.55; display: flex;">{{ imageIcon }}</span></sc-if>
+                      <span style="position: absolute; top: 10px; inset-inline-start: 10px; background: rgba(101,16,42,0.85); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 12px; border-radius: 9999px;">{{ e.tag }}</span>
+                    </div>
+                    <div style="padding: 14px 16px; display: flex; align-items: flex-start; gap: 8px;"><span style="font-size: 16px; font-weight: 600; line-height: 1.5; flex: 1;">{{ e.caption }}</span><span style="color: #e9b221; opacity: 0.8; display: flex; flex-shrink: 0; margin-top: 2px;">{{ infoIcon }}</span></div>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sDisb }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-direction: column; gap: 28px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">الصرف المالي</h2>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;">
+                <sc-for list="{{ disb }}" as="d" hint-placeholder-count="3">
+                  <button onClick="{{ d.click }}" style="background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 16px; padding: 26px; text-align: center; cursor: pointer; font-family: inherit; position: relative; color: {{ textMain }}; display: flex; flex-direction: column;" style-hover="border-color: #e9b221;"><span style="position: absolute; top: 14px; inset-inline-end: 14px; color: #e9b221; opacity: 0.8; display: flex;">{{ infoIcon }}</span>
+                    <sc-if value="{{ d.isUp }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-up" style="margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 8px; width: 100%; text-align: start;"><sc-for list="{{ d.rowsList }}" as="row" hint-placeholder-count="2"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 15px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.6;">{{ d.note }}</div></div></sc-if>
+                    <div style="font-size: 15px; opacity: 0.8; margin-bottom: 12px; color: {{ textMain }};">{{ d.label }}</div><div style="font-size: 40px; font-weight: 800; color: {{ headMain }};">{{ d.amount }}</div><div style="font-size: 14px; color: #e9b221; font-weight: 700; margin-top: 6px;">ر.س</div>
+                    <sc-if value="{{ d.isDown }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-down" style="margin-top: 16px; padding-top: 14px; border-top: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 8px; width: 100%; text-align: start;"><sc-for list="{{ d.rowsList }}" as="row" hint-placeholder-count="2"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 15px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.6;">{{ d.note }}</div></div></sc-if>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sClosing }}" hint-placeholder-val="{{ false }}">
+            <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px;">
+              <div style="width: 96px; height: 8px; border-radius: 99px; background: #e9b221;"></div>
+              <h1 class="zrp-cover-title" style="margin: 0; font-family: 'Rubik','Tajawal',sans-serif; font-size: 48px; font-weight: 700; color: {{ headMain }};">شكراً لكم</h1>
+              <div style="font-size: 19px; opacity: 0.85;">إدارة الأداء والنمو · قسم الاستراتيجية</div>
+              <div style="font-size: 15px; opacity: 0.7;">جمعية الزاد للتمكين المستدام</div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <sc-if value="{{ detailOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeDetail }}" style="position: absolute; inset: 0; z-index: 8; background: rgba(15,5,10,0.55); display: flex; justify-content: center; align-items: {{ overlayAlign }}; padding: 24px;">
+          <div class="{{ panelClass }}" onClick="{{ stopDetail }}" style="background: {{ detailBg }}; color: {{ textMain }}; max-width: 640px; box-shadow: 0 30px 80px rgba(0,0,0,0.5); border: 1px solid {{ borderMain }}; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="background: linear-gradient(135deg,#951740,#65102a); color: #fff; padding: 22px 26px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+              <div style="flex: 1;">
+                <div style="font-size: 15px; opacity: 0.85;">{{ detail.title }}</div>
+                <sc-if value="{{ hasHead }}" hint-placeholder-val="{{ false }}"><div style="font-size: 22px; font-weight: 800; margin-top: 6px; line-height: 1.5;">{{ detail.head }}</div></sc-if>
+                <sc-if value="{{ hasValue }}" hint-placeholder-val="{{ true }}"><div style="display: flex; align-items: baseline; gap: 10px; margin-top: 4px;"><span style="font-size: 40px; font-weight: 800;">{{ detail.value }}</span><span style="font-size: 15px; font-weight: 700; color: #e9b221;">{{ detail.delta }}</span></div></sc-if>
+              </div>
+              <button onClick="{{ closeDetail }}" aria-label="إغلاق" style="width: 36px; height: 36px; border-radius: 10px; border: none; background: rgba(255,255,255,0.18); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{ closeIcon }}</button>
+            </div>
+            <div style="padding: 22px 26px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="font-size: 13px; font-weight: 700; color: #e9b221;">التفصيل</div>
+              <sc-for list="{{ detailRows }}" as="row" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid {{ borderMain }}; padding-bottom: 10px; font-size: 17px;"><span style="opacity: 0.85;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div>
+              </sc-for>
+              <div style="margin-top: 6px; background: {{ cardBg }}; border-inline-start: 4px solid #e9b221; border-radius: 10px; padding: 14px 16px; font-size: 15px; line-height: 1.7;">{{ detail.note }}</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- controls -->
+      <div class="zrp-controls" style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 40px; background: rgba(0,0,0,0.18);">
+        <button onClick="{{ exitPresent }}" style="display: inline-flex; align-items: center; gap: 8px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #fff; padding: 9px 16px; font-family: inherit; font-weight: 700; font-size: 13px; cursor: pointer;">{{ closeIcon }} إنهاء</button>
+        <div style="color: #fff; font-size: 14px; font-weight: 600; opacity: 0.85;">{{ slideNo }} / {{ slideTotal }}</div>
+        <div style="display: flex; align-items: center; gap: 7px;">
+          <sc-for list="{{ slideDots }}" as="dot" hint-placeholder-count="7"><button onClick="{{ dot.go }}" aria-label="شريحة" style="height: 10px; width: {{ dot.w }}; border-radius: 9999px; border: none; background: {{ dot.bg }}; cursor: pointer; padding: 0; transition: width 0.25s ease, background 0.25s ease;"></button></sc-for>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button onClick="{{ prev }}" aria-label="السابق" style="width: 46px; height: 46px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.3); background: transparent; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;">{{ nextIcon }}</button>
+          <button onClick="{{ next }}" aria-label="التالي" style="width: 46px; height: 46px; border-radius: 9999px; border: none; background: #e9b221; color: #65102a; cursor: pointer; display: flex; align-items: center; justify-content: center;">{{ prevIcon }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;theme&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;dark&quot;, &quot;options&quot;: [&quot;dark&quot;, &quot;light&quot;], &quot;tsType&quot;: &quot;\&quot;dark\&quot; | \&quot;light\&quot;&quot;, &quot;section&quot;: &quot;العرض&quot;, &quot;label&quot;: &quot;مظهر العرض&quot; }
+}">
+class Component extends DCLogic {
+  state = { present: false, idx: 0, theme: 'dark', title: 'تقرير الأداء الاستراتيجي', period: 'الربع الثاني 2026م', on: { summary: true, kpi: true, dist: true, funnel: true, progress: true, table: true, timeline: true, evidence: true, disb: true }, reveal: { summary: 'float', kpi: 'float', dist: 'float', funnel: 'float', progress: 'down', table: 'down', timeline: 'down', evidence: 'float', disb: 'float' }, detail: null, openKey: null };
+  icon(p, fill) { return React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', width: 20, height: 20, viewBox: '0 0 24 24', fill: fill || 'none', stroke: fill ? 'none' : 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', dangerouslySetInnerHTML: { __html: p } }); }
+  deckKeys() { const o = this.state.on; const D = this.reportData(); const has = { summary: D.summary.length, kpi: D.kpis.length, dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: D.evidence.length, disb: D.disb.length }; const order = ['summary','kpi','dist','funnel','progress','table','timeline','evidence','disb']; const mid = order.filter(k => o[k] && has[k]); return ['cover', ...mid, 'closing']; }
+  componentDidMount() {
+    const D = this.reportData();
+    if (D.title || D.period) this.setState(s => ({ title: D.title || s.title, period: D.period || s.period }));
+    this._key = (e) => { if (!this.state.present) return; if (e.key === 'ArrowLeft') this.go(1); else if (e.key === 'ArrowRight') this.go(-1); else if (e.key === 'Escape') this.setState({ present: false }); }; window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); }
+  go(d) { const len = this.deckKeys().length; this.setState(s => ({ idx: Math.max(0, Math.min(len - 1, s.idx + d)) })); }
+  tog(key) { this.setState(s => ({ openKey: s.openKey === key ? null : key })); }
+  rowObjs(rows) { return rows.map(r => ({ k: r[0], v: r[1] })); }
+  openDetail(comp, d) { const has = (d.rows && d.rows.length) || (d.note && d.note.length); const note = (d.note && d.note.length) ? d.note : (has ? '' : 'لا تتوفر تفاصيل إضافية لهذا العنصر.'); this.setState({ detail: { ...d, note, mode: this.state.reveal[comp] } }); }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     DATA INTEGRATION CONTRACT  —  READ THIS, AGENT.
+     ───────────────────────────────────────────────────────────────────────
+     This presentation is platform-agnostic (Apps Script, Firebase, REST,
+     Google Sheets, any backend). DO NOT rewrite the UI, theme, navigation or
+     animation. Your ONLY job: feed it one report object built from whatever
+     reports / KPIs / metrics the host platform already stores.
+
+     DATA SOURCE PRIORITY (first one found wins):
+       1) window.ZAD_REPORT   ← set it in a script tag before this loads
+       2) this.props.report   ← pass as a prop if you embed the component
+       3) sampleData()        ← built-in demo data (keep it as fallback)
+
+     HOW TO WIRE YOUR PLATFORM (pick one):
+       • Apps Script / server-render: print your data as JSON, e.g.
+           window.ZAD_REPORT = <?!= JSON.stringify(buildReport()) ?>;
+       • REST / fetch: fetch your report, then set window.ZAD_REPORT
+         BEFORE the page renders (or pass it as this.props.report).
+       • Map your platform's existing tables/metrics into the shape below —
+         one report object per report the platform generates.
+
+     REQUIRED SHAPE (every field optional — a missing/empty array simply
+     hides that component from both the builder and the deck):
+     {
+       title:    "Report title (any language)",
+       period:   "Q2 2026 / any period label",
+       summary:  [ { text, rows:[[key,value], ...], note } ],   // exec summary
+       kpis:     [ { label, value, delta, rows:[[..]], note } ],// KPI cards
+       dist:     [ { label, pct(0-100), color?, rows:[[..]], note } ], // donut / status split
+       funnel:   [ { stage, count, pct(0-100), rows:[[..]], note } ],  // stage funnel (beneficiary journey)
+       progress: [ { label, pct(0-100), rows:[[..]], note } ],  // progress bars
+       programs: [ { prog, total, done, pct, rows:[[..]], note } ], // table
+       timeline: [ { title, time, rows:[[..]], note } ],        // agenda / milestones
+       evidence: [ { src(imageURL), caption, tag, note } ],     // proof / photo gallery
+       disb:     [ { label, amount, rows:[[..]], note } ]       // financials
+     }
+
+     RULES:
+       • Values render verbatim — send Arabic digits (٠-٩) as-is, or call
+         toArabicDigits(n) to convert Western digits.
+       • `rows` + `note` are the DRILL-DOWN detail shown when a user clicks
+         an item during the live presentation. Provide them from the same
+         platform record (e.g. breakdown by program / city / period).
+       • An item with no `rows` → auto-shows "no extra details" (never breaks).
+       • An empty/absent array → that whole slide is skipped automatically.
+       • Numbers/labels come 100% from platform data; only sampleData() is demo.
+     ═══════════════════════════════════════════════════════════════════════ */
+  toArabicDigits(n) { return String(n).replace(/[0-9]/g, d => "٠١٢٣٤٥٦٧٨٩"[d]); }
+  reportData() {
+    const src = (typeof window !== 'undefined' && window.ZAD_REPORT) || (this.props && this.props.report) || this.sampleData();
+    const A = k => Array.isArray(src[k]) ? src[k] : [];
+    return { title: src.title, period: src.period,
+      summary: A('summary'), kpis: A('kpis'), dist: A('dist'), funnel: A('funnel'), progress: A('progress'), programs: A('programs'), timeline: A('timeline'), evidence: A('evidence'), disb: A('disb') };
+  }
+  sampleData() {
+    return {
+      title: 'تقرير الأداء الاستراتيجي', period: 'الربع الثاني 2026م',
+      summary: [
+        { text: 'نمو إجمالي المستفيدين بنسبة ٨٪ مقارنة بالربع السابق.', rows: [['الربع الأول','١٬١٥٤'],['الربع الثاني','١٬٢٤٧'],['النمو','+٩٣']], note: 'أعلى نمو في مسار التمكين المالي.' },
+        { text: 'اعتماد ٣٤ برنامجاً مكتملاً ضمن مسارات التمكين.', rows: [['التمكين المالي','١٤'],['ريادة الأعمال','٩'],['التدريب المهني','١١']], note: '٣ برامج جديدة اكتملت هذا الربع.' },
+        { text: 'ارتفاع معدل الإنجاز العام إلى ٧٢٪ مقترباً من الهدف ٨٠٪.', rows: [['الربع الأول','٦٥٪'],['الربع الثاني','٧٢٪'],['المستهدف','٨٠٪']], note: 'الفجوة المتبقية للهدف ٨ نقاط.' },
+        { text: 'صرف الدفعات المالية في مواعيدها لأكثر من ٩٠٪ من الحالات.', rows: [['في الموعد','٩٠٪'],['متأخرة','٧٪'],['ملغاة','٣٪']], note: 'تحسّن الالتزام بمواعيد الصرف ٤ نقاط.' },
+      ],
+      kpis: [
+        { label: 'إجمالي المستفيدين', value: '١٬٢٤٧', delta: '+٨٪', rows: [['التمكين المالي','٥٤٢'],['ريادة الأعمال','٣٣٨'],['التدريب المهني','٣٦٧']], note: 'أعلى نمو في مدينة الرياض (+١٤٪).' },
+        { label: 'طلبات معلّقة', value: '٨٦', delta: '−١٢', rows: [['بانتظار المراجعة','٤١'],['بانتظار المرفقات','٢٩'],['بانتظار الاعتماد','١٦']], note: 'انخفضت ١٢ طلباً عن الربع السابق.' },
+        { label: 'برامج مكتملة', value: '٣٤', delta: '+٣', rows: [['التمكين المالي','١٤'],['ريادة الأعمال','٩'],['التدريب المهني','١١']], note: '٣ برامج جديدة اكتملت هذا الربع.' },
+        { label: 'معدل الإنجاز', value: '٧٢٪', delta: 'الهدف ٨٠٪', rows: [['الربع الأول','٦٥٪'],['الربع الثاني','٧٢٪'],['المستهدف','٨٠٪']], note: 'الفجوة المتبقية للهدف ٨ نقاط.' },
+      ],
+      progress: [
+        { label: 'التمكين المالي', pct: 72, rows: [['المستهدف','٥٤٢'],['المكتمل','٣٩٠'],['المتبقّي','١٥٢']], note: 'الأعلى من حيث عدد المستفيدين.' },
+        { label: 'ريادة الأعمال', pct: 45, rows: [['المستهدف','٣٣٨'],['المكتمل','٢٤٠'],['المتبقّي','٩٨']], note: 'يحتاج دفعة تسريع في الربع القادم.' },
+        { label: 'التدريب المهني', pct: 88, rows: [['المستهدف','٣٦٧'],['المكتمل','٢٦٨'],['المتبقّي','٩٩']], note: 'الأعلى نسبة إنجاز هذا الربع.' },
+      ],
+      dist: [
+        { label: 'مكتمل', pct: 58, color: '#3f8f5f', rows: [['العدد','٧٢٣'],['النسبة','٥٨٪']], note: 'الحالات المنجزة بالكامل.' },
+        { label: 'قيد التنفيذ', pct: 27, color: '#e9b221', rows: [['العدد','٣٣٧'],['النسبة','٢٧٪']], note: 'قيد المعالجة النشطة.' },
+        { label: 'معلّق', pct: 15, color: '#c0563a', rows: [['العدد','١٨٧'],['النسبة','١٥٪']], note: 'بانتظار مرفقات أو اعتماد.' },
+      ],
+      funnel: [
+        { stage: 'زيارة/تسجيل', count: 2400, pct: 100, rows: [['الزوار','٢٤٠٠']], note: 'أعلى المسار — كل من دخل المنصة.' },
+        { stage: 'تقديم طلب', count: 1560, pct: 65, rows: [['مقدّمون','١٬٥٦٠'],['التحويل','٦٥٪']], note: 'من الزيارة إلى تقديم طلب فعلي.' },
+        { stage: 'اجتياز المراجعة', count: 1120, pct: 47, rows: [['مقبولون','١٬١٢٠'],['التحويل','٧٢٪']], note: 'اجتازوا التحقق من الأهلية.' },
+        { stage: 'مستفيد نشط', count: 890, pct: 37, rows: [['نشطون','٨٩٠'],['التحويل','٧٩٪']], note: 'وصلوا لمرحلة الاستفادة الفعلية.' },
+      ],
+      timeline: [
+        { title: 'إطلاق دورة التمكين المالي', time: '١٠ أبريل ٢٠٢٦', rows: [['المسجّلون','١٤٠'],['الجهة','قسم البرامج']], note: 'أكبر دفعة تسجيل هذا العام.' },
+        { title: 'اعتماد الدفعات الربعية', time: '٢ مايو ٢٠٢٦', rows: [['المبلغ','٤٨٠٬٠٠٠'],['الحالات','٧٢٣']], note: 'اعتمدها مجلس الإدارة بالكامل.' },
+        { title: 'ملتقى المتطوعين السنوي', time: '١٨ يونيو ٢٠٢٦', rows: [['الحضور','٣٢٠'],['الساعات','١٬٢٠٠']], note: 'تغطية إعلامية واسعة.' },
+        { title: 'إغلاق تقرير الربع الثاني', time: '٣٠ يونيو ٢٠٢٦', rows: [['المؤشرات','٢٤'],['الحالة','مكتمل']], note: 'رُفع للإدارة في موعده.' },
+      ],
+      evidence: [
+        { src: '', caption: 'ورشة التمكين المالي — الرياض', tag: 'فعالية', note: 'حضور ١٤٠ مستفيداً على مدى يومين.' },
+        { src: '', caption: 'توزيع شهادات ريادة الأعمال', tag: 'إنجاز', note: 'تخريج ٩ مشاريع ناشئة.' },
+        { src: '', caption: 'زيارة ميدانية للمستفيدين', tag: 'متابعة', note: 'تقييم أثر مباشر في ٣ مدن.' },
+        { src: '', caption: 'ملتقى المتطوعين السنوي', tag: 'مجتمع', note: '٣٢٠ متطوعاً، ١٬٢٠٠ ساعة تطوعية.' },
+      ],
+      programs: [
+        { prog: 'التمكين المالي', total: '٥٤٢', done: '٣٩٠', pct: '٧٢٪', rows: [['قيد التنفيذ','١١٢'],['بانتظار الصرف','٤٠'],['مكتمل','٣٩٠']], note: 'أكبر البرامج حجماً.' },
+        { prog: 'ريادة الأعمال', total: '٣٣٨', done: '٢٤٠', pct: '٧١٪', rows: [['قيد التنفيذ','٧٠'],['بانتظار الصرف','٢٨'],['مكتمل','٢٤٠']], note: 'نمو مطّرد في المشاريع الصغيرة.' },
+        { prog: 'التدريب المهني', total: '٣٦٧', done: '٢٦٨', pct: '٧٣٪', rows: [['قيد التنفيذ','٧٩'],['بانتظار الصرف','٢٠'],['مكتمل','٢٦٨']], note: 'أعلى معدل حضور للدورات.' },
+      ],
+      disb: [
+        { label: 'إجمالي المصروف', amount: '٤٨٠٬٠٠٠', rows: [['تحويل بنكي','٣٩٠٬٠٠٠'],['محفظة رقمية','٩٠٬٠٠٠']], note: 'صُرف في مواعيده لـ ٩٠٪ من الحالات.' },
+        { label: 'قيد المعالجة', amount: '٣٢٬٠٠٠', rows: [['التمكين المالي','٢٠٬٠٠٠'],['التدريب المهني','١٢٬٠٠٠']], note: 'يُتوقّع اكتمالها خلال أسبوع.' },
+        { label: 'مجدول', amount: '٧٥٬٠٠٠', rows: [['دفعات يوليو','٤٥٬٠٠٠'],['دفعات أغسطس','٣٠٬٠٠٠']], note: 'مرتبطة باعتماد الدفعات القادمة.' },
+      ],
+    };
+  }
+  decorate(comp, i, d) {
+    const mode = this.state.reveal[comp];
+    const key = comp + i;
+    const isOpen = this.state.openKey === key;
+    const click = () => { if (mode === 'float') this.openDetail(comp, d); else this.setState(s => ({ openKey: s.openKey === key ? null : key })); };
+    const hasDetails = (d.rows && d.rows.length) || (d.note && d.note.length);
+    const noteOut = (d.note && d.note.length) ? d.note : (hasDetails ? '' : 'لا تتوفر تفاصيل إضافية لهذا العنصر.');
+    return { rowsList: d.rows || [], note: noteOut, mode, click,
+      isUp: false, isDown: isOpen && (mode === 'down' || mode === 'up') };
+  }
+  renderVals() {
+    const I = (p, f) => this.icon(p, f);
+    const D = this.reportData();
+    const dark = this.state.theme === 'dark';
+    const deck = this.deckKeys();
+    const cur = deck[this.state.idx] || 'cover';
+    const t = (key, label, path) => {
+      const on = !!this.state.on[key];
+      const revOpts = [['float','عائمة'],['down','منزلقة']].map(([m,lbl]) => ({ lbl, on: this.state.reveal[key] === m,
+        set: () => this.setState(s => ({ reveal: { ...s.reveal, [key]: m } })),
+        bg: this.state.reveal[key] === m ? '#951740' : 'transparent', color: this.state.reveal[key] === m ? '#fff' : '#6b7280', border: this.state.reveal[key] === m ? '#951740' : '#e5e7eb' }));
+      return { label, on, svg: I(path), key, revOpts, toggle: () => this.setState(s => ({ on: { ...s.on, [key]: !s.on[key] } })),
+        trackBg: on ? '#951740' : '#d2d0d1', knob: on ? '23px' : '3px',
+        border: on ? 'rgba(149,23,64,0.3)' : '#e5e7eb', rowBg: on ? 'rgba(149,23,64,0.04)' : '#fff',
+        iconBg: on ? 'rgba(149,23,64,0.1)' : '#f1f1f1', iconColor: on ? '#951740' : '#9ca3af' };
+    };
+    return {
+      isBuilder: !this.state.present,
+      isPresenting: this.state.present,
+      titleVal: this.state.title, periodVal: this.state.period,
+      onTitle: (e) => { const v = e.target.value; this.setState({ title: v }); },
+      onPeriod: (e) => { const v = e.target.value; this.setState({ period: v }); },
+      toggles: [
+        t('summary', 'الملخّص التنفيذي', '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'),
+        t('kpi', 'المؤشرات (KPI)', '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>'),
+        t('dist', 'توزيع الحالات', '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9h-9z" fill="currentColor" stroke="none"/>'),
+        t('funnel', 'قِمع المراحل', '<polygon points="3 4 21 4 14 12 14 20 10 18 10 12 3 4"/>'),
+        t('progress', 'نسب الإنجاز', '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'),
+        t('table', 'أداء البرامج (جدول)', '<rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="12" y1="3" x2="12" y2="21"/>'),
+        t('timeline', 'الخط الزمني / الأجندة', '<line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="14" r="2"/>'),
+        t('evidence', 'معرض الشواهد', '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'),
+        t('disb', 'الصرف المالي', '<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>'),
+      ].filter(x => ({ summary: D.summary.length, kpi: D.kpis.length, dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: D.evidence.length, disb: D.disb.length }[x.key] > 0)),
+      selectAll: () => this.setState({ on: { summary: true, kpi: true, dist: true, funnel: true, progress: true, table: true, timeline: true, evidence: true, disb: true } }),
+      setLight: () => this.setState({ theme: 'light' }), setDark: () => this.setState({ theme: 'dark' }),
+      lightBorder: dark ? '#e5e7eb' : '#951740', darkBorder: dark ? '#951740' : '#e5e7eb',
+      deckCount: this.arNumSafe(deck.length),
+      startPresent: () => this.setState({ present: true, idx: 0 }),
+      exitPresent: () => this.setState({ present: false }),
+      playIcon: I('<polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/>'),
+      linkIcon: I('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'),
+      closeIcon: I('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+      infoIcon: I('<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'),
+      imageIcon: I('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'),
+      nextIcon: I('<polyline points="15 18 9 12 15 6"/>'),
+      prevIcon: I('<polyline points="9 18 15 12 9 6"/>'),
+      next: () => this.go(1), prev: () => this.go(-1),
+      slideNo: this.arNumSafe(this.state.idx + 1), slideTotal: this.arNumSafe(deck.length),
+      slideDots: deck.map((_, i) => ({ active: i === this.state.idx, bg: i === this.state.idx ? '#e9b221' : 'rgba(255,255,255,0.3)', w: i === this.state.idx ? '26px' : '10px', go: () => this.setState({ idx: i }) })),
+      progressPct: ((this.state.idx + 1) / deck.length * 100) + '%',
+      // theme tokens
+      stageBg: dark ? 'radial-gradient(circle at 50% 40%, #401126 0, #1b0610 78%)' : '#ffffff',
+      textMain: dark ? '#efe4e8' : '#3e3a3c', headMain: dark ? '#ffffff' : '#951740',
+      cardBg: dark ? 'rgba(255,255,255,0.06)' : '#faf7f8', borderMain: dark ? 'rgba(255,255,255,0.14)' : '#ecdfe3',
+      trackBg: dark ? 'rgba(255,255,255,0.12)' : '#eee0e4', theadBg: dark ? 'rgba(233,178,33,0.14)' : 'rgba(149,23,64,0.06)',
+      logoLightDisp: dark ? 'none' : 'block', logoDarkDisp: dark ? 'block' : 'none',
+      // current slide flags
+      sCover: cur === 'cover', sSummary: cur === 'summary', sKpi: cur === 'kpi', sDist: cur === 'dist', sFunnel: cur === 'funnel', sProgress: cur === 'progress', sTable: cur === 'table', sTimeline: cur === 'timeline', sEvidence: cur === 'evidence', sDisb: cur === 'disb', sClosing: cur === 'closing',
+      // content
+      summaryPoints: D.summary.map((p,i) => ({ ...p, ...this.decorate('summary', i, { title: 'تفصيل النقطة', head: p.text, value: '', delta: '', rows: this.rowObjs(p.rows || []), note: p.note }) })),
+      kpis: D.kpis.map((k,i) => ({ ...k, ...this.decorate('kpi', i, { title: k.label, head: '', value: k.value, delta: k.delta, rows: this.rowObjs(k.rows || []), note: k.note }) })),
+      progress: D.progress.map((p,i) => ({ ...p, ...this.decorate('progress', i, { title: 'نسبة الإنجاز', head: p.label, value: p.pct + '٪', delta: '', rows: this.rowObjs(p.rows || []), note: p.note }) })),
+      programs: D.programs.map((r,i) => ({ ...r, ...this.decorate('table', i, { title: 'أداء البرنامج', head: r.prog, value: r.pct, delta: '', rows: this.rowObjs(r.rows || []), note: r.note }) })),
+      disb: D.disb.map((d,i) => ({ ...d, ...this.decorate('disb', i, { title: d.label, head: '', value: d.amount + ' ر.س', delta: '', rows: this.rowObjs(d.rows || []), note: d.note }) })),
+      dist: (() => { let acc = 0; return D.dist.map((x,i) => { const from = acc; acc += (x.pct || 0); return { ...x, color: x.color || ['#951740','#e9b221','#3f8f5f','#c0563a','#4a6fa5'][i % 5], from, to: acc, ...this.decorate('dist', i, { title: x.label, head: '', value: (x.pct || 0) + '٪', delta: '', rows: this.rowObjs(x.rows || []), note: x.note }) }; }); })(),
+      distGradient: (() => { let acc = 0; const stops = D.dist.map((x,i) => { const c = x.color || ['#951740','#e9b221','#3f8f5f','#c0563a','#4a6fa5'][i % 5]; const s = `${c} ${acc}% ${acc + (x.pct || 0)}%`; acc += (x.pct || 0); return s; }); return 'conic-gradient(' + stops.join(', ') + ')'; })(),
+      funnel: D.funnel.map((f,i) => ({ ...f, width: (f.pct || 0) + '%', ...this.decorate('funnel', i, { title: f.stage, head: '', value: (f.pct || 0) + '٪', delta: '', rows: this.rowObjs(f.rows || []), note: f.note }) })),
+      timeline: D.timeline.map((tm,i) => ({ ...tm, last: i === D.timeline.length - 1, ...this.decorate('timeline', i, { title: tm.title, head: '', value: '', delta: '', rows: this.rowObjs(tm.rows || []), note: tm.note }) })),
+      evidence: D.evidence.map((e,i) => ({ ...e, hasImg: !!(e.src && e.src.length), imgSrc: (e.src && e.src.length) ? e.src : 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==', ...this.decorate('evidence', i, { title: e.caption, head: '', value: '', delta: '', rows: this.rowObjs(e.rows || []), note: e.note }) })),
+      detail: this.state.detail,
+      detailOpen: !!this.state.detail,
+      closeDetail: () => this.setState({ detail: null }),
+      stopDetail: (e) => e.stopPropagation(),
+      hasHead: !!(this.state.detail && this.state.detail.head),
+      hasValue: !!(this.state.detail && this.state.detail.value),
+      detailRows: this.state.detail ? this.state.detail.rows : [],
+      panelClass: this.state.detail ? ('zrp-' + this.state.detail.mode) : 'zrp-float',
+      overlayAlign: (this.state.detail && this.state.detail.mode === 'up') ? 'flex-end' : (this.state.detail && this.state.detail.mode === 'down') ? 'flex-start' : 'center',
+      detailBg: dark ? '#2a0d19' : '#ffffff',
+      panelBg: dark ? 'rgba(0,0,0,0.25)' : 'rgba(149,23,64,0.05)',
+    };
+  }
+  arNumSafe(n) { return String(n).replace(/[0-9]/g, d => "٠١٢٣٤٥٦٧٨٩"[d]); }
+}
+</script>
+</body>
+</html>

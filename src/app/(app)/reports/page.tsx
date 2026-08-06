@@ -181,6 +181,14 @@ export default function ReportsPage() {
               تصدير Excel
             </a>
             <a
+              className="btn-recommend"
+              href={`/api/reports?format=presentation&html=1${exportQs}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              منشئ العرض التقديمي
+            </a>
+            <a
               className="btn-secondary"
               href={`/api/reports?format=pdf${exportQs}`}
               target="_blank"
