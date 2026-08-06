@@ -437,16 +437,32 @@ button {
 }
 
 .input-field:focus {
-  outline: 2px solid rgba(139, 21, 56, 0.28);
-  border-color: var(--tmkeen-primary);
+  outline: none;
+  border-color: var(--border-focus, var(--tmkeen-primary));
+  box-shadow: var(--shadow-focus);
+}
+
+.input-field:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+select.input-field {
+  min-height: var(--touch-min);
+}
+
+textarea.input-field {
+  min-height: calc(var(--touch-min) * 2);
+  resize: vertical;
 }
 
 .label-field {
   display: block;
-  margin-bottom: 0.35rem;
-  font-weight: 700;
-  color: var(--tmkeen-primary);
-  font-size: 0.86rem;
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-bold, 700);
+  color: var(--text-brand, var(--tmkeen-primary));
+  font-size: var(--text-sm, 0.86rem);
+  text-align: start;
 }
 
 .table-wrap {
@@ -1086,7 +1102,13 @@ button {
 }
 
 .modal-panel--wide {
-  width: min(100%, 720px);
+  width: min(100%, 48rem);
+}
+
+@media (min-width: 1100px) {
+  .modal-panel--wide .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .modal-header {
