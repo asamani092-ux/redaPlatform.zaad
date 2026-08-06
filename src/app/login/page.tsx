@@ -35,7 +35,7 @@ function LoginForm() {
       <div className="login-card card page-container-narrow">
         <div className="login-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.webp" alt="رداء" width={80} height={80} />
+          <img src="/logo.webp" alt="رداء" width={80} height={48} />
           <h1>منصة رداء</h1>
           <p>دخول الموظفين بالجوال وكلمة المرور</p>
         </div>
