@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
@@ -8,7 +8,6 @@ import type { SurveyQuestion } from "@/lib/survey-questions";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
-import { Stepper } from "@/components/ui/Stepper";
 import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
@@ -21,6 +20,11 @@ type ResponseRow = {
   beneficiary: { name: string; nationalId: string };
 };
 
+/**
+ * شاشة إدارة الاستبيان: إعداد الأسئلة + متابعة الردود.
+ * الإدخال من المستفيد عبر واتساب بعد الصرف — لا إدخال يدوي هنا.
+ * Time: O(n) لعرض الأسئلة/الردود؛ Space: O(n).
+ */
 export default function SurveyPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
@@ -31,14 +35,11 @@ export default function SurveyPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [beneficiary, setBeneficiary] = useState<{ id: string; name: string } | null>(null);
-  const [search, setSearch] = useState("");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
   const [msgError, setMsgError] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"entry" | "responses" | "admin">("entry");
+  const [tab, setTab] = useState<"responses" | "admin">(isAdmin ? "admin" : "responses");
   const [broadcastTarget, setBroadcastTarget] = useState<"attended" | "received" | null>(null);
   const toast = useToast();
 
@@ -60,62 +61,12 @@ export default function SurveyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function findBeneficiary() {
-    setMsg("");
-    setMsgError(false);
-    const res = await fetch(`/api/lookup?q=${encodeURIComponent(search.trim())}`);
-    const json = await res.json();
-    if (!res.ok) {
-      setBeneficiary(null);
-      setMsg(json.error || "المستفيد غير موجود");
-      setMsgError(true);
-      return;
-    }
-    setBeneficiary({ id: json.beneficiary.id, name: json.beneficiary.name });
-  }
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!beneficiary) {
-      setMsg("ابحث عن المستفيد أولاً");
-      return;
-    }
-    const res = await fetch("/api/survey", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ beneficiaryId: beneficiary.id, answers }),
-    });
-    const json = await res.json();
-    setMsg(res.ok ? "تم حفظ الاستبيان" : json.error || "فشل الحفظ");
-    setMsgError(!res.ok);
-    toast.push({ title: res.ok ? "تم حفظ الاستبيان" : (json.error || "فشل الحفظ"), tone: res.ok ? "success" : "danger" });
-    if (res.ok) {
-      setAnswers({});
-      setBeneficiary(null);
-      setSearch("");
-      load();
-    }
-  }
-
-  async function sendLink() {
-    if (!beneficiary) {
-      setMsg("ابحث عن المستفيد أولاً");
-      setMsgError(true);
-      return;
-    }
-    const res = await fetch("/api/survey", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ beneficiaryId: beneficiary.id, answers: {}, sendLink: true }),
-    });
-    const json = await res.json();
-    setMsg(res.ok ? "تم تسجيل رسالة الاستبيان للإرسال" : json.error || "فشل الإرسال");
-    setMsgError(!res.ok);
-  }
+  useEffect(() => {
+    if (!isAdmin && tab === "admin") setTab("responses");
+  }, [isAdmin, tab]);
 
   async function broadcast(audience: "attended" | "received") {
     const label = audience === "attended" ? "كل الحضور" : "كل من استلم قطعاً";
-    if (!window.confirm(`إرسال رابط الاستبيان إلى ${label}؟`)) return;
     setBusy(true);
     setMsg("");
     setMsgError(false);
@@ -126,24 +77,17 @@ export default function SurveyPage() {
     });
     const json = await res.json();
     setBusy(false);
-    if (!res.ok) {
-      setMsg(json.error || "فشل الإرسال الجماعي");
-      setMsgError(true);
-      return;
-    }
     const failed = Number(json.failed ?? 0);
-    const errors: Array<{ beneficiaryName?: string; reason?: string }> = Array.isArray(json.errors)
-      ? json.errors
-      : [];
-    const reasons = errors
-      .slice(0, 5)
-      .map((e) => `${e.beneficiaryName ?? "مستفيد"}: ${e.reason ?? "فشل"}`)
-      .join(" — ");
-    let text = `أُرسل ${json.sent} — فشل ${failed} (${label})`;
-    if (reasons) text += ` — ${reasons}`;
-    else if (json.statusReason) text += ` — ${json.statusReason}`;
+    const text = res.ok
+      ? `أُرسل إلى ${label}: نجح ${json.sent ?? 0} — فشل ${failed}`
+      : json.error || "فشل الإرسال الجماعي";
     setMsg(text);
-    setMsgError(failed > 0 || json.status === "FAILED" || json.status === "PARTIAL");
+    setMsgError(!res.ok || failed > 0);
+    toast.push({
+      title: res.ok ? "إرسال جماعي" : "فشل الإرسال",
+      body: text,
+      tone: !res.ok || failed > 0 ? "warning" : "success",
+    });
   }
 
   function updateQuestion(idx: number, patch: Partial<SurveyQuestion>) {
@@ -172,28 +116,28 @@ export default function SurveyPage() {
     const json = await res.json();
     setBusy(false);
     setMsg(res.ok ? "تم حفظ إعداد الاستبيان" : json.error || "فشل الحفظ");
-    toast.push({ title: res.ok ? "تم حفظ إعداد الاستبيان" : (json.error || "فشل الحفظ"), tone: res.ok ? "success" : "danger" });
-    if (res.ok) load();
+    toast.push({
+      title: res.ok ? "تم حفظ إعداد الاستبيان" : json.error || "فشل الحفظ",
+      tone: res.ok ? "success" : "danger",
+    });
+    if (res.ok) void load();
   }
+
+  const tabItems = [
+    { id: "responses", label: "الردود" },
+    ...(isAdmin ? [{ id: "admin", label: "إعداد الأسئلة" }] : []),
+  ];
 
   return (
     <div className="page-stack">
       <PageHeader
         title="استبيان الرضا"
-        description="تحرير الأسئلة، تسجيل الإجابات، أو إرسال الرابط جماعياً"
+        description="يُرسل الرابط تلقائياً عبر واتساب بعد الصرف — هنا إعداد الأسئلة ومتابعة الردود"
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الاستبيان" }]}
         actions={
           <>
             <button type="button" className="btn-secondary" onClick={() => setPreviewOpen(true)}>
-              معاينة الاستبيان
-            </button>
-            <button
-              type="button"
-              className="btn-recommend"
-              disabled={busy}
-              onClick={() => setBroadcastTarget("attended")}
-            >
-              إرسال لكل الحضور
+              معاينة
             </button>
             <button
               type="button"
@@ -201,104 +145,120 @@ export default function SurveyPage() {
               disabled={busy}
               onClick={() => setBroadcastTarget("received")}
             >
-              إرسال لمن استلم
+              إعادة إرسال لمن استلم
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={busy}
+              onClick={() => setBroadcastTarget("attended")}
+            >
+              إرسال لكل الحضور
             </button>
           </>
         }
       />
       {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
 
+      <p className="page-header__desc">
+        المسار التشغيلي: صرف القطع ← خيار إرسال الاستبيان ← رسالة واتساب للمستفيد ← حفظ الردود هنا إن
+        كان الاستبيان داخلياً.
+      </p>
+
       <Tabs
-        items={[
-          { id: "entry", label: "إدخال إجابات" },
-          { id: "responses", label: "الردود" },
-          ...(isAdmin ? [{ id: "admin", label: "تحرير الأسئلة" }] : []),
-        ]}
+        items={tabItems}
         value={tab}
         onChange={(id) => setTab(id as typeof tab)}
       />
 
       {isAdmin && tab === "admin" ? (
         <section className="panel">
-          <h2 className="panel-title">أسئلة الاستبيان (تحرير — مدير)</h2>
-          <div style={{ display: "grid", gap: "0.85rem" }}>
+          <h2 className="panel-title">أسئلة الاستبيان</h2>
+          <div className="stack-gap">
             {questions.map((qq, idx) => (
-              <div key={qq.id} className="form-grid form-grid--survey-q">
-                <div>
-                  <label className="label-field">نص السؤال</label>
-                  <input
-                    className="input-field"
-                    value={qq.text}
-                    onChange={(e) => updateQuestion(idx, { text: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="label-field">النوع</label>
-                  <select
-                    className="input-field"
-                    value={qq.type}
-                    onChange={(e) =>
-                      updateQuestion(idx, {
-                        type: e.target.value as SurveyQuestion["type"],
-                        min: e.target.value === "scale" ? (qq.min ?? 1) : undefined,
-                        max: e.target.value === "scale" ? (qq.max ?? 5) : undefined,
-                      })
-                    }
-                  >
-                    <option value="text">نصي</option>
-                    <option value="scale">تقييم رقمي</option>
-                  </select>
-                </div>
-                {qq.type === "scale" ? (
-                  <>
-                    <div>
-                      <label className="label-field">من</label>
-                      <input
-                        className="input-field"
-                        dir="ltr"
-                        inputMode="numeric"
-                        value={String(qq.min ?? 1)}
-                        onChange={(e) =>
-                          updateQuestion(idx, {
-                            min: toIntOrNull(sanitizeNumericInput(e.target.value, false)) ?? 1,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label-field">إلى</label>
-                      <input
-                        className="input-field"
-                        dir="ltr"
-                        inputMode="numeric"
-                        value={String(qq.max ?? 5)}
-                        onChange={(e) =>
-                          updateQuestion(idx, {
-                            max: toIntOrNull(sanitizeNumericInput(e.target.value, false)) ?? 5,
-                          })
-                        }
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ gridColumn: "span 2" }} />
-                )}
-                <div style={{ alignSelf: "end" }}>
-                  <button
-                    type="button"
-                    className="btn-danger"
-                    onClick={() => setQuestions((qs) => qs.filter((_, i) => i !== idx))}
-                  >
-                    إزالة
-                  </button>
+              <div key={qq.id} className="field-cell survey-question-card">
+                <div className="form-grid form-grid--survey-q">
+                  <div className="full-on-mobile">
+                    <label className="label-field">نص السؤال</label>
+                    <input
+                      className="input-field"
+                      value={qq.text}
+                      onChange={(e) => updateQuestion(idx, { text: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="label-field">النوع</label>
+                    <select
+                      className="input-field"
+                      value={qq.type}
+                      onChange={(e) =>
+                        updateQuestion(idx, {
+                          type: e.target.value as SurveyQuestion["type"],
+                          min: e.target.value === "scale" ? (qq.min ?? 1) : undefined,
+                          max: e.target.value === "scale" ? (qq.max ?? 5) : undefined,
+                        })
+                      }
+                    >
+                      <option value="text">نصي</option>
+                      <option value="scale">تقييم رقمي</option>
+                    </select>
+                  </div>
+                  {qq.type === "scale" ? (
+                    <>
+                      <div>
+                        <label className="label-field">من</label>
+                        <input
+                          className="input-field"
+                          dir="ltr"
+                          inputMode="numeric"
+                          value={String(qq.min ?? 1)}
+                          onChange={(e) =>
+                            updateQuestion(idx, {
+                              min: toIntOrNull(sanitizeNumericInput(e.target.value, false)) ?? 1,
+                            })
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="label-field">إلى</label>
+                        <input
+                          className="input-field"
+                          dir="ltr"
+                          inputMode="numeric"
+                          value={String(qq.max ?? 5)}
+                          onChange={(e) =>
+                            updateQuestion(idx, {
+                              max: toIntOrNull(sanitizeNumericInput(e.target.value, false)) ?? 5,
+                            })
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : null}
+                  <div className="survey-question-card__actions">
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      onClick={() => setQuestions((qs) => qs.filter((_, i) => i !== idx))}
+                    >
+                      إزالة
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
+            {!questions.length ? (
+              <EmptyState
+                title="لا أسئلة بعد"
+                body="أضف أسئلة داخلية لحفظ الردود في المنصة، أو ضع رابط نموذج خارجي لواتساب فقط."
+              />
+            ) : null}
           </div>
-          <div className="form-grid" style={{ marginTop: "0.85rem" }}>
+
+          <div className="form-grid form-grid--single" style={{ marginTop: "var(--space-4)" }}>
             <div className="full">
               <label className="label-field">
-                رابط نموذج خارجي (قوقل فورم / مايكروسوفت فورم) — يُستخدم في رسائل الواتساب إن ضُبط
+                رابط نموذج خارجي (اختياري) — إن وُجد يُستخدم في رسالة الواتساب بدل الاستبيان الداخلي
               </label>
               <input
                 className="input-field"
@@ -309,145 +269,82 @@ export default function SurveyPage() {
               />
             </div>
           </div>
+
           <div className="form-actions">
             <button type="button" className="btn-secondary" onClick={addQuestion}>
               إضافة سؤال
             </button>
-            <button type="button" className="btn-primary" disabled={busy} onClick={saveQuestions}>
-              {busy ? "جاري الحفظ…" : "حفظ إعداد الاستبيان"}
+            <button type="button" className="btn-primary" disabled={busy} onClick={() => void saveQuestions()}>
+              {busy ? "جاري الحفظ…" : "حفظ الإعداد"}
             </button>
           </div>
         </section>
       ) : null}
 
-      {tab === "entry" ? (
-      <section className="panel">
-        <h2 className="panel-title">إدخال إجابات</h2>
-        <Stepper
-          steps={[
-            { id: "find", label: "بحث المستفيد" },
-            { id: "answer", label: "الإجابات" },
-            { id: "done", label: "حفظ / إرسال" },
-          ]}
-          currentId={beneficiary ? "answer" : "find"}
-        />
-        <div className="toolbar">
-          <input
-            className="input-field"
-            placeholder="هوية / جوال / اسم المستفيد"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                if (search.trim()) void findBeneficiary();
-              }
-            }}
-          />
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => search.trim() && findBeneficiary()}
-          >
-            بحث
-          </button>
-        </div>
-        {beneficiary ? (
-          <form onSubmit={submit} style={{ marginTop: "1rem" }}>
-            <p className="msg">المستفيد: {beneficiary.name}</p>
-            <div className="form-grid">
-              {questions.map((qq) => (
-                <div key={qq.id} className="full">
-                  <label className="label-field">{qq.text}</label>
-                  <input
-                    className="input-field"
-                    type={qq.type === "scale" ? "number" : "text"}
-                    min={qq.min}
-                    max={qq.max}
-                    value={answers[qq.id] ?? ""}
-                    onChange={(e) => setAnswers((a) => ({ ...a, [qq.id]: e.target.value }))}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="form-actions">
-              <button className="btn-primary" type="submit">
-                حفظ الإجابات
-              </button>
-              <button className="btn-secondary" type="button" onClick={sendLink}>
-                إرسال رابط واتساب
-              </button>
-            </div>
-          </form>
-        ) : (
-          <EmptyState title="ابحث عن مستفيد" body="أدخل الهوية أو الجوال لبدء تعبئة الاستبيان." />
-        )}
-      </section>
-      ) : null}
-
       {tab === "responses" ? (
-      <section className="panel">
-        <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: "0.75rem" }}>
-          <h2 className="panel-title" style={{ margin: 0 }}>
-            الردود ({total})
-          </h2>
-          <button
-            type="button"
-            className="btn-secondary"
-            disabled={!total}
-            onClick={() => window.open("/api/survey/print", "_blank", "noopener,noreferrer")}
-          >
-            طباعة الردود
-          </button>
-        </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>المستفيد</th>
-                <th>الإجابات</th>
-                <th>التاريخ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {responses.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    {r.beneficiary.name}
-                    <div dir="ltr" style={{ fontSize: "0.8rem", color: "var(--tmkeen-brand-gray)" }}>
-                      {r.beneficiary.nationalId}
-                    </div>
-                  </td>
-                  <td>
-                    <AttrAnswers answers={r.answersJson} questions={questions} />
-                  </td>
-                  <td>{new Date(r.createdAt).toLocaleString("ar-SA")}</td>
-                </tr>
-              ))}
-              {!responses.length ? (
+        <section className="panel">
+          <div className="toolbar toolbar--between">
+            <h2 className="panel-title" style={{ margin: 0 }}>
+              الردود المحفوظة ({total})
+            </h2>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={!total}
+              onClick={() => window.open("/api/survey/print", "_blank", "noopener,noreferrer")}
+            >
+              طباعة الردود
+            </button>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={3}>
-                    <EmptyState title="لا ردود بعد" body="ستظهر الردود هنا بعد الحفظ أو الإرسال." />
-                  </td>
+                  <th scope="col">المستفيد</th>
+                  <th scope="col">الإجابات</th>
+                  <th scope="col">التاريخ</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-        <PaginationBar
-          page={page}
-          totalPages={totalPages}
-          total={total}
-          pageSize={DEFAULT_PAGE_SIZE}
-          busy={busy}
-          onPageChange={(p) => void load(p)}
-        />
-      </section>
+              </thead>
+              <tbody>
+                {responses.map((r) => (
+                  <tr key={r.id}>
+                    <td data-label="المستفيد">
+                      {r.beneficiary.name}
+                      <div className="meta-ltr">{r.beneficiary.nationalId}</div>
+                    </td>
+                    <td data-label="الإجابات">
+                      <AttrAnswers answers={r.answersJson} questions={questions} />
+                    </td>
+                    <td data-label="التاريخ">{new Date(r.createdAt).toLocaleString("ar-SA")}</td>
+                  </tr>
+                ))}
+                {!responses.length ? (
+                  <tr>
+                    <td colSpan={3}>
+                      <EmptyState
+                        title="لا ردود بعد"
+                        body="تظهر هنا ردود الاستبيان الداخلي بعد إرساله للمستفيدين عند الصرف."
+                      />
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+          <PaginationBar
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={DEFAULT_PAGE_SIZE}
+            busy={busy}
+            onPageChange={(p) => void load(p)}
+          />
+        </section>
       ) : null}
 
       <Modal open={previewOpen} title="معاينة الاستبيان" onClose={() => setPreviewOpen(false)}>
         {questions.length ? (
-          <div className="form-grid">
+          <div className="form-grid form-grid--single">
             {questions.map((qq) => (
               <div key={qq.id} className="full">
                 <label className="label-field">{qq.text}</label>
@@ -467,10 +364,10 @@ export default function SurveyPage() {
             ))}
           </div>
         ) : (
-          <EmptyState title="لا أسئلة بعد" body="أضف أسئلة من تبويب التحرير." />
+          <EmptyState title="لا أسئلة بعد" body="أضف أسئلة من تبويب إعداد الأسئلة." />
         )}
         {externalUrl ? (
-          <p className="msg" style={{ marginTop: "0.75rem" }} dir="ltr">
+          <p className="msg" style={{ marginTop: "var(--space-3)" }} dir="ltr">
             {externalUrl}
           </p>
         ) : null}
@@ -478,7 +375,7 @@ export default function SurveyPage() {
 
       <ConfirmDialog
         open={Boolean(broadcastTarget)}
-        title={broadcastTarget === "received" ? "إرسال لمن استلم" : "إرسال لكل الحضور"}
+        title={broadcastTarget === "received" ? "إعادة إرسال لمن استلم" : "إرسال لكل الحضور"}
         body="سيتم إرسال رابط الاستبيان جماعياً عبر واتساب. هل تريد المتابعة؟"
         confirmLabel="إرسال"
         busy={busy}

@@ -65,7 +65,7 @@ export default function DispensePage() {
   const [msgError, setMsgError] = useState(false);
   const [scanOn, setScanOn] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [sendSurvey, setSendSurvey] = useState(false);
+  const [sendSurvey, setSendSurvey] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const toast = useToast();
 
@@ -419,21 +419,13 @@ export default function DispensePage() {
           <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
             المحدد: {totalSelected} من المسموح {entitledNow} — يجوز الصرف بأقل من الاستحقاق
           </p>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              marginTop: "0.75rem",
-              fontWeight: 600,
-            }}
-          >
+          <label className="check-field">
             <input
               type="checkbox"
               checked={sendSurvey}
               onChange={(e) => setSendSurvey(e.target.checked)}
             />
-            إرسال رابط الاستبيان عبر واتساب بعد الاستلام
+            إرسال رابط الاستبيان عبر واتساب بعد الاستلام (مفعّل افتراضياً)
           </label>
           {blockReason ? <p className="msg msg-error">{blockReason}</p> : null}
           {lookup.entitledOverride != null ? (
