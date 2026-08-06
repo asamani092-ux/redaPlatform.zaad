@@ -17,6 +17,7 @@ export const WRITE_PATHS: WritePathSpec[] = [
   { id: "beneficiary.update", entityType: "Beneficiary", action: "UPDATE", route: "PATCH /api/beneficiaries/[id]", audited: true },
   { id: "beneficiary.import", entityType: "Beneficiary", action: "IMPORT", route: "POST /api/beneficiaries/import", audited: true },
   { id: "invite.create", entityType: "ExhibitionInvite", action: "INVITE", route: "POST /api/invites", audited: true },
+  { id: "invite.resend", entityType: "ExhibitionInvite", action: "INVITE_RESEND", route: "POST /api/invites/resend", audited: true },
   { id: "attendance.create", entityType: "Attendance", action: "CHECKIN|CHECKIN_EXCEPTION", route: "POST /api/attendance", audited: true },
   { id: "dispense.create", entityType: "DispenseOrder", action: "DISPENSE", route: "POST /api/dispense", audited: true },
   { id: "dispense.override", entityType: "DispenseOrder", action: "ENTITLEMENT_OVERRIDE", route: "POST /api/dispense", audited: true },

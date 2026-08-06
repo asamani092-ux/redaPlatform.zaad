@@ -6,6 +6,7 @@ export const ACTION_LABELS: Record<string, string> = {
   IMPORT: "استيراد",
   INVITE: "دعوة",
   BULK_INVITE: "دعوة جماعية",
+  INVITE_RESEND: "إعادة إرسال دعوة",
   CHECKIN: "تسجيل حضور",
   CHECKIN_EXCEPTION: "حضور استثنائي",
   DISPENSE: "صرف قطع",

@@ -5,11 +5,13 @@ import { requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
 import { statusFromSendCounts } from "@/lib/audit-status";
 import { requireActiveExhibition } from "@/lib/exhibition";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import { OutboundMessageType } from "@/generated/prisma/enums";
 import { randomUUID } from "crypto";
-import { appOrigin } from "@/lib/app-url";
 import { parsePageParams, paginatedPayload } from "@/lib/pagination";
+import {
+  inviteWhatsappLabel,
+  latestInviteMessages,
+  sendInviteWhatsApp,
+} from "@/lib/invite-whatsapp";
 
 const bulkSchema = z.object({
   beneficiaryIds: z.array(z.string()).min(1),
@@ -42,8 +44,25 @@ export async function GET(req: NextRequest) {
       take,
     }),
   ]);
+
+  const waMap = await latestInviteMessages(
+    exhibition.id,
+    invites.map((i) => i.beneficiaryId),
+  );
+
+  const data = invites.map((inv) => {
+    const wa = waMap.get(inv.beneficiaryId);
+    return {
+      ...inv,
+      whatsappStatus: wa?.status ?? null,
+      whatsappStatusLabel: inviteWhatsappLabel(wa?.status),
+      whatsappError: wa?.errorMessage ?? null,
+      whatsappSentAt: wa?.createdAt?.toISOString() ?? null,
+    };
+  });
+
   return NextResponse.json({
-    ...paginatedPayload(invites, page, pageSize, total),
+    ...paginatedPayload(data, page, pageSize, total),
     exhibitionId: exhibition.id,
   });
 }
@@ -112,49 +131,26 @@ export async function POST(req: NextRequest) {
     reason: string;
   }> = [];
 
-  // إرسال واتساب مع QR هو المسار التشغيلي للدعوة
   if (body.data.sendWhatsApp !== false) {
-    const origin = appOrigin(req);
-    const tpl =
-      exhibition.settings?.whatsappInviteTpl ??
-      "مرحباً {{name}}، أنت مدعو إلى {{exhibition}}. الموعد: {{date}} — الموقع: {{location}}";
     for (const t of result.tokens) {
       const b = await prisma.beneficiary.findUnique({ where: { id: t.beneficiaryId } });
       if (!b) continue;
-      const qrUrl = `${origin}/api/qr/public/${t.qrToken}`;
-      let bodyText = tpl
-        .replaceAll("{{name}}", b.name)
-        .replaceAll("{{exhibition}}", exhibition.name)
-        .replaceAll("{{date}}", exhibition.startsAt?.toISOString().slice(0, 10) ?? "")
-        .replaceAll("{{location}}", exhibition.location ?? "")
-        .replaceAll("{{qr}}", t.qrToken)
-        .replaceAll("{{qr_url}}", qrUrl);
-      // الدعوة تشمل الموقع دائماً حتى لو خلا القالب من {{location}}
-      if (!tpl.includes("{{location}}") && exhibition.location) {
-        bodyText += `\nالموقع: ${exhibition.location}`;
-      }
-      // إرفاق رمز المسح مع الدعوة (رابط صورة QR + نص الرمز)
-      if (!tpl.includes("{{qr_url}}") && !bodyText.includes(qrUrl)) {
-        bodyText += `\nرمز الحضور (امسحه عند الدخول):\n${qrUrl}`;
-      }
-      const msg = await sendWhatsAppMessage({
-        exhibitionId: exhibition.id,
-        beneficiaryId: b.id,
-        mobile: b.mobile,
-        body: bodyText,
-        mediaUrl: qrUrl,
-        type: OutboundMessageType.INVITATION,
+      const send = await sendInviteWhatsApp({
+        req,
+        exhibition,
+        beneficiary: b,
+        qrToken: t.qrToken,
         createdById: authz.userId,
       });
-      if (msg.status === "FAILED") {
+      if (send.status === "FAILED") {
         whatsappFailed += 1;
         whatsappErrors.push({
-          beneficiaryId: b.id,
-          beneficiaryName: b.name,
-          mobile: b.mobile,
-          reason: msg.errorMessage || "فشل إرسال واتساب",
+          beneficiaryId: send.beneficiaryId,
+          beneficiaryName: send.beneficiaryName,
+          mobile: send.mobile,
+          reason: send.reason || "فشل إرسال واتساب",
         });
-      } else if (msg.status === "STUBBED") {
+      } else if (send.status === "STUBBED") {
         whatsappStubbed += 1;
       } else {
         whatsappSent += 1;

@@ -13,11 +13,20 @@ type Row = {
   dependentsCount?: number;
   statusLabel?: string;
   qrToken?: string | null;
+  whatsappStatus?: string | null;
+  whatsappStatusLabel?: string | null;
+  whatsappError?: string | null;
 };
+
+function waBadgeClass(status?: string | null): string {
+  if (status === "SENT") return "badge badge-success";
+  if (status === "STUBBED") return "badge badge-warning";
+  if (status === "FAILED") return "badge badge-danger";
+  return "badge badge-muted";
+}
 
 /**
  * الدعوات = إنشاء رمز QR + إرساله واتساباً.
- * الطباعة = قائمة المدعوين فقط مع QR بهوية المنصة.
  * التصفح: 50 لكل صفحة — O(pageSize).
  */
 export default function InvitesPage() {
@@ -27,6 +36,7 @@ export default function InvitesPage() {
   const [msgError, setMsgError] = useState(false);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [view, setView] = useState<"pick" | "invited">("pick");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -81,6 +91,9 @@ export default function InvitesPage() {
       (json.data ?? []).map(
         (inv: {
           qrToken: string;
+          whatsappStatus?: string | null;
+          whatsappStatusLabel?: string | null;
+          whatsappError?: string | null;
           beneficiary: {
             id: string;
             name: string;
@@ -96,6 +109,9 @@ export default function InvitesPage() {
           dependentsCount: inv.beneficiary.dependentsCount,
           statusLabel: "مدعو",
           qrToken: inv.qrToken,
+          whatsappStatus: inv.whatsappStatus ?? null,
+          whatsappStatusLabel: inv.whatsappStatusLabel ?? "لم يُرسل",
+          whatsappError: inv.whatsappError ?? null,
         }),
       ),
     );
@@ -125,6 +141,38 @@ export default function InvitesPage() {
     .filter(([, v]) => v)
     .map(([id]) => id);
 
+  function applySendResult(json: {
+    whatsappSent?: number;
+    whatsappFailed?: number;
+    whatsappStubbed?: number;
+    whatsappErrors?: Array<{ beneficiaryName?: string; reason?: string }>;
+    status?: string;
+    statusReason?: string;
+    invited?: number;
+    resent?: number;
+  }, mode: "invite" | "resend") {
+    const failed = Number(json.whatsappFailed ?? 0);
+    const stubbed = Number(json.whatsappStubbed ?? 0);
+    const sent = Number(json.whatsappSent ?? 0);
+    const errors = Array.isArray(json.whatsappErrors) ? json.whatsappErrors : [];
+    let waNote = "";
+    if (failed > 0) {
+      const reasons = errors
+        .slice(0, 5)
+        .map((e) => `${e.beneficiaryName ?? "مستفيد"}: ${e.reason ?? "فشل"}`)
+        .join(" — ");
+      waNote = ` — فشل واتساب: ${failed}${reasons ? ` (${reasons})` : ""}`;
+      if (json.statusReason && !reasons) waNote += ` — ${json.statusReason}`;
+    } else if (stubbed > 0) waNote = ` — واتساب تجريبي (stub): ${stubbed}`;
+    else if (sent > 0) waNote = ` — أُرسل واتساب: ${sent}`;
+    const head =
+      mode === "invite"
+        ? `تمت دعوة ${json.invited ?? 0} مستفيد`
+        : `أُعيد الإرسال لـ ${json.resent ?? 0} مستفيد`;
+    setMsg(`${head}${waNote}`);
+    setMsgError(failed > 0 || json.status === "FAILED" || json.status === "PARTIAL");
+  }
+
   async function inviteAndSend() {
     if (!selectedIds.length) {
       setMsg("حدد مستفيدين أولاً");
@@ -147,29 +195,34 @@ export default function InvitesPage() {
       setMsgError(true);
       return;
     }
-    const failed = Number(json.whatsappFailed ?? 0);
-    const stubbed = Number(json.whatsappStubbed ?? 0);
-    const sent = Number(json.whatsappSent ?? 0);
-    const errors: Array<{ beneficiaryName?: string; reason?: string }> = Array.isArray(
-      json.whatsappErrors,
-    )
-      ? json.whatsappErrors
-      : [];
-    let waNote = "";
-    if (failed > 0) {
-      const reasons = errors
-        .slice(0, 5)
-        .map((e) => `${e.beneficiaryName ?? "مستفيد"}: ${e.reason ?? "فشل"}`)
-        .join(" — ");
-      waNote = ` — فشل واتساب: ${failed}${reasons ? ` (${reasons})` : ""}`;
-      if (json.statusReason && !reasons) waNote += ` — ${json.statusReason}`;
-    } else if (stubbed > 0) waNote = ` — واتساب تجريبي (stub): ${stubbed}`;
-    else if (sent > 0) waNote = ` — أُرسل واتساب: ${sent}`;
-    setMsg(`تمت دعوة ${json.invited} مستفيد${waNote}`);
-    setMsgError(failed > 0 || json.status === "FAILED" || json.status === "PARTIAL");
+    applySendResult(json, "invite");
     setSelected({});
     setView("invited");
     await loadInvited(1);
+  }
+
+  async function resendWhatsApp(ids: string[]) {
+    if (!ids.length || busy) return;
+    setBusy(true);
+    setResendingId(ids.length === 1 ? ids[0] : "bulk");
+    setMsg("");
+    setMsgError(false);
+    const res = await fetch("/api/invites/resend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ beneficiaryIds: ids }),
+    });
+    const json = await res.json();
+    setBusy(false);
+    setResendingId(null);
+    if (!res.ok) {
+      setMsg(json.error || "فشلت إعادة الإرسال");
+      setMsgError(true);
+      return;
+    }
+    applySendResult(json, "resend");
+    setSelected({});
+    await loadInvited(page);
   }
 
   function printInvited() {
@@ -192,7 +245,7 @@ export default function InvitesPage() {
     <div className="page-stack">
       <PageHeader
         title="الدعوات الجماعية"
-        description="دعوة عبر واتساب مع QR — الطباعة للمستدعَين فقط بهوية المنصة"
+        description="دعوة عبر واتساب مع QR — حالة الإرسال ظاهرة لكل مدعو مع إعادة الإرسال"
         actions={
           <>
             {view === "pick" ? (
@@ -205,7 +258,19 @@ export default function InvitesPage() {
               >
                 {busy ? "جاري الإرسال…" : `دعوة وإرسال QR واتساب (${selectedIds.length})`}
               </button>
-            ) : null}
+            ) : (
+              <button
+                className="btn-primary"
+                type="button"
+                disabled={busy || !selectedIds.length}
+                title={!selectedIds.length ? "حدد مدعوين لإعادة الإرسال" : undefined}
+                onClick={() => void resendWhatsApp(selectedIds)}
+              >
+                {busy && resendingId === "bulk"
+                  ? "جاري إعادة الإرسال…"
+                  : `إعادة إرسال واتساب (${selectedIds.length})`}
+              </button>
+            )}
             <button
               className="btn-secondary"
               type="button"
@@ -239,8 +304,7 @@ export default function InvitesPage() {
           <button
             className="btn-secondary"
             type="button"
-            disabled={view === "invited"}
-            onClick={() => void loadPick(q, 1)}
+            onClick={() => void (view === "invited" ? loadInvited(page) : loadPick(q, 1))}
           >
             تحديث
           </button>
@@ -263,54 +327,52 @@ export default function InvitesPage() {
 
       <section className="panel">
         <h2 className="panel-title">
-          {view === "invited" ? "المدعوون (للطباعة)" : "المستفيدون"} ({total})
+          {view === "invited" ? "المدعوون" : "المستفيدون"} ({total})
         </h2>
         <div className="table-wrap table-wrap--stack">
           <table>
             <thead>
               <tr>
-                {view === "pick" ? (
-                  <th>
-                    <input
-                      type="checkbox"
-                      aria-label="تحديد الكل"
-                      checked={rows.length > 0 && rows.every((r) => selected[r.id])}
-                      onChange={(e) => {
-                        const next: Record<string, boolean> = { ...selected };
-                        if (e.target.checked) rows.forEach((r) => (next[r.id] = true));
-                        else rows.forEach((r) => delete next[r.id]);
-                        setSelected(next);
-                      }}
-                    />
-                  </th>
-                ) : (
-                  <th>#</th>
-                )}
+                <th>
+                  <input
+                    type="checkbox"
+                    aria-label="تحديد الكل"
+                    checked={rows.length > 0 && rows.every((r) => selected[r.id])}
+                    onChange={(e) => {
+                      const next: Record<string, boolean> = { ...selected };
+                      if (e.target.checked) rows.forEach((r) => (next[r.id] = true));
+                      else rows.forEach((r) => delete next[r.id]);
+                      setSelected(next);
+                    }}
+                  />
+                </th>
+                {view === "invited" ? <th>#</th> : null}
                 <th>الاسم</th>
                 <th>الهوية</th>
                 <th>الجوال</th>
                 <th>عدد التابعين</th>
                 <th>الحالة</th>
+                {view === "invited" ? <th>إرسال واتساب</th> : null}
                 <th>QR</th>
+                {view === "invited" ? <th>إجراءات</th> : null}
               </tr>
             </thead>
             <tbody>
               {rows.map((r, idx) => (
                 <tr key={r.id}>
-                  {view === "pick" ? (
-                    <td data-label="اختيار">
-                      <input
-                        type="checkbox"
-                        checked={!!selected[r.id]}
-                        onChange={(e) =>
-                          setSelected((s) => ({ ...s, [r.id]: e.target.checked }))
-                        }
-                        aria-label={`اختيار ${r.name}`}
-                      />
-                    </td>
-                  ) : (
+                  <td data-label="اختيار">
+                    <input
+                      type="checkbox"
+                      checked={!!selected[r.id]}
+                      onChange={(e) =>
+                        setSelected((s) => ({ ...s, [r.id]: e.target.checked }))
+                      }
+                      aria-label={`اختيار ${r.name}`}
+                    />
+                  </td>
+                  {view === "invited" ? (
                     <td data-label="#">{(page - 1) * DEFAULT_PAGE_SIZE + idx + 1}</td>
-                  )}
+                  ) : null}
                   <td data-label="الاسم">{r.name}</td>
                   <td data-label="الهوية" dir="ltr">
                     {r.nationalId}
@@ -322,6 +384,28 @@ export default function InvitesPage() {
                   <td data-label="الحالة">
                     <span className="badge badge-muted">{r.statusLabel ?? "—"}</span>
                   </td>
+                  {view === "invited" ? (
+                    <td data-label="إرسال واتساب">
+                      <span
+                        className={waBadgeClass(r.whatsappStatus)}
+                        title={r.whatsappError ?? undefined}
+                      >
+                        {r.whatsappStatusLabel ?? "لم يُرسل"}
+                      </span>
+                      {r.whatsappError ? (
+                        <div
+                          style={{
+                            fontSize: "0.78rem",
+                            marginTop: "0.25rem",
+                            color: "var(--tmkeen-danger, #b42318)",
+                            maxWidth: 220,
+                          }}
+                        >
+                          {r.whatsappError}
+                        </div>
+                      ) : null}
+                    </td>
+                  ) : null}
                   <td data-label="QR">
                     {r.qrToken ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -330,11 +414,23 @@ export default function InvitesPage() {
                       "—"
                     )}
                   </td>
+                  {view === "invited" ? (
+                    <td data-label="إجراءات">
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={busy}
+                        onClick={() => void resendWhatsApp([r.id])}
+                      >
+                        {resendingId === r.id ? "جاري…" : "إعادة إرسال"}
+                      </button>
+                    </td>
+                  ) : null}
                 </tr>
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={7} className="empty">
+                  <td colSpan={view === "invited" ? 10 : 8} className="empty">
                     {view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
                   </td>
                 </tr>
