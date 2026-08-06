@@ -17,6 +17,7 @@ import {
 } from "@/lib/report-metrics";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 import { buildZadPresentationReport } from "@/lib/zad-presentation-report";
+import { countDistinctReceived } from "@/lib/report-counts";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -63,6 +64,114 @@ export async function GET(req: NextRequest) {
   }
 
   const exhibitionId = exhibition.id;
+
+  /** مسار العرض التقديمي: أعمدة ديموغرافية + تجميعات فقط — بدون شجرة الصرف الكاملة */
+  if (format === "presentation") {
+    const [
+      demoBeneficiaries,
+      invited,
+      attended,
+      received,
+      exceptionAttendance,
+      overrideDispenses,
+      piecesAgg,
+      topItems,
+      totalBeneficiaries,
+    ] = await Promise.all([
+      prisma.beneficiary.findMany({
+        select: {
+          gender: true,
+          city: true,
+          neighborhood: true,
+          dependentsCount: true,
+          associationOther: true,
+          association: { select: { name: true } },
+        },
+      }),
+      prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
+      prisma.attendance.count({ where: { exhibitionId } }),
+      countDistinctReceived(exhibitionId),
+      prisma.attendance.count({
+        where: { exhibitionId, type: "EXCEPTION" },
+      }),
+      prisma.dispenseOrder.count({
+        where: { exhibitionId, entitledOverride: { not: null } },
+      }),
+      prisma.dispenseOrder.aggregate({
+        where: { exhibitionId },
+        _sum: { piecesCount: true },
+      }),
+      fetchTopDispensedItems(exhibitionId, 5),
+      prisma.beneficiary.count(),
+    ]);
+
+    const breakdowns = buildBreakdownShares({
+      associations: demoBeneficiaries.map(
+        (b) => b.association?.name ?? b.associationOther ?? "",
+      ),
+      neighborhoods: demoBeneficiaries.map((b) => b.neighborhood ?? ""),
+      cities: demoBeneficiaries.map((b) => b.city ?? ""),
+      genders: demoBeneficiaries.map((b) =>
+        b.gender === "MALE" ? "ذكر" : b.gender === "FEMALE" ? "أنثى" : "",
+      ),
+      dependentsCounts: demoBeneficiaries.map((b) => b.dependentsCount),
+    });
+
+    const summary = {
+      exhibitionId: exhibition.id,
+      exhibitionName: exhibition.name,
+      exhibitionActive: exhibition.active,
+      totalBeneficiaries,
+      invited,
+      attended,
+      received,
+      exceptionAttendance,
+      overrideDispenses,
+      piecesDispensed: piecesAgg._sum.piecesCount ?? 0,
+      beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
+      avgHouseholdSize: breakdowns.households.avgHouseholdSize,
+      byGender: sharesToRecord(breakdowns.byGender),
+      byCity: sharesToRecord(breakdowns.byCity),
+      byNeighborhood: sharesToRecord(breakdowns.byNeighborhood),
+      byFamilySize: sharesToRecord(breakdowns.households.byHouseholdSize),
+      byAssociation: sharesToRecord(breakdowns.byAssociation),
+      byGenderShares: breakdowns.byGender,
+      byCityShares: breakdowns.byCity,
+      byNeighborhoodShares: breakdowns.byNeighborhood,
+      byAssociationShares: breakdowns.byAssociation,
+      byHouseholdSizeShares: breakdowns.households.byHouseholdSize,
+      topItems,
+    };
+
+    const report = buildZadPresentationReport(summary);
+    const asHtml = req.nextUrl.searchParams.get("html") === "1";
+    if (!asHtml) {
+      return NextResponse.json({ report });
+    }
+    const templatePath = path.join(
+      process.cwd(),
+      "public/zad-presentation/builder.html",
+    );
+    let html = await readFile(templatePath, "utf8");
+    const payload = JSON.stringify(report).replace(/</g, "\\u003c");
+    if (!html.includes("<!--ZAD_REPORT_INJECT-->")) {
+      return NextResponse.json(
+        { error: "قالب منشئ العرض غير جاهز" },
+        { status: 500 },
+      );
+    }
+    html = html.replace(
+      "<!--ZAD_REPORT_INJECT-->",
+      `<script>window.ZAD_REPORT=${payload};</script>`,
+    );
+    return new NextResponse(html, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
 
   const beneficiaries = await prisma.beneficiary.findMany({
     include: {
@@ -134,7 +243,7 @@ export async function GET(req: NextRequest) {
   const [
     invited,
     attended,
-    receivedGroups,
+    received,
     exceptionAttendance,
     overrideDispenses,
     piecesAgg,
@@ -143,10 +252,7 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
-    prisma.dispenseOrder.groupBy({
-      by: ["beneficiaryId"],
-      where: { exhibitionId },
-    }),
+    countDistinctReceived(exhibitionId),
     prisma.attendance.count({
       where: { exhibitionId, type: "EXCEPTION" },
     }),
@@ -157,7 +263,10 @@ export async function GET(req: NextRequest) {
       where: { exhibitionId },
       _sum: { piecesCount: true },
     }),
-    prisma.inventoryItem.findMany({ where: { exhibitionId } }),
+    prisma.inventoryItem.findMany({
+      where: { exhibitionId },
+      select: { attributesJson: true, quantity: true },
+    }),
     fetchTopDispensedItems(exhibitionId, 5),
   ]);
 
@@ -168,7 +277,7 @@ export async function GET(req: NextRequest) {
     totalBeneficiaries: beneficiaries.length,
     invited,
     attended,
-    received: receivedGroups.length,
+    received,
     exceptionAttendance,
     overrideDispenses,
     piecesDispensed: piecesAgg._sum.piecesCount ?? 0,
@@ -196,37 +305,6 @@ export async function GET(req: NextRequest) {
       summary,
       rows: safeRows,
       identityFieldsRedacted: !exportFullIdentity,
-    });
-  }
-
-  if (format === "presentation") {
-    const report = buildZadPresentationReport(summary);
-    const asHtml = req.nextUrl.searchParams.get("html") === "1";
-    if (!asHtml) {
-      return NextResponse.json({ report });
-    }
-    const templatePath = path.join(
-      process.cwd(),
-      "public/zad-presentation/builder.html",
-    );
-    let html = await readFile(templatePath, "utf8");
-    const payload = JSON.stringify(report).replace(/</g, "\\u003c");
-    if (!html.includes("<!--ZAD_REPORT_INJECT-->")) {
-      return NextResponse.json(
-        { error: "قالب منشئ العرض غير جاهز" },
-        { status: 500 },
-      );
-    }
-    html = html.replace(
-      "<!--ZAD_REPORT_INJECT-->",
-      `<script>window.ZAD_REPORT=${payload};</script>`,
-    );
-    return new NextResponse(html, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-store",
-      },
     });
   }
 

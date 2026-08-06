@@ -39,20 +39,35 @@ export async function POST(req: NextRequest) {
 
   const config = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
 
-  const beneficiaries =
+  const beneficiarySelect = {
+    id: true,
+    name: true,
+    mobile: true,
+  } as const;
+
+  const rawList =
     body.data.audience === "attended"
       ? (
           await prisma.attendance.findMany({
             where: { exhibitionId: exhibition.id },
-            include: { beneficiary: true },
+            select: { beneficiary: { select: beneficiarySelect } },
           })
         ).map((a) => a.beneficiary)
       : (
           await prisma.dispenseOrder.findMany({
             where: { exhibitionId: exhibition.id },
-            include: { beneficiary: true },
+            distinct: ["beneficiaryId"],
+            select: { beneficiary: { select: beneficiarySelect } },
           })
         ).map((d) => d.beneficiary);
+
+  // إزالة التكرار إن وُجد (حضور مكرر أو صرف متكرر) — O(n)
+  const seen = new Set<string>();
+  const beneficiaries = rawList.filter((b) => {
+    if (!b || seen.has(b.id)) return false;
+    seen.add(b.id);
+    return true;
+  });
 
   let sent = 0;
   let failed = 0;

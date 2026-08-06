@@ -5,6 +5,7 @@ import { requireActiveExhibition } from "@/lib/exhibition";
 import { resolveStatus, STATUS_LABELS } from "@/lib/status";
 import { hasPermission } from "@/lib/rbac";
 import { effectiveEntitlement } from "@/lib/entitlement";
+import { priorDispenseStats } from "@/lib/report-counts";
 
 /** بحث مستفيد للمعاينة قبل الحضور/الصرف — O(1) بالفهارس */
 export async function GET(req: NextRequest) {
@@ -84,17 +85,20 @@ export async function GET(req: NextRequest) {
       },
     },
   });
-  const dispenseOrders = await prisma.dispenseOrder.findMany({
-    where: { exhibitionId: exhibition.id, beneficiaryId: beneficiary.id },
-    orderBy: { createdAt: "desc" },
-  });
-  const latestDispense = dispenseOrders[0] ?? null;
-  const previousPiecesTotal = dispenseOrders.reduce((s, o) => s + o.piecesCount, 0);
+  const [prior, latestDispense] = await Promise.all([
+    priorDispenseStats(exhibition.id, beneficiary.id),
+    prisma.dispenseOrder.findFirst({
+      where: { exhibitionId: exhibition.id, beneficiaryId: beneficiary.id },
+      orderBy: { createdAt: "desc" },
+      select: { entitledOverride: true, overrideReason: true },
+    }),
+  ]);
+  const previousPiecesTotal = prior.previousPiecesTotal;
 
   const status = resolveStatus({
     invited: invite?.invited,
     attendanceType: attendance?.type ?? null,
-    received: dispenseOrders.length > 0,
+    received: prior.count > 0,
   });
 
   const base = exhibition.settings?.baseEntitlement ?? 1;
@@ -128,8 +132,8 @@ export async function GET(req: NextRequest) {
     attendance: attendance
       ? { type: attendance.type, checkedInAt: attendance.checkedInAt, exceptionReason: attendance.exceptionReason }
       : null,
-    dispensed: dispenseOrders.length > 0,
-    dispenseCount: dispenseOrders.length,
+    dispensed: prior.count > 0,
+    dispenseCount: prior.count,
     previousPiecesTotal,
     status,
     statusLabel: STATUS_LABELS[status],

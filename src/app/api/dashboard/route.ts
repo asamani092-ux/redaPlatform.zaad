@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/session";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { DEFAULT_INVENTORY_SCHEMA, parseInventorySchema } from "@/lib/inventory-schema";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
+import { countDistinctReceived } from "@/lib/report-counts";
 
 export async function GET() {
   const authz = await requirePermission("dashboard:view");
@@ -24,20 +25,17 @@ export async function GET() {
     totalBeneficiaries,
     invited,
     attended,
-    receivedGroups,
+    received,
     exceptions,
     overrideDispenses,
     piecesAgg,
     inventory,
+    topDetailed,
   ] = await Promise.all([
     prisma.beneficiary.count(),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
-    // مستلمون مميزون — لا تُضاعف عند صرف استثنائي متكرر — O(R)
-    prisma.dispenseOrder.groupBy({
-      by: ["beneficiaryId"],
-      where: { exhibitionId },
-    }),
+    countDistinctReceived(exhibitionId),
     prisma.attendance.count({ where: { exhibitionId, type: "EXCEPTION" } }),
     prisma.dispenseOrder.count({
       where: { exhibitionId, entitledOverride: { not: null } },
@@ -46,18 +44,19 @@ export async function GET() {
       where: { exhibitionId },
       _sum: { piecesCount: true },
     }),
-    prisma.inventoryItem.findMany({ where: { exhibitionId } }),
+    prisma.inventoryItem.findMany({
+      where: { exhibitionId },
+      select: { id: true, attributesJson: true, quantity: true },
+    }),
+    fetchTopDispensedItems(exhibitionId, 5),
   ]);
 
-  const received = receivedGroups.length;
   const remainingToReceive = Math.max(attended - received, 0);
   const piecesDispensed = piecesAgg._sum.piecesCount ?? 0;
   // نسبة الإنجاز = المستلمون ÷ الحاضرون (الاستثنائي يدخل الطرفين) بسقف 100% — O(1)
   const completionRate =
     attended > 0 ? Math.min(100, Math.round((received / attended) * 100)) : 0;
   const threshold = exhibition.settings?.lowStockThreshold ?? 10;
-
-  const topDetailed = await fetchTopDispensedItems(exhibitionId, 5);
 
   const schema = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
   const attributeLabels = Object.fromEntries(

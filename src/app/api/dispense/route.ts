@@ -14,6 +14,7 @@ import { parseInventorySchema } from "@/lib/inventory-schema";
 import { buildPageMeta, parsePageParams } from "@/lib/pagination";
 import { parseSurveyConfig } from "@/lib/survey-questions";
 import { buildSurveyMessage } from "@/lib/survey-message";
+import { priorDispenseStats } from "@/lib/report-counts";
 
 const lineSchema = z.object({
   inventoryItemId: z.string(),
@@ -165,15 +166,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const priorOrders = await prisma.dispenseOrder.findMany({
-    where: {
-      exhibitionId: exhibition.id,
-      beneficiaryId: body.data.beneficiaryId,
-    },
-    select: { id: true, piecesCount: true },
-  });
-  const isRepeat = priorOrders.length > 0;
-  const previousPiecesTotal = priorOrders.reduce((s, o) => s + o.piecesCount, 0);
+  const prior = await priorDispenseStats(exhibition.id, body.data.beneficiaryId);
+  const isRepeat = prior.count > 0;
+  const previousPiecesTotal = prior.previousPiecesTotal;
 
   if (isRepeat) {
     if (!hasPermission(authz.role, "dispense:override")) {
@@ -320,7 +315,7 @@ export async function POST(req: NextRequest) {
         overrideReason,
         isRepeat,
         previousPiecesTotal: isRepeat ? previousPiecesTotal : undefined,
-        priorOrderCount: isRepeat ? priorOrders.length : undefined,
+        priorOrderCount: isRepeat ? prior.count : undefined,
       },
     });
 
