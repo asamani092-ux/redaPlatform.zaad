@@ -88,8 +88,24 @@ button {
   max-width: 100%;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
   overflow-x: clip;
+}
+
+@media (min-width: 1400px) {
+  .app-frame {
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  }
+
+  .app-content {
+    max-width: min(1400px, 100%);
+    padding-inline: clamp(1.25rem, 3vw, 2rem);
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
 }
 
 .app-frame.is-nav-open {
@@ -351,12 +367,27 @@ button {
 
 .form-grid {
   display: grid;
-  gap: 0.9rem;
+  gap: var(--space-4);
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  width: 100%;
+}
+
+.form-grid > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .form-grid .full {
   grid-column: 1 / -1;
+}
+
+.form-grid .label-field,
+.form-grid .input-field,
+.form-grid select.input-field,
+.form-grid textarea.input-field {
+  width: 100%;
+  max-width: 100%;
 }
 
 /* شبكات فرعية تتكيّف دون inline styles تكسر الجوال */
@@ -394,11 +425,15 @@ button {
 
 .input-field {
   width: 100%;
-  border: 1px solid var(--tmkeen-surface-border);
-  border-radius: 0.65rem;
-  background: #fff;
-  padding: 0.7rem 0.9rem;
-  color: #333;
+  max-width: 100%;
+  min-height: var(--touch-min);
+  border: 1px solid var(--border-subtle, var(--tmkeen-surface-border));
+  border-radius: var(--radius-md, 0.65rem);
+  background: var(--surface-raised, #fff);
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-primary, #333);
+  text-align: start;
+  box-sizing: border-box;
 }
 
 .input-field:focus {
@@ -1040,12 +1075,12 @@ button {
 .modal-panel {
   position: relative;
   z-index: 1;
-  width: min(100%, 520px);
-  max-height: min(90vh, 720px);
+  width: min(100%, 36rem);
+  max-height: min(90vh, 45rem);
   overflow: auto;
-  background: #fff;
-  border-radius: 1rem;
-  border: 1px solid var(--tmkeen-surface-border);
+  background: var(--surface-raised, #fff);
+  border-radius: var(--radius-xl, 1rem);
+  border: var(--border-hairline, 1px) solid var(--border-subtle, var(--tmkeen-surface-border));
   box-shadow: 0 16px 48px rgba(40, 10, 20, 0.18);
   padding: 1.1rem 1.2rem 1.25rem;
 }
