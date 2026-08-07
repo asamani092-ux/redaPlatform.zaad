@@ -12,7 +12,7 @@ export type SurveyQuestion = {
   max?: number;
 };
 
-/** جمهور الإرسال — يحدد من يستلم رابط الاستبيان */
+/** فئة المستفيدين للإرسال — يحدد من يستلم رابط الاستبيان */
 export type SurveyAudience = "attended_only" | "received" | "invited_absent";
 
 export const SURVEY_AUDIENCE_OPTIONS: Array<{

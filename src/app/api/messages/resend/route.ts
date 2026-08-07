@@ -16,7 +16,7 @@ const schema = z.object({
   beneficiaryId: z.string().min(1),
   channel: z.enum(["INVITATION", "SURVEY"]),
   surveyId: z.string().optional(),
-  /** تأكيد إرسال الاستبيان رغم عدم مطابقة الجمهور */
+  /** تأكيد إرسال الاستبيان رغم عدم مطابقة فئة المستفيدين */
   forceWithoutDispense: z.boolean().optional(),
 });
 
@@ -149,10 +149,10 @@ export async function POST(req: NextRequest) {
   if (!inAudience && !body.data.forceWithoutDispense) {
     return NextResponse.json(
       {
-        error: "المستفيد خارج جمهور هذا الاستبيان",
+        error: "المستفيد خارج الفئة المستهدفة لهذا الاستبيان",
         code: "AUDIENCE_MISMATCH",
         needsConfirm: true,
-        message: `جمهور «${survey.title}» لا يشمل هذا المستفيد. هل تريد الإرسال رغم ذلك؟`,
+        message: `مستفيدو «${survey.title}» لا يشملون هذا المستفيد. هل تريد الإرسال رغم ذلك؟`,
       },
       { status: 409 },
     );

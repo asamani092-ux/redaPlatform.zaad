@@ -160,7 +160,7 @@ export default function MessagesPage() {
         message:
           typeof json.message === "string"
             ? json.message
-            : `${row.name} خارج جمهور هذا الاستبيان. هل تريد الإرسال رغم ذلك؟`,
+            : `${row.name} ليس ضمن مستفيدي هذا الاستبيان. هل تريد الإرسال رغم ذلك؟`,
       });
       return;
     }
@@ -335,7 +335,7 @@ export default function MessagesPage() {
           <p className="page-header__desc">
             {tab === "invite"
               ? "صحّح رقم الجوال عند الفشل ثم أعد إرسال الدعوة من نفس الصف."
-              : "إعادة إرسال الاستبيان وفق جمهوره؛ إن كان المستفيد خارج الجمهور سيُطلب تأكيدك."}
+              : "إعادة إرسال الاستبيان لمستفيديه؛ إن لم يكن ضمن الفئة المستهدفة سيُطلب تأكيدك."}
           </p>
 
           <DataTable
@@ -462,7 +462,7 @@ export default function MessagesPage() {
 
       <ConfirmDialog
         open={Boolean(surveyConfirm)}
-        title="المستفيد خارج جمهور الاستبيان"
+        title="المستفيد خارج الفئة المستهدفة"
         body={surveyConfirm?.message ?? ""}
         confirmLabel="إرسال رغم ذلك"
         busy={Boolean(rowBusy)}

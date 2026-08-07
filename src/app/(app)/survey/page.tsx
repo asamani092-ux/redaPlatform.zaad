@@ -30,7 +30,7 @@ type ResponseRow = {
 };
 
 /**
- * إدارة استبيانات متعددة بجماهير مختلفة + متابعة الردود.
+ * إدارة استبيانات متعددة بفئات مستفيدين مختلفة + متابعة الردود.
  * Time: O(n) للعرض؛ Space: O(n).
  */
 export default function SurveyPage() {
@@ -192,7 +192,7 @@ export default function SurveyPage() {
     <div className="page-stack">
       <PageHeader
         title="الاستبيانات"
-        description="أنشئ أكثر من استبيان حسب الجمهور: حضر فقط، استلم، أو دُعي ولم يحضر"
+        description="أنشئ أكثر من استبيان حسب المستفيدين: حضر فقط، استلم، أو دُعي ولم يحضر"
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الاستبيان" }]}
         actions={
           <>
@@ -210,7 +210,7 @@ export default function SurveyPage() {
               disabled={busy || !selected}
               onClick={() => setBroadcastOpen(true)}
             >
-              إرسال للجمهور
+              إرسال للمستفيدين
             </button>
             {isAdmin ? (
               <button type="button" className="btn-primary" onClick={addSurvey}>
@@ -252,7 +252,7 @@ export default function SurveyPage() {
           {!selected ? (
             <EmptyState
               title="لا استبيانات بعد"
-              body="أنشئ استبياناً لكل جمهور: من حضر فقط، من استلم، أو من دُعي ولم يحضر."
+              body="أنشئ استبياناً لكل فئة مستفيدين: من حضر فقط، من استلم، أو من دُعي ولم يحضر."
               action={
                 <button type="button" className="btn-primary" onClick={addSurvey}>
                   استبيان جديد
@@ -271,7 +271,7 @@ export default function SurveyPage() {
                   />
                 </div>
                 <div>
-                  <label className="label-field">الجمهور المستهدف</label>
+                  <label className="label-field">المستفيدون المستهدفون</label>
                   <select
                     className="input-field"
                     value={selected.audience}
@@ -534,7 +534,7 @@ export default function SurveyPage() {
         {selected?.questions.length ? (
           <div className="form-grid form-grid--single">
             <p className="page-header__desc">
-              الجمهور: {audienceLabel(selected.audience)}
+              المستفيدون: {audienceLabel(selected.audience)}
             </p>
             {selected.questions.map((qq) => (
               <div key={qq.id} className="full">
@@ -566,7 +566,7 @@ export default function SurveyPage() {
 
       <ConfirmDialog
         open={broadcastOpen}
-        title="إرسال الاستبيان للجمهور"
+        title="إرسال الاستبيان للمستفيدين"
         body={
           selected
             ? `سيتم إرسال «${selected.title}» إلى: ${audienceLabel(selected.audience)}. هل تريد المتابعة؟`

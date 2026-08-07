@@ -16,14 +16,14 @@ import { buildSurveyMessage } from "@/lib/survey-message";
 
 const schema = z.object({
   surveyId: z.string().min(1),
-  /** توافق خلفي: إن وُجد يتجاهل جمهور الاستبيان */
+  /** توافق خلفي: إن وُجد يتجاهل فئة مستفيدي الاستبيان */
   audience: z
     .enum(["attended", "received", "attended_only", "invited_absent"])
     .optional(),
 });
 
 /**
- * إرسال جماعي لاستبيان محدد حسب جمهوره — O(n) بعدد المستهدفين.
+ * إرسال جماعي لاستبيان محدد حسب مستفيديه — O(n) بعدد المستهدفين.
  */
 export async function POST(req: NextRequest) {
   const authz = await requirePermission("survey:manage");

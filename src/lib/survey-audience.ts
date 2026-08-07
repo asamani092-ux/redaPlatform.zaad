@@ -8,7 +8,7 @@ export type AudienceBeneficiary = {
 };
 
 /**
- * حلّ جمهور الاستبيان إلى مستفيدين مميّزين — Time: O(n)، Space: O(n).
+ * حلّ فئة مستفيدي الاستبيان إلى قائمة مميّزة — Time: O(n)، Space: O(n).
  */
 export async function resolveSurveyAudience(
   exhibitionId: string,
