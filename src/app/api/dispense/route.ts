@@ -12,7 +12,11 @@ import { OutboundMessageType } from "@/generated/prisma/enums";
 import { effectiveEntitlement, entitlementWithExtra, isNonEmptyReason } from "@/lib/entitlement";
 import { parseInventorySchema } from "@/lib/inventory-schema";
 import { buildPageMeta, parsePageParams } from "@/lib/pagination";
-import { parseSurveyConfig } from "@/lib/survey-questions";
+import {
+  autoSendSurveysOnDispense,
+  parseSurveyCatalog,
+  parseSurveyConfig,
+} from "@/lib/survey-questions";
 import { buildSurveyMessage } from "@/lib/survey-message";
 import { priorDispenseStats } from "@/lib/report-counts";
 
@@ -96,14 +100,14 @@ export async function GET(req: NextRequest) {
       orderBy: { updatedAt: "desc" },
     }),
   ]);
-  const surveyConfig = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
+  const surveyCatalog = parseSurveyCatalog(exhibition.settings?.surveyQuestionsJson);
   return NextResponse.json({
     recent,
     baseEntitlement: base,
     dependentsEntitlement: perDep,
     entitledPieces: base,
     inventorySchema: parseInventorySchema(exhibition.settings?.inventorySchemaJson),
-    surveyAutoSendOnDispense: surveyConfig.autoSendOnDispense,
+    surveyAutoSendOnDispense: autoSendSurveysOnDispense(surveyCatalog).length > 0,
     items: items.map((i) => ({
       id: i.id,
       attributes: i.attributesJson,
@@ -344,32 +348,68 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const surveyConfig = parseSurveyConfig(settings.surveyQuestionsJson);
+    const surveyCatalog = parseSurveyCatalog(settings.surveyQuestionsJson);
+    const autoSurveys = autoSendSurveysOnDispense(surveyCatalog);
     const wantSurvey =
       body.data.sendSurvey !== undefined
         ? body.data.sendSurvey
-        : surveyConfig.autoSendOnDispense;
+        : autoSurveys.length > 0;
     if (wantSurvey) {
+      const toSend =
+        autoSurveys.length > 0
+          ? autoSurveys
+          : (() => {
+              const fallback = parseSurveyConfig(settings.surveyQuestionsJson);
+              return fallback.questions.length || fallback.externalUrl
+                ? [
+                    {
+                      id: "default",
+                      title: "استبيان الرضا",
+                      audience: "received" as const,
+                      questions: fallback.questions,
+                      externalUrl: fallback.externalUrl,
+                      autoSendOnDispense: true,
+                      active: true,
+                    },
+                  ]
+                : [];
+            })();
       if (!order.beneficiary.mobile) {
         surveyStatus = "FAILED";
         surveyError = "لا يوجد رقم جوال للمستفيد";
+      } else if (!toSend.length) {
+        surveyStatus = "FAILED";
+        surveyError = "لا استبيان مفعّل للإرسال بعد الصرف";
       } else {
-        const surveyMsg = await sendWhatsAppMessage({
-          exhibitionId: exhibition.id,
-          beneficiaryId: order.beneficiaryId,
-          mobile: order.beneficiary.mobile,
-          body: buildSurveyMessage(
-            order.beneficiary.name,
-            exhibition.name,
-            surveyConfig.externalUrl,
-          ),
-          type: OutboundMessageType.SURVEY,
-          createdById: authz.userId,
-        });
-        surveyStatus = surveyMsg.status;
-        if (surveyMsg.status === "FAILED") {
-          surveyError = surveyMsg.errorMessage || "فشل إرسال الاستبيان";
+        const errors: string[] = [];
+        let lastStatus: string | null = null;
+        for (const survey of toSend) {
+          const surveyMsg = await sendWhatsAppMessage({
+            exhibitionId: exhibition.id,
+            beneficiaryId: order.beneficiaryId,
+            mobile: order.beneficiary.mobile,
+            body: buildSurveyMessage(
+              order.beneficiary.name,
+              exhibition.name,
+              survey.externalUrl,
+              survey.title,
+            ),
+            type: OutboundMessageType.SURVEY,
+            createdById: authz.userId,
+          });
+          lastStatus = surveyMsg.status;
+          if (surveyMsg.status === "FAILED") {
+            errors.push(
+              `${survey.title}: ${surveyMsg.errorMessage || "فشل الإرسال"}`,
+            );
+          }
         }
+        surveyStatus = errors.length
+          ? "FAILED"
+          : lastStatus === "STUBBED"
+            ? "STUBBED"
+            : "SENT";
+        if (errors.length) surveyError = errors.join(" — ");
       }
     }
 

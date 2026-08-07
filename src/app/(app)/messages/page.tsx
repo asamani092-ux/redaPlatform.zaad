@@ -69,7 +69,10 @@ export default function MessagesPage() {
   const [loaded, setLoaded] = useState(false);
   const [draftMobile, setDraftMobile] = useState<Record<string, string>>({});
   const [rowBusy, setRowBusy] = useState<string | null>(null);
-  const [surveyConfirm, setSurveyConfirm] = useState<LogRow | null>(null);
+  const [surveyConfirm, setSurveyConfirm] = useState<{
+    row: LogRow;
+    message: string;
+  } | null>(null);
   const toast = useToast();
 
   const load = useCallback(
@@ -152,7 +155,13 @@ export default function MessagesPage() {
     setRowBusy(null);
 
     if (res.status === 409 && json.needsConfirm) {
-      setSurveyConfirm(row);
+      setSurveyConfirm({
+        row,
+        message:
+          typeof json.message === "string"
+            ? json.message
+            : `${row.name} خارج جمهور هذا الاستبيان. هل تريد الإرسال رغم ذلك؟`,
+      });
       return;
     }
     if (!res.ok) {
@@ -326,7 +335,7 @@ export default function MessagesPage() {
           <p className="page-header__desc">
             {tab === "invite"
               ? "صحّح رقم الجوال عند الفشل ثم أعد إرسال الدعوة من نفس الصف."
-              : "إعادة إرسال الاستبيان لمن استلم قطعاً؛ إن لم يستلم سيُطلب تأكيدك قبل الإرسال."}
+              : "إعادة إرسال الاستبيان وفق جمهوره؛ إن كان المستفيد خارج الجمهور سيُطلب تأكيدك."}
           </p>
 
           <DataTable
@@ -453,19 +462,15 @@ export default function MessagesPage() {
 
       <ConfirmDialog
         open={Boolean(surveyConfirm)}
-        title="إرسال استبيان بدون صرف"
-        body={
-          surveyConfirm
-            ? `${surveyConfirm.name} لم يستلم قطعاً بعد. هل تريد إرسال رابط الاستبيان رغم ذلك؟`
-            : ""
-        }
+        title="المستفيد خارج جمهور الاستبيان"
+        body={surveyConfirm?.message ?? ""}
         confirmLabel="إرسال رغم ذلك"
         busy={Boolean(rowBusy)}
         onClose={() => setSurveyConfirm(null)}
         onConfirm={() => {
-          const row = surveyConfirm;
+          const pending = surveyConfirm;
           setSurveyConfirm(null);
-          if (row) void resend(row, "SURVEY", true);
+          if (pending) void resend(pending.row, "SURVEY", true);
         }}
       />
     </div>

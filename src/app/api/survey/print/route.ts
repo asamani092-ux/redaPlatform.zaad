@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { requireActiveExhibition } from "@/lib/exhibition";
-import { parseSurveyConfig, type SurveyQuestion } from "@/lib/survey-questions";
+import {
+  findSurvey,
+  parseSurveyCatalog,
+  type SurveyQuestion,
+} from "@/lib/survey-questions";
 import { buildPrintDocument, escapeHtml } from "@/lib/print-html";
 import { writeAuditLog } from "@/lib/audit";
 
@@ -23,7 +27,7 @@ function formatAnswers(
 /**
  * طباعة ردود الاستبيان بهوية المنصة — O(n) بعدد الردود.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const authz = await requirePermission("survey:manage");
   if ("error" in authz) return authz.error;
 
@@ -37,9 +41,17 @@ export async function GET() {
     );
   }
 
-  const config = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
+  const catalog = parseSurveyCatalog(exhibition.settings?.surveyQuestionsJson);
+  const survey =
+    findSurvey(catalog, req.nextUrl.searchParams.get("surveyId")) ??
+    catalog.surveys[0] ??
+    null;
+  const questions: SurveyQuestion[] = survey?.questions ?? [];
   const responses = await prisma.surveyResponse.findMany({
-    where: { exhibitionId: exhibition.id },
+    where: {
+      exhibitionId: exhibition.id,
+      ...(survey ? { surveyId: survey.id } : {}),
+    },
     include: { beneficiary: true },
     orderBy: { createdAt: "desc" },
     take: 500,
@@ -56,14 +68,14 @@ export async function GET() {
         <td>${escapeHtml(r.beneficiary.name)}</td>
         <td class="ltr">${escapeHtml(r.beneficiary.nationalId)}</td>
         <td class="ltr">${escapeHtml(r.beneficiary.mobile)}</td>
-        <td>${formatAnswers(answers, config.questions)}</td>
+        <td>${formatAnswers(answers, questions)}</td>
         <td class="ltr">${escapeHtml(new Date(r.createdAt).toLocaleString("ar-SA"))}</td>
       </tr>`;
     })
     .join("");
 
   const html = buildPrintDocument({
-    title: `ردود الاستبيان: ${exhibition.name}`,
+    title: `ردود ${survey?.title ?? "الاستبيان"}: ${exhibition.name}`,
     subtitle: exhibition.location
       ? `الموقع: ${exhibition.location} — عدد الردود: ${responses.length}`
       : `عدد الردود: ${responses.length}`,
@@ -102,7 +114,11 @@ export async function GET() {
     action: "SURVEY_PRINT",
     entityType: "SurveyResponse",
     entityId: exhibition.id,
-    meta: { count: responses.length, format: "print-html" },
+    meta: {
+      count: responses.length,
+      format: "print-html",
+      surveyId: survey?.id ?? null,
+    },
   });
 
   return new NextResponse(html, {

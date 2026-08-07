@@ -12,13 +12,38 @@ import {
   parseInventorySchema,
   validateInventorySchemaMutation,
 } from "@/lib/inventory-schema";
-import { parseSurveyConfig } from "@/lib/survey-questions";
+import {
+  parseSurveyCatalog,
+  serializeSurveyCatalog,
+  type SurveyAudience,
+  type SurveyDefinition,
+} from "@/lib/survey-questions";
 import { Prisma } from "@/generated/prisma/client";
 
 const schemaField = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
   options: z.array(z.string()).default([]),
+});
+
+const surveyDefSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  audience: z.enum(["attended_only", "received", "invited_absent"]),
+  questions: z
+    .array(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+        type: z.enum(["scale", "text"]).optional(),
+        min: z.number().optional(),
+        max: z.number().optional(),
+      }),
+    )
+    .default([]),
+  externalUrl: z.string().nullable().optional(),
+  autoSendOnDispense: z.boolean().optional(),
+  active: z.boolean().optional(),
 });
 
 const settingsSchema = z.object({
@@ -33,6 +58,9 @@ const settingsSchema = z.object({
   inventorySchema: z.array(schemaField).optional(),
   whatsappInviteTpl: z.string().optional().nullable(),
   whatsappThanksTpl: z.string().optional().nullable(),
+  /** كتالوج استبيانات متعددة */
+  surveys: z.array(surveyDefSchema).optional(),
+  /** توافق خلفي — استبيان واحد */
   surveyQuestions: z.array(z.record(z.string(), z.unknown())).optional(),
   surveyExternalUrl: z.string().optional().nullable(),
   surveyAutoSendOnDispense: z.boolean().optional(),
@@ -132,25 +160,48 @@ export async function PUT(req: NextRequest) {
     }));
   }
 
-  // إعداد الاستبيان يُخزن كغلاف { questions, externalUrl, autoSendOnDispense }
+  // كتالوج الاستبيانات — تراكمي عبر surveys[] مع توافق الشكل القديم
   let surveyPayload: Prisma.InputJsonValue | undefined;
-  if (
+  if (body.data.surveys !== undefined) {
+    surveyPayload = serializeSurveyCatalog(
+      parseSurveyCatalog({ version: 2, surveys: body.data.surveys }),
+    ) as unknown as Prisma.InputJsonValue;
+  } else if (
     body.data.surveyQuestions !== undefined ||
     body.data.surveyExternalUrl !== undefined ||
     body.data.surveyAutoSendOnDispense !== undefined
   ) {
-    const current = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
-    surveyPayload = {
-      questions: (body.data.surveyQuestions ?? current.questions) as unknown[],
+    const current = parseSurveyCatalog(exhibition.settings?.surveyQuestionsJson);
+    const base =
+      current.surveys.find((s) => s.audience === "received") ??
+      current.surveys[0] ?? {
+        id: "default",
+        title: "استبيان الرضا",
+        audience: "received" as SurveyAudience,
+        questions: [],
+        externalUrl: null,
+        autoSendOnDispense: false,
+        active: true,
+      };
+    const next: SurveyDefinition = {
+      ...base,
+      questions:
+        (body.data.surveyQuestions as SurveyDefinition["questions"] | undefined) ??
+        base.questions,
       externalUrl:
         body.data.surveyExternalUrl !== undefined
           ? body.data.surveyExternalUrl?.trim() || null
-          : current.externalUrl,
+          : base.externalUrl,
       autoSendOnDispense:
         body.data.surveyAutoSendOnDispense !== undefined
           ? body.data.surveyAutoSendOnDispense
-          : current.autoSendOnDispense,
-    } as unknown as Prisma.InputJsonValue;
+          : base.autoSendOnDispense,
+    };
+    const others = current.surveys.filter((s) => s.id !== next.id);
+    surveyPayload = serializeSurveyCatalog({
+      version: 2,
+      surveys: [next, ...others],
+    }) as unknown as Prisma.InputJsonValue;
   }
 
   await prisma.exhibitionSettings.upsert({
@@ -175,9 +226,8 @@ export async function PUT(req: NextRequest) {
       whatsappInviteTpl: body.data.whatsappInviteTpl,
       whatsappThanksTpl: body.data.whatsappThanksTpl,
       surveyQuestionsJson: (surveyPayload ?? {
-        questions: [],
-        externalUrl: null,
-        autoSendOnDispense: false,
+        version: 2,
+        surveys: [],
       }) as Prisma.InputJsonValue,
     },
   });

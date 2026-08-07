@@ -8,14 +8,15 @@ import { hasPermission } from "@/lib/rbac";
 import { sendInviteWhatsApp } from "@/lib/invite-whatsapp";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
-import { parseSurveyConfig } from "@/lib/survey-questions";
+import { findSurvey, parseSurveyCatalog } from "@/lib/survey-questions";
 import { buildSurveyMessage } from "@/lib/survey-message";
 import { isValidSaudiMobile, MOBILE_ERROR, normalizeMobile } from "@/lib/mobile";
 
 const schema = z.object({
   beneficiaryId: z.string().min(1),
   channel: z.enum(["INVITATION", "SURVEY"]),
-  /** تأكيد إرسال الاستبيان رغم عدم وجود صرف */
+  surveyId: z.string().optional(),
+  /** تأكيد إرسال الاستبيان رغم عدم مطابقة الجمهور */
   forceWithoutDispense: z.boolean().optional(),
 });
 
@@ -107,29 +108,66 @@ export async function POST(req: NextRequest) {
   }
 
   // SURVEY
-  const dispense = await prisma.dispenseOrder.findFirst({
-    where: { exhibitionId: exhibition.id, beneficiaryId: beneficiary.id },
-    select: { id: true },
-  });
-  if (!dispense && !body.data.forceWithoutDispense) {
+  const catalog = parseSurveyCatalog(exhibition.settings?.surveyQuestionsJson);
+  const survey = findSurvey(catalog, body.data.surveyId);
+  if (!survey) {
+    return NextResponse.json({ error: "لا استبيان مُعدّ للإرسال" }, { status: 404 });
+  }
+
+  const [dispense, attendance, invite] = await Promise.all([
+    prisma.dispenseOrder.findFirst({
+      where: { exhibitionId: exhibition.id, beneficiaryId: beneficiary.id },
+      select: { id: true },
+    }),
+    prisma.attendance.findUnique({
+      where: {
+        exhibitionId_beneficiaryId: {
+          exhibitionId: exhibition.id,
+          beneficiaryId: beneficiary.id,
+        },
+      },
+      select: { id: true },
+    }),
+    prisma.exhibitionInvite.findUnique({
+      where: {
+        exhibitionId_beneficiaryId: {
+          exhibitionId: exhibition.id,
+          beneficiaryId: beneficiary.id,
+        },
+      },
+      select: { invited: true },
+    }),
+  ]);
+
+  const inAudience =
+    survey.audience === "received"
+      ? Boolean(dispense)
+      : survey.audience === "attended_only"
+        ? Boolean(attendance) && !dispense
+        : Boolean(invite?.invited) && !attendance;
+
+  if (!inAudience && !body.data.forceWithoutDispense) {
     return NextResponse.json(
       {
-        error: "المستفيد لم يستلم قطعاً بعد",
-        code: "NO_DISPENSE",
+        error: "المستفيد خارج جمهور هذا الاستبيان",
+        code: "AUDIENCE_MISMATCH",
         needsConfirm: true,
-        message:
-          "لم يُسجَّل صرف لهذا المستفيد. هل تريد إرسال رابط الاستبيان رغم ذلك؟",
+        message: `جمهور «${survey.title}» لا يشمل هذا المستفيد. هل تريد الإرسال رغم ذلك؟`,
       },
       { status: 409 },
     );
   }
 
-  const config = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
   const msg = await sendWhatsAppMessage({
     exhibitionId: exhibition.id,
     beneficiaryId: beneficiary.id,
     mobile,
-    body: buildSurveyMessage(beneficiary.name, exhibition.name, config.externalUrl),
+    body: buildSurveyMessage(
+      beneficiary.name,
+      exhibition.name,
+      survey.externalUrl,
+      survey.title,
+    ),
     type: OutboundMessageType.SURVEY,
     createdById: authz.userId,
   });
@@ -144,9 +182,10 @@ export async function POST(req: NextRequest) {
     entityId: beneficiary.id,
     meta: {
       source: "messages-log",
+      surveyId: survey.id,
       status,
       forceWithoutDispense: Boolean(body.data.forceWithoutDispense),
-      hasDispense: Boolean(dispense),
+      inAudience,
     },
     status: status === "FAILED" ? "FAILED" : "SUCCESS",
     statusReason: msg.errorMessage,
@@ -157,6 +196,7 @@ export async function POST(req: NextRequest) {
     status,
     reason: msg.errorMessage ?? null,
     beneficiaryId: beneficiary.id,
-    forcedWithoutDispense: Boolean(body.data.forceWithoutDispense) && !dispense,
+    surveyId: survey.id,
+    forced: Boolean(body.data.forceWithoutDispense) && !inAudience,
   });
 }

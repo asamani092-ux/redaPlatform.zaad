@@ -78,10 +78,64 @@ export async function POST(req: NextRequest) {
             whatsappInviteTpl:
               "مرحباً {{name}}، أنت مدعو إلى {{exhibition}}. الموعد: {{date}} — الموقع: {{location}}",
             whatsappThanksTpl: "شكراً لزيارتك {{exhibition}}، {{name}}.",
-            surveyQuestionsJson: [
-              { id: "q1", text: "كيف تقيّم تجربة الزيارة؟", type: "scale", min: 1, max: 5 },
-              { id: "q2", text: "ملاحظات إضافية", type: "text" },
-            ] as unknown as Prisma.InputJsonValue,
+            surveyQuestionsJson: {
+              version: 2,
+              surveys: [
+                {
+                  id: "sv_received",
+                  title: "استبيان الرضا بعد الاستلام",
+                  audience: "received",
+                  autoSendOnDispense: false,
+                  active: true,
+                  externalUrl: null,
+                  questions: [
+                    {
+                      id: "q1",
+                      text: "كيف تقيّم تجربة الزيارة؟",
+                      type: "scale",
+                      min: 1,
+                      max: 5,
+                    },
+                    { id: "q2", text: "ملاحظات إضافية", type: "text" },
+                  ],
+                },
+                {
+                  id: "sv_attended_only",
+                  title: "استبيان من حضر ولم يستلم",
+                  audience: "attended_only",
+                  autoSendOnDispense: false,
+                  active: true,
+                  externalUrl: null,
+                  questions: [
+                    {
+                      id: "q1",
+                      text: "ما سبب عدم استلامك للقطع؟",
+                      type: "text",
+                    },
+                  ],
+                },
+                {
+                  id: "sv_invited_absent",
+                  title: "استبيان عدم الحضور",
+                  audience: "invited_absent",
+                  autoSendOnDispense: false,
+                  active: true,
+                  externalUrl: null,
+                  questions: [
+                    {
+                      id: "q1",
+                      text: "ما الذي منعك من حضور المعرض؟",
+                      type: "text",
+                    },
+                    {
+                      id: "q2",
+                      text: "هل ترغب بدعوتك لمعرض لاحق؟",
+                      type: "text",
+                    },
+                  ],
+                },
+              ],
+            } as unknown as Prisma.InputJsonValue,
           },
         },
       },
