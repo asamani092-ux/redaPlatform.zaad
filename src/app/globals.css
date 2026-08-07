@@ -395,26 +395,16 @@ button {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
 }
 
-.form-grid--survey-q {
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 0.7fr) auto;
-  align-items: end;
-}
+/* شبكة أسئلة الاستبيان: التعريف الكامل في zaad-addons (.zad-root) */
 
 .row-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--space-3, 0.75rem);
   align-items: center;
 }
 
-.row-actions .btn-primary,
-.row-actions .btn-secondary,
-.row-actions .btn-recommend,
-.row-actions .btn-danger {
-  padding: 0.45rem 0.75rem;
-  font-size: 0.82rem;
-  white-space: nowrap;
-}
+/* أحجام الأزرار موحّدة من zaad-addons — لا تصغير هنا */
 
 .form-actions {
   display: flex;

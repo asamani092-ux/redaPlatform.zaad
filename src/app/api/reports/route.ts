@@ -1,3 +1,5 @@
+import { readFile } from "fs/promises";
+import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +16,8 @@ import {
   sharesToRecord,
 } from "@/lib/report-metrics";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
+import { buildZadPresentationReport } from "@/lib/zad-presentation-report";
+import { countDistinctReceived } from "@/lib/report-counts";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -60,6 +64,114 @@ export async function GET(req: NextRequest) {
   }
 
   const exhibitionId = exhibition.id;
+
+  /** مسار العرض التقديمي: أعمدة ديموغرافية + تجميعات فقط — بدون شجرة الصرف الكاملة */
+  if (format === "presentation") {
+    const [
+      demoBeneficiaries,
+      invited,
+      attended,
+      received,
+      exceptionAttendance,
+      overrideDispenses,
+      piecesAgg,
+      topItems,
+      totalBeneficiaries,
+    ] = await Promise.all([
+      prisma.beneficiary.findMany({
+        select: {
+          gender: true,
+          city: true,
+          neighborhood: true,
+          dependentsCount: true,
+          associationOther: true,
+          association: { select: { name: true } },
+        },
+      }),
+      prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
+      prisma.attendance.count({ where: { exhibitionId } }),
+      countDistinctReceived(exhibitionId),
+      prisma.attendance.count({
+        where: { exhibitionId, type: "EXCEPTION" },
+      }),
+      prisma.dispenseOrder.count({
+        where: { exhibitionId, entitledOverride: { not: null } },
+      }),
+      prisma.dispenseOrder.aggregate({
+        where: { exhibitionId },
+        _sum: { piecesCount: true },
+      }),
+      fetchTopDispensedItems(exhibitionId, 5),
+      prisma.beneficiary.count(),
+    ]);
+
+    const breakdowns = buildBreakdownShares({
+      associations: demoBeneficiaries.map(
+        (b) => b.association?.name ?? b.associationOther ?? "",
+      ),
+      neighborhoods: demoBeneficiaries.map((b) => b.neighborhood ?? ""),
+      cities: demoBeneficiaries.map((b) => b.city ?? ""),
+      genders: demoBeneficiaries.map((b) =>
+        b.gender === "MALE" ? "ذكر" : b.gender === "FEMALE" ? "أنثى" : "",
+      ),
+      dependentsCounts: demoBeneficiaries.map((b) => b.dependentsCount),
+    });
+
+    const summary = {
+      exhibitionId: exhibition.id,
+      exhibitionName: exhibition.name,
+      exhibitionActive: exhibition.active,
+      totalBeneficiaries,
+      invited,
+      attended,
+      received,
+      exceptionAttendance,
+      overrideDispenses,
+      piecesDispensed: piecesAgg._sum.piecesCount ?? 0,
+      beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
+      totalIndividuals: breakdowns.households.totalIndividuals,
+      byGender: sharesToRecord(breakdowns.byGender),
+      byCity: sharesToRecord(breakdowns.byCity),
+      byNeighborhood: sharesToRecord(breakdowns.byNeighborhood),
+      byFamilySize: sharesToRecord(breakdowns.households.byHouseholdSize),
+      byAssociation: sharesToRecord(breakdowns.byAssociation),
+      byGenderShares: breakdowns.byGender,
+      byCityShares: breakdowns.byCity,
+      byNeighborhoodShares: breakdowns.byNeighborhood,
+      byAssociationShares: breakdowns.byAssociation,
+      byHouseholdSizeShares: breakdowns.households.byHouseholdSize,
+      topItems,
+    };
+
+    const report = buildZadPresentationReport(summary);
+    const asHtml = req.nextUrl.searchParams.get("html") === "1";
+    if (!asHtml) {
+      return NextResponse.json({ report });
+    }
+    const templatePath = path.join(
+      process.cwd(),
+      "public/zad-presentation/builder.html",
+    );
+    let html = await readFile(templatePath, "utf8");
+    const payload = JSON.stringify(report).replace(/</g, "\\u003c");
+    if (!html.includes("<!--ZAD_REPORT_INJECT-->")) {
+      return NextResponse.json(
+        { error: "قالب منشئ العرض غير جاهز" },
+        { status: 500 },
+      );
+    }
+    html = html.replace(
+      "<!--ZAD_REPORT_INJECT-->",
+      `<script>window.ZAD_REPORT=${payload};</script>`,
+    );
+    return new NextResponse(html, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
 
   const beneficiaries = await prisma.beneficiary.findMany({
     include: {
@@ -131,7 +243,7 @@ export async function GET(req: NextRequest) {
   const [
     invited,
     attended,
-    receivedGroups,
+    received,
     exceptionAttendance,
     overrideDispenses,
     piecesAgg,
@@ -140,10 +252,7 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
-    prisma.dispenseOrder.groupBy({
-      by: ["beneficiaryId"],
-      where: { exhibitionId },
-    }),
+    countDistinctReceived(exhibitionId),
     prisma.attendance.count({
       where: { exhibitionId, type: "EXCEPTION" },
     }),
@@ -154,7 +263,10 @@ export async function GET(req: NextRequest) {
       where: { exhibitionId },
       _sum: { piecesCount: true },
     }),
-    prisma.inventoryItem.findMany({ where: { exhibitionId } }),
+    prisma.inventoryItem.findMany({
+      where: { exhibitionId },
+      select: { attributesJson: true, quantity: true },
+    }),
     fetchTopDispensedItems(exhibitionId, 5),
   ]);
 
@@ -165,7 +277,7 @@ export async function GET(req: NextRequest) {
     totalBeneficiaries: beneficiaries.length,
     invited,
     attended,
-    received: receivedGroups.length,
+    received,
     exceptionAttendance,
     overrideDispenses,
     piecesDispensed: piecesAgg._sum.piecesCount ?? 0,
@@ -174,7 +286,7 @@ export async function GET(req: NextRequest) {
       quantity: Number(i.quantity),
     })),
     beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
-    avgHouseholdSize: breakdowns.households.avgHouseholdSize,
+    totalIndividuals: breakdowns.households.totalIndividuals,
     byGender,
     byCity,
     byNeighborhood,
@@ -202,9 +314,8 @@ export async function GET(req: NextRequest) {
     summarySheet.addRows([
       ["المؤشر", "القيمة"],
       ["المعرض", exhibition.name],
-      ["إجمالي المستفيدين", summary.totalBeneficiaries],
-      ["عدد الأسر المستفيدة", summary.beneficiaryFamilies],
-      ["متوسط حجم الأسرة", summary.avgHouseholdSize],
+      ["إجمالي المستفيدين (أفراد)", summary.totalIndividuals],
+      ["الأسر المستفيدة", summary.beneficiaryFamilies],
       ["المدعوون", summary.invited],
       ["الحضور", summary.attended],
       ["المستلمون", summary.received],
@@ -286,7 +397,7 @@ export async function GET(req: NextRequest) {
       rowsShare.forEach((r) => sheet.addRow([r.key, r.count, r.percent]));
     };
     addShareSheet("حسب الجمعية", breakdowns.byAssociation);
-    addShareSheet("حسب حجم الأسرة", breakdowns.households.byHouseholdSize);
+    addShareSheet("حسب عدد الأفراد", breakdowns.households.byHouseholdSize);
     addShareSheet("حسب الحي", breakdowns.byNeighborhood);
     addShareSheet("حسب الجنس", breakdowns.byGender);
     addShareSheet("حسب المدينة", breakdowns.byCity);
@@ -330,7 +441,7 @@ export async function GET(req: NextRequest) {
     sections.push(shareTable("التوزيع حسب الجمعية", breakdowns.byAssociation));
     sections.push(shareTable("التوزيع حسب الحي", breakdowns.byNeighborhood));
     sections.push(
-      shareTable("توزيع حجم الأسرة", breakdowns.households.byHouseholdSize),
+      shareTable("توزيع عدد الأفراد", breakdowns.households.byHouseholdSize),
     );
     sections.push(`
       <section>
@@ -377,9 +488,8 @@ export async function GET(req: NextRequest) {
       title: `تقرير معرض: ${exhibition.name}`,
       subtitle: exhibition.active ? "المعرض النشط حالياً" : "معرض غير نشط (أرشيف)",
       tiles: [
-        { label: "إجمالي المستفيدين", value: summary.totalBeneficiaries },
+        { label: "إجمالي المستفيدين (أفراد)", value: summary.totalIndividuals },
         { label: "الأسر المستفيدة", value: summary.beneficiaryFamilies },
-        { label: "متوسط حجم الأسرة", value: summary.avgHouseholdSize },
         { label: "المدعوون", value: summary.invited },
         { label: "الحاضرون", value: summary.attended },
         { label: "استلموا", value: summary.received },

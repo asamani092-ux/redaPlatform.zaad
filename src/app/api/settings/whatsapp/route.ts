@@ -3,7 +3,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
-import { getWhatsAppConfig, maskToken } from "@/lib/whatsapp-config";
+import {
+  clearWhatsAppConfigCache,
+  getWhatsAppConfig,
+  maskToken,
+} from "@/lib/whatsapp-config";
 
 const putSchema = z.object({
   provider: z.enum(["stub", "api"]),
@@ -86,6 +90,8 @@ export async function PUT(req: NextRequest) {
       sender: saved.whatsappSender,
     },
   });
+
+  clearWhatsAppConfigCache();
 
   return NextResponse.json({
     ok: true,

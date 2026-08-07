@@ -22,7 +22,7 @@ type LivePayload = {
     exceptions: number;
     completionRate: number;
     beneficiaryFamilies: number;
-    avgHouseholdSize: number;
+    totalIndividuals: number;
   };
   byAssociationShares: ShareRow[];
   byNeighborhoodShares: ShareRow[];
@@ -99,8 +99,8 @@ export default function LiveDisplayPage() {
 
       <section className="live-screen__stats">
         {[
+          ["إجمالي المستفيدين", stats.totalIndividuals],
           ["الأسر المستفيدة", stats.beneficiaryFamilies],
-          ["متوسط حجم الأسرة", stats.avgHouseholdSize],
           ["المدعوون", stats.invited],
           ["الحاضرون", stats.attended],
           ["استلموا", stats.received],
@@ -115,7 +115,7 @@ export default function LiveDisplayPage() {
       <section className="live-screen__grid">
         <SharePanel title="نسب الجمعيات" rows={data.byAssociationShares} />
         <SharePanel title="نسب الأحياء" rows={data.byNeighborhoodShares} />
-        <SharePanel title="توزيع حجم الأسر" rows={data.byHouseholdSizeShares} />
+        <SharePanel title="توزيع الأسر حسب عدد الأفراد" rows={data.byHouseholdSizeShares} />
         <div className="live-screen__panel">
           <h2>أعلى 5 قطع مصروفة</h2>
           <ul>

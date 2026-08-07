@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
 import { statusFromSendCounts } from "@/lib/audit-status";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
-import { parseSurveyConfig } from "@/lib/survey-questions";
+import {
+  audienceLabel,
+  findSurvey,
+  parseSurveyCatalog,
+} from "@/lib/survey-questions";
+import { resolveSurveyAudience } from "@/lib/survey-audience";
 import { buildSurveyMessage } from "@/lib/survey-message";
 
 const schema = z.object({
-  audience: z.enum(["attended", "received"]),
+  surveyId: z.string().min(1),
+  /** توافق خلفي: إن وُجد يتجاهل فئة مستفيدي الاستبيان */
+  audience: z
+    .enum(["attended", "received", "attended_only", "invited_absent"])
+    .optional(),
 });
 
 /**
- * إرسال رابط الاستبيان جماعياً: لكل الحضور أو لكل من استلم قطعاً.
- * O(n) بعدد المستهدفين — الرسائل تُسجل في OutboundMessage.
+ * إرسال جماعي لاستبيان محدد حسب مستفيديه — O(n) بعدد المستهدفين.
  */
 export async function POST(req: NextRequest) {
   const authz = await requirePermission("survey:manage");
@@ -34,25 +41,23 @@ export async function POST(req: NextRequest) {
 
   const body = schema.safeParse(await req.json().catch(() => ({})));
   if (!body.success) {
-    return NextResponse.json({ error: "حدد الفئة: الحضور أو المستلمون" }, { status: 400 });
+    return NextResponse.json({ error: "حدد الاستبيان المراد إرساله" }, { status: 400 });
   }
 
-  const config = parseSurveyConfig(exhibition.settings?.surveyQuestionsJson);
+  const catalog = parseSurveyCatalog(exhibition.settings?.surveyQuestionsJson);
+  const survey = findSurvey(catalog, body.data.surveyId);
+  if (!survey || !survey.active) {
+    return NextResponse.json({ error: "الاستبيان غير موجود أو غير مفعّل" }, { status: 404 });
+  }
 
-  const beneficiaries =
-    body.data.audience === "attended"
-      ? (
-          await prisma.attendance.findMany({
-            where: { exhibitionId: exhibition.id },
-            include: { beneficiary: true },
-          })
-        ).map((a) => a.beneficiary)
-      : (
-          await prisma.dispenseOrder.findMany({
-            where: { exhibitionId: exhibition.id },
-            include: { beneficiary: true },
-          })
-        ).map((d) => d.beneficiary);
+  let audience = survey.audience;
+  if (body.data.audience === "received") audience = "received";
+  if (body.data.audience === "attended" || body.data.audience === "attended_only") {
+    audience = "attended_only";
+  }
+  if (body.data.audience === "invited_absent") audience = "invited_absent";
+
+  const beneficiaries = await resolveSurveyAudience(exhibition.id, audience);
 
   let sent = 0;
   let failed = 0;
@@ -79,7 +84,12 @@ export async function POST(req: NextRequest) {
       exhibitionId: exhibition.id,
       beneficiaryId: b.id,
       mobile: b.mobile,
-      body: buildSurveyMessage(b.name, exhibition.name, config.externalUrl),
+      body: buildSurveyMessage(
+        b.name,
+        exhibition.name,
+        survey.externalUrl,
+        survey.title,
+      ),
       type: OutboundMessageType.SURVEY,
       createdById: authz.userId,
     });
@@ -115,7 +125,9 @@ export async function POST(req: NextRequest) {
     entityType: "SurveyResponse",
     entityId: exhibition.id,
     meta: {
-      audience: body.data.audience,
+      surveyId: survey.id,
+      surveyTitle: survey.title,
+      audience,
       sent,
       failed,
       stubbed,
@@ -130,7 +142,9 @@ export async function POST(req: NextRequest) {
     failed,
     stubbed,
     errors,
-    audience: body.data.audience,
+    surveyId: survey.id,
+    audience,
+    audienceLabel: audienceLabel(audience),
     status,
     statusReason,
   });

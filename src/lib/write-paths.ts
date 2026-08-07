@@ -42,6 +42,20 @@ export const WRITE_PATHS: WritePathSpec[] = [
   { id: "liveLink.create", entityType: "LiveDisplayLink", action: "LIVE_LINK_CREATE", route: "POST /api/live-links", audited: true },
   { id: "liveLink.delete", entityType: "LiveDisplayLink", action: "LIVE_LINK_DELETE", route: "DELETE /api/live-links", audited: true },
   {
+    id: "messages.mobile",
+    entityType: "Beneficiary",
+    action: "UPDATE_BENEFICIARY",
+    route: "PATCH /api/messages",
+    audited: true,
+  },
+  {
+    id: "messages.resend",
+    entityType: "OutboundMessage",
+    action: "INVITE_RESEND|SURVEY_BROADCAST",
+    route: "POST /api/messages/resend",
+    audited: true,
+  },
+  {
     id: "password.forgot",
     entityType: "PasswordReset",
     action: "OTP_ISSUE",

@@ -13,7 +13,7 @@ import {
   type TrialEvalRating,
 } from "@/lib/trial-eval-tools";
 
-const STORAGE_KEY = "ridaa-trial-eval-v1";
+const STORAGE_KEY = "ridaa-trial-eval-v2";
 
 type RowState = {
   rating: TrialEvalRating;
@@ -31,7 +31,21 @@ export function TrialEvalClient() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setState(JSON.parse(raw) as Record<string, RowState>);
+      if (raw) {
+        setState(JSON.parse(raw) as Record<string, RowState>);
+        return;
+      }
+      // تراكمي: دمج تقييمات v1 إن وُجدت
+      const legacy = localStorage.getItem("ridaa-trial-eval-v1");
+      if (legacy) {
+        const old = JSON.parse(legacy) as Record<string, RowState>;
+        const migrated: Record<string, RowState> = {};
+        for (const t of getTrialEvalTools()) {
+          if (old[t.path]) migrated[t.id] = old[t.path]!;
+          else if (old[t.id]) migrated[t.id] = old[t.id]!;
+        }
+        setState(migrated);
+      }
     } catch {
       /* تجاهل تخزين تالف */
     }
@@ -42,29 +56,29 @@ export function TrialEvalClient() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
-  function ratingFor(path: string): TrialEvalRating {
-    return state[path]?.rating ?? "غير مجرّب";
+  function ratingFor(id: string): TrialEvalRating {
+    return state[id]?.rating ?? "غير مجرّب";
   }
 
-  function setRating(path: string, rating: TrialEvalRating) {
+  function setRating(id: string, rating: TrialEvalRating) {
     setState((prev) => ({
       ...prev,
-      [path]: { rating, note: prev[path]?.note ?? "" },
+      [id]: { rating, note: prev[id]?.note ?? "" },
     }));
   }
 
-  function setNote(path: string, note: string) {
+  function setNote(id: string, note: string) {
     setState((prev) => ({
       ...prev,
-      [path]: { rating: prev[path]?.rating ?? "غير مجرّب", note },
+      [id]: { rating: prev[id]?.rating ?? "غير مجرّب", note },
     }));
   }
 
   async function copyReport() {
     const rows = tools.map((t) => ({
       ...t,
-      rating: ratingFor(t.path),
-      note: state[t.path]?.note,
+      rating: ratingFor(t.id),
+      note: state[t.id]?.note,
     }));
     const text = buildTrialEvalReport(rows);
     setReportText(text);
@@ -85,14 +99,14 @@ export function TrialEvalClient() {
 
   const summary = TRIAL_EVAL_RATINGS.map((label) => ({
     label,
-    count: tools.filter((t) => ratingFor(t.path) === label).length,
+    count: tools.filter((t) => ratingFor(t.id) === label).length,
   }));
 
   return (
     <div className="page-stack">
       <PageHeader
         title="تقييم أدوات التجربة"
-        description="قائمة مستخرجة من التنقل والمسارات الفعلية — للتقييم قبل الإطلاق ثم تُحذف الصفحة"
+        description="كل أدوات التشغيل والشاشات الجديدة للتقييم قبل النشر — تُحذف الصفحة بعد الإطلاق"
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "تقييم التجربة" }]}
         actions={
           <button type="button" className="btn-primary" onClick={() => void copyReport()}>
@@ -146,13 +160,15 @@ export function TrialEvalClient() {
               </tr>
             </thead>
             <tbody>
-              {tools.map((t) => (
-                <tr key={t.path}>
+              {tools.map((t) => {
+                const href = t.path.split("#")[0] || t.path;
+                return (
+                <tr key={t.id}>
                   <td>
                     <strong>{t.tool}</strong>
                   </td>
                   <td>
-                    <Link href={t.path} className="mono" dir="ltr">
+                    <Link href={href} className="mono" dir="ltr">
                       {t.path}
                     </Link>
                   </td>
@@ -160,8 +176,8 @@ export function TrialEvalClient() {
                   <td>
                     <select
                       className="input-field"
-                      value={ratingFor(t.path)}
-                      onChange={(e) => setRating(t.path, e.target.value as TrialEvalRating)}
+                      value={ratingFor(t.id)}
+                      onChange={(e) => setRating(t.id, e.target.value as TrialEvalRating)}
                     >
                       {TRIAL_EVAL_RATINGS.map((r) => (
                         <option key={r} value={r}>
@@ -174,12 +190,13 @@ export function TrialEvalClient() {
                     <input
                       className="input-field"
                       placeholder="ملاحظة إصلاح"
-                      value={state[t.path]?.note ?? ""}
-                      onChange={(e) => setNote(t.path, e.target.value)}
+                      value={state[t.id]?.note ?? ""}
+                      onChange={(e) => setNote(t.id, e.target.value)}
                     />
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>

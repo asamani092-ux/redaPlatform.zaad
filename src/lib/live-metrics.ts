@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { buildBreakdownShares } from "@/lib/report-metrics";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
+import { countDistinctReceived } from "@/lib/report-counts";
 
 /** مؤشرات العرض الحي بلا PII — O(n) للمستفيدين + تجميعات المعرض */
 export async function buildLiveMetrics(exhibitionId: string) {
@@ -14,7 +15,7 @@ export async function buildLiveMetrics(exhibitionId: string) {
     totalBeneficiaries,
     invited,
     attended,
-    receivedGroups,
+    received,
     piecesAgg,
     exceptions,
     beneficiaries,
@@ -23,10 +24,7 @@ export async function buildLiveMetrics(exhibitionId: string) {
     prisma.beneficiary.count(),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
-    prisma.dispenseOrder.groupBy({
-      by: ["beneficiaryId"],
-      where: { exhibitionId },
-    }),
+    countDistinctReceived(exhibitionId),
     prisma.dispenseOrder.aggregate({
       where: { exhibitionId },
       _sum: { piecesCount: true },
@@ -44,8 +42,6 @@ export async function buildLiveMetrics(exhibitionId: string) {
     }),
     fetchTopDispensedItems(exhibitionId, 5),
   ]);
-
-  const received = receivedGroups.length;
   const completionRate =
     attended > 0 ? Math.min(100, Math.round((received / attended) * 100)) : 0;
 
@@ -74,7 +70,7 @@ export async function buildLiveMetrics(exhibitionId: string) {
       exceptions,
       completionRate,
       beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
-      avgHouseholdSize: breakdowns.households.avgHouseholdSize,
+      totalIndividuals: breakdowns.households.totalIndividuals,
     },
     byAssociationShares: breakdowns.byAssociation,
     byNeighborhoodShares: breakdowns.byNeighborhood,

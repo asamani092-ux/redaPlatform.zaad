@@ -75,6 +75,9 @@ export default function DispensePage() {
       .then((j) => {
         if (j.items) setItems(j.items.map((i: Item) => ({ ...i, quantity: Number(i.quantity) })));
         if (j.inventorySchema) setSchema(j.inventorySchema);
+        if (typeof j.surveyAutoSendOnDispense === "boolean") {
+          setSendSurvey(j.surveyAutoSendOnDispense);
+        }
       })
       .catch(() => undefined);
   }
@@ -419,21 +422,13 @@ export default function DispensePage() {
           <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
             المحدد: {totalSelected} من المسموح {entitledNow} — يجوز الصرف بأقل من الاستحقاق
           </p>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              marginTop: "0.75rem",
-              fontWeight: 600,
-            }}
-          >
+          <label className="check-field">
             <input
               type="checkbox"
               checked={sendSurvey}
               onChange={(e) => setSendSurvey(e.target.checked)}
             />
-            إرسال رابط الاستبيان عبر واتساب بعد الاستلام
+            إرسال رابط الاستبيان عبر واتساب بعد الاستلام (حسب إعداد الاستبيان — قابل للتغيير هنا)
           </label>
           {blockReason ? <p className="msg msg-error">{blockReason}</p> : null}
           {lookup.entitledOverride != null ? (

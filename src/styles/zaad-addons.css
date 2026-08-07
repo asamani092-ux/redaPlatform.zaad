@@ -475,18 +475,222 @@
 .zad-badge--danger { background: var(--danger-surface); color: var(--danger-text); }
 .zad-badge--neutral { background: var(--surface-sunken); color: var(--text-secondary); }
 
-/* Touch targets for common actions */
-.btn-primary,
-.btn-secondary,
-.btn-recommend,
-.btn-danger,
-.btn-register {
+/* ── توحيد الحقول والأزرار (يتفوق على اختلافات globals/package) ── */
+.zad-root .btn-primary,
+.zad-root .btn-secondary,
+.zad-root .btn-recommend,
+.zad-root .btn-danger,
+.zad-root .btn-register {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   min-height: var(--touch-min);
+  min-width: var(--touch-min);
+  padding-block: var(--space-3);
+  padding-inline: var(--space-5);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: 1.35;
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
 }
-.btn-primary:focus-visible,
-.btn-secondary:focus-visible,
-.btn-recommend:focus-visible,
-.btn-danger:focus-visible {
+.zad-root .btn-primary:focus-visible,
+.zad-root .btn-secondary:focus-visible,
+.zad-root .btn-recommend:focus-visible,
+.zad-root .btn-danger:focus-visible {
   outline: none;
   box-shadow: var(--shadow-focus);
+}
+
+.zad-root .input-field,
+.zad-root select.input-field,
+.zad-root textarea.input-field {
+  width: 100%;
+  max-width: 100%;
+  min-height: var(--touch-min);
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4);
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  line-height: 1.4;
+  border-radius: var(--radius-md);
+  border: var(--border-thin) solid var(--border-default);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  text-align: start;
+  box-sizing: border-box;
+}
+.zad-root .input-field:focus,
+.zad-root .input-field:focus-visible {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+}
+.zad-root .label-field {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-brand);
+  text-align: start;
+}
+
+.zad-root .field-cell {
+  border-radius: var(--radius-lg);
+  border: var(--border-thin) solid color-mix(in srgb, var(--brand-primary) 22%, var(--border-subtle));
+  background: var(--surface-raised);
+  padding: var(--space-4);
+  text-align: start;
+  box-sizing: border-box;
+}
+
+.zad-root .check-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-min);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+.zad-root .check-field input[type="checkbox"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+  accent-color: var(--brand-primary, var(--tmkeen-primary));
+}
+
+.zad-root .form-actions,
+.zad-root .toolbar,
+.zad-root .page-header__actions,
+.zad-root .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+.zad-root .form-actions {
+  margin-top: var(--space-4);
+}
+.zad-root .toolbar {
+  align-items: flex-end;
+  width: 100%;
+}
+.zad-root .toolbar .input-field {
+  flex: 1 1 14rem;
+  min-width: min(100%, 12rem);
+}
+.zad-root .toolbar--between {
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.zad-root .form-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  align-items: start;
+}
+.zad-root .form-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.zad-root .form-grid--survey-q {
+  grid-template-columns: minmax(0, 2fr) minmax(8rem, 1fr) minmax(5rem, 0.7fr) minmax(5rem, 0.7fr) auto;
+  align-items: end;
+}
+.zad-root .form-grid > * {
+  min-width: 0;
+}
+.zad-root .form-grid .full {
+  grid-column: 1 / -1;
+}
+
+.zad-root .stack-gap {
+  display: grid;
+  gap: var(--space-4);
+}
+.zad-root .meta-ltr {
+  direction: ltr;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+}
+.zad-root .survey-question-card {
+  padding: var(--space-4);
+}
+.zad-root .survey-question-card__actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+/* صف الإجراءات داخل الجداول: نفس الارتفاع، دون تصغير لمس */
+.zad-root .row-actions .btn-primary,
+.zad-root .row-actions .btn-secondary,
+.zad-root .row-actions .btn-recommend,
+.zad-root .row-actions .btn-danger {
+  min-height: var(--touch-min);
+  padding-inline: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 1100px) {
+  .zad-root .form-grid--survey-q {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .zad-root .form-grid--survey-q > :first-child,
+  .zad-root .form-grid--survey-q .full-on-mobile {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .zad-root .form-grid,
+  .zad-root .form-grid--attrs,
+  .zad-root .form-grid--survey-q {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .zad-root .form-grid--survey-q > :first-child,
+  .zad-root .form-grid--survey-q .full-on-mobile {
+    grid-column: auto;
+  }
+  .zad-root .page-header__actions,
+  .zad-root .form-actions,
+  .zad-root .toolbar,
+  .zad-root .row-actions {
+    width: 100%;
+  }
+  .zad-root .page-header__actions > .btn-primary,
+  .zad-root .page-header__actions > .btn-secondary,
+  .zad-root .page-header__actions > .btn-recommend,
+  .zad-root .page-header__actions > .btn-danger,
+  .zad-root .form-actions > .btn-primary,
+  .zad-root .form-actions > .btn-secondary,
+  .zad-root .form-actions > .btn-recommend,
+  .zad-root .form-actions > .btn-danger,
+  .zad-root .toolbar > .btn-primary,
+  .zad-root .toolbar > .btn-secondary,
+  .zad-root .toolbar > .btn-recommend {
+    flex: 1 1 auto;
+    min-width: min(100%, 10rem);
+  }
+  .zad-root .toolbar .input-field {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+}
+
+@media (min-width: 1280px) {
+  .zad-root .form-grid:not(.form-grid--single):not(.form-grid--survey-q):not(.form-grid--attrs) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5);
+  }
 }

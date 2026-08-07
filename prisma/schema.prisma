@@ -332,13 +332,16 @@ model SurveyResponse {
   id            String   @id @default(cuid())
   exhibitionId  String
   beneficiaryId String
+  /// معرّف الاستبيان داخل كتالوج المعرض (surveyQuestionsJson.surveys[].id)
+  surveyId      String   @default("default")
   answersJson   Json
   createdAt     DateTime @default(now())
 
   exhibition  Exhibition  @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
   beneficiary Beneficiary @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
 
-  @@unique([exhibitionId, beneficiaryId])
+  @@unique([exhibitionId, beneficiaryId, surveyId])
+  @@index([exhibitionId, surveyId])
   @@index([exhibitionId])
 }
 

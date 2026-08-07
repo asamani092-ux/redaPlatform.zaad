@@ -29,8 +29,10 @@ type Summary = {
   exceptionAttendance?: number;
   overrideDispenses?: number;
   piecesDispensed: number;
+  /** أفراد = المستفيد + التابعون */
+  totalIndividuals?: number;
+  /** أسر = عدد السجلات */
   beneficiaryFamilies?: number;
-  avgHouseholdSize?: number;
   byGender: Record<string, number>;
   byCity: Record<string, number>;
   byNeighborhood: Record<string, number>;
@@ -181,6 +183,14 @@ export default function ReportsPage() {
               تصدير Excel
             </a>
             <a
+              className="btn-recommend"
+              href={`/api/reports?format=presentation&html=1${exportQs}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              منشئ العرض التقديمي
+            </a>
+            <a
               className="btn-secondary"
               href={`/api/reports?format=pdf${exportQs}`}
               target="_blank"
@@ -226,9 +236,14 @@ export default function ReportsPage() {
         <>
           <div className="stat-grid">
             {[
-              ["إجمالي المستفيدين", summary.totalBeneficiaries],
-              ["الأسر المستفيدة", summary.beneficiaryFamilies ?? summary.totalBeneficiaries],
-              ["متوسط حجم الأسرة", summary.avgHouseholdSize ?? "—"],
+              [
+                "إجمالي المستفيدين",
+                summary.totalIndividuals ?? summary.totalBeneficiaries,
+              ],
+              [
+                "الأسر المستفيدة",
+                summary.beneficiaryFamilies ?? summary.totalBeneficiaries,
+              ],
               ["المدعوون", summary.invited],
               ["الحاضرون", summary.attended],
               ["استلموا", summary.received],
@@ -247,16 +262,9 @@ export default function ReportsPage() {
               fallback={summary.byAssociation}
             />
             <ShareBreakdown
-              title="مؤشر الأسر — توزيع حجم الأسرة"
+              title="توزيع الأسر حسب عدد الأفراد"
               rows={summary.byHouseholdSizeShares}
               fallback={summary.byFamilySize}
-              footer={
-                <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
-                  عدد الأسر: {summary.beneficiaryFamilies ?? summary.totalBeneficiaries}
-                  {" — "}
-                  المتوسط: {summary.avgHouseholdSize ?? "—"} (المستفيد + التابعون)
-                </p>
-              }
             />
             <ShareBreakdown
               title="نسب التوزيع حسب الحي"
