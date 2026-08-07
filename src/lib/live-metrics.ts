@@ -70,7 +70,7 @@ export async function buildLiveMetrics(exhibitionId: string) {
       exceptions,
       completionRate,
       beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
-      avgHouseholdSize: breakdowns.households.avgHouseholdSize,
+      totalIndividuals: breakdowns.households.totalIndividuals,
     },
     byAssociationShares: breakdowns.byAssociation,
     byNeighborhoodShares: breakdowns.byNeighborhood,

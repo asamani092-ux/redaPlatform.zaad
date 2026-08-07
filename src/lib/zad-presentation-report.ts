@@ -71,7 +71,7 @@ export type PresentationSummaryInput = {
   overrideDispenses?: number;
   piecesDispensed: number;
   beneficiaryFamilies?: number;
-  avgHouseholdSize?: number;
+  totalIndividuals?: number;
   byGenderShares?: ShareRow[];
   byCityShares?: ShareRow[];
   byNeighborhoodShares?: ShareRow[];
@@ -124,6 +124,8 @@ function itemLabel(attributes: Record<string, unknown>): string {
 export function buildZadPresentationReport(
   s: PresentationSummaryInput,
 ): ZadPresentationReport {
+  const families = s.beneficiaryFamilies ?? s.totalBeneficiaries;
+  const individuals = s.totalIndividuals ?? s.totalBeneficiaries;
   const gender = sharesOrRecord(s.byGenderShares, s.byGender);
   const city = sharesOrRecord(s.byCityShares, s.byCity);
   const assoc = sharesOrRecord(s.byAssociationShares, s.byAssociation);
@@ -141,9 +143,12 @@ export function buildZadPresentationReport(
     period: s.exhibitionActive ? "المعرض النشط — لقطة تشغيل" : `معرض: ${s.exhibitionName}`,
     summary: [
       {
-        text: `إجمالي المستفيدين المسجّلين في التقرير ${ar(s.totalBeneficiaries)}.`,
-        rows: [["المستفيدون", ar(s.totalBeneficiaries)]],
-        note: "عدد سجلات المستفيدين المرتبطة بالتقرير.",
+        text: `الأسر المستفيدة ${ar(families)} بإجمالي ${ar(individuals)} مستفيداً (أفراد يشملون التابعين).`,
+        rows: [
+          ["الأسر المستفيدة", ar(families)],
+          ["إجمالي المستفيدين (أفراد)", ar(individuals)],
+        ],
+        note: "الأسرة = سجل مستفيد واحد؛ الأفراد = المستفيد + التابعون.",
       },
       {
         text: `دُعي ${ar(s.invited)} وحضر ${ar(s.attended)} واستلم ${ar(s.received)} مستفيداً.`,
@@ -192,17 +197,30 @@ export function buildZadPresentationReport(
     kpis: [
       {
         label: "إجمالي المستفيدين",
-        value: ar(s.totalBeneficiaries),
-        rows: [["المستفيدون", ar(s.totalBeneficiaries)]],
-        note: "من قاعدة مستفيدي المنصة لهذا المعرض.",
+        value: ar(individuals),
+        delta: `${ar(families)} أسرة`,
+        rows: [
+          ["الأسر المستفيدة", ar(families)],
+          ["إجمالي الأفراد", ar(individuals)],
+        ],
+        note: "الأفراد = المستفيد + التابعون لكل أسرة.",
+      },
+      {
+        label: "الأسر المستفيدة",
+        value: ar(families),
+        rows: [
+          ["الأسر", ar(families)],
+          ["إجمالي الأفراد", ar(individuals)],
+        ],
+        note: "كل سجل مستفيد يُحسب أسرة واحدة.",
       },
       {
         label: "المدعوون",
         value: ar(s.invited),
-        delta: s.totalBeneficiaries
-          ? `${ar(pctOf(s.invited, s.totalBeneficiaries))}٪ من المسجّلين`
+        delta: families
+          ? `${ar(pctOf(s.invited, families))}٪ من الأسر`
           : undefined,
-        rows: [["المدعوون", ar(s.invited)], ["المسجّلون", ar(s.totalBeneficiaries)]],
+        rows: [["المدعوون", ar(s.invited)], ["الأسر", ar(families)]],
         note: "دعوات المعرض النشطة.",
       },
       {

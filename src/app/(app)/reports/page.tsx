@@ -29,8 +29,10 @@ type Summary = {
   exceptionAttendance?: number;
   overrideDispenses?: number;
   piecesDispensed: number;
+  /** أفراد = المستفيد + التابعون */
+  totalIndividuals?: number;
+  /** أسر = عدد السجلات */
   beneficiaryFamilies?: number;
-  avgHouseholdSize?: number;
   byGender: Record<string, number>;
   byCity: Record<string, number>;
   byNeighborhood: Record<string, number>;
@@ -234,7 +236,14 @@ export default function ReportsPage() {
         <>
           <div className="stat-grid">
             {[
-              ["إجمالي المستفيدين", summary.totalBeneficiaries],
+              [
+                "إجمالي المستفيدين",
+                summary.totalIndividuals ?? summary.totalBeneficiaries,
+              ],
+              [
+                "الأسر المستفيدة",
+                summary.beneficiaryFamilies ?? summary.totalBeneficiaries,
+              ],
               ["المدعوون", summary.invited],
               ["الحاضرون", summary.attended],
               ["استلموا", summary.received],
@@ -253,7 +262,7 @@ export default function ReportsPage() {
               fallback={summary.byAssociation}
             />
             <ShareBreakdown
-              title="توزيع حسب عدد الأفراد (المستفيد + التابعون)"
+              title="توزيع الأسر حسب عدد الأفراد"
               rows={summary.byHouseholdSizeShares}
               fallback={summary.byFamilySize}
             />
