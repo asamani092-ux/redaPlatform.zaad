@@ -7,6 +7,7 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { Chip } from "@/components/ui/Chip";
+import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
 
 type Row = {
   id: string;
@@ -38,6 +39,7 @@ export default function InvitesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [invitedTotal, setInvitedTotal] = useState(0);
+  const [waLogOpen, setWaLogOpen] = useState(false);
   const toast = useToast();
 
   async function loadPick(search = q, p = 1) {
@@ -283,10 +285,22 @@ export default function InvitesPage() {
             >
               طباعة قائمة المدعوين ({invitedTotal})
             </button>
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() => setWaLogOpen(true)}
+            >
+              حالة واتساب
+            </button>
           </>
         }
       />
       {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
+      <WhatsAppLogModal
+        open={waLogOpen}
+        onClose={() => setWaLogOpen(false)}
+        channel="invite"
+      />
 
       <section className="panel">
         <div className="toolbar">

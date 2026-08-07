@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Chip } from "@/components/ui/Chip";
+import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
 
 type ResponseRow = {
   id: string;
@@ -49,6 +50,7 @@ export default function SurveyPage() {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"responses" | "admin">(isAdmin ? "admin" : "responses");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [waLogOpen, setWaLogOpen] = useState(false);
   const toast = useToast();
 
   const selected = surveys.find((s) => s.id === selectedId) ?? surveys[0] ?? null;
@@ -212,6 +214,13 @@ export default function SurveyPage() {
             >
               إرسال للمستفيدين
             </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setWaLogOpen(true)}
+            >
+              حالة واتساب
+            </button>
             {isAdmin ? (
               <button type="button" className="btn-primary" onClick={addSurvey}>
                 استبيان جديد
@@ -221,6 +230,11 @@ export default function SurveyPage() {
         }
       />
       {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
+      <WhatsAppLogModal
+        open={waLogOpen}
+        onClose={() => setWaLogOpen(false)}
+        channel="survey"
+      />
 
       <div className="toolbar" style={{ marginBottom: "var(--space-3)" }}>
         <label className="label-field" style={{ margin: 0 }}>
