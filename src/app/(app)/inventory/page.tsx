@@ -261,10 +261,10 @@ export default function InventoryPage() {
                   </td>
                   <td>
                     <div className="row-actions">
-                      <button type="button" className="btn-secondary" onClick={() => openEdit(i)}>
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => openEdit(i)}>
                         تعديل
                       </button>
-                      <button type="button" className="btn-secondary" onClick={() => openMove(i.id)}>
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => openMove(i.id)}>
                         حركة
                       </button>
                     </div>

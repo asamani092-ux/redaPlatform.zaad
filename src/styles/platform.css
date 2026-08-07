@@ -196,6 +196,28 @@
   }
 }
 
+/* تصفح الصفحات — بلا إطار فلتر مزدوج */
+.pagination-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+  padding: var(--space-2) 0;
+}
+.pagination-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.pagination-bar__meta,
+.pagination-bar__page {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
 /* سجل واتساب — فلاتر مضغوطة داخل النافذة */
 .wa-log__summary {
   display: flex;
@@ -224,4 +246,12 @@
   display: grid;
   gap: var(--space-1);
   min-width: 8rem;
+}
+
+/* صور QR داخل الجداول — أصغر لتفادي ازدحام الأعمدة */
+.table-wrap td[data-label="QR"] img,
+.table-wrap td img[alt^="QR"] {
+  width: 2.75rem;
+  height: 2.75rem;
+  object-fit: contain;
 }

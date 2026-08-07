@@ -421,7 +421,7 @@ export default function SurveyPage() {
                       <div className="survey-question-card__actions">
                         <button
                           type="button"
-                          className="btn-danger"
+                          className="btn-danger btn-sm"
                           onClick={() =>
                             patchSelected({
                               questions: selected.questions.filter((_, i) => i !== idx),
@@ -479,7 +479,7 @@ export default function SurveyPage() {
               ) : null}
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary btn-sm"
                 disabled={!total || !selected}
                 onClick={() =>
                   window.open(
@@ -493,7 +493,7 @@ export default function SurveyPage() {
               </button>
             </div>
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap table-wrap--stack">
             <table>
               <thead>
                 <tr>

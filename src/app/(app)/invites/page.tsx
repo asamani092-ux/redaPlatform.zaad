@@ -319,7 +319,7 @@ export default function InvitesPage() {
             }}
           />
           <button
-            className="btn-secondary"
+            className="btn-secondary btn-sm"
             type="button"
             onClick={() => void (view === "invited" ? loadInvited(page) : loadPick(q, 1))}
           >
@@ -327,14 +327,14 @@ export default function InvitesPage() {
           </button>
           <button
             type="button"
-            className={view === "pick" ? "btn-primary" : "btn-secondary"}
+            className={`${view === "pick" ? "btn-primary" : "btn-secondary"} btn-sm`}
             onClick={() => void switchView("pick")}
           >
             اختيار للدعوة
           </button>
           <button
             type="button"
-            className={view === "invited" ? "btn-primary" : "btn-secondary"}
+            className={`${view === "invited" ? "btn-primary" : "btn-secondary"} btn-sm`}
             onClick={() => void switchView("invited")}
           >
             المدعوون فقط ({invitedTotal})
@@ -439,14 +439,16 @@ export default function InvitesPage() {
                   </td>
                   {view === "invited" ? (
                     <td data-label="إجراءات">
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        disabled={busy}
-                        onClick={() => void resendWhatsApp([r.id])}
-                      >
-                        {resendingId === r.id ? "جاري…" : "إعادة إرسال"}
-                      </button>
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          disabled={busy}
+                          onClick={() => void resendWhatsApp([r.id])}
+                        >
+                          {resendingId === r.id ? "جاري…" : "إعادة إرسال"}
+                        </button>
+                      </div>
                     </td>
                   ) : null}
                 </tr>

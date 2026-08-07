@@ -299,7 +299,6 @@ button {
 .page-stack > * {
   min-width: 0;
   max-width: 100%;
-  overflow-x: clip;
 }
 
 /* اللوحة التي تحوي جدولاً لا تقطع التمرير الأفقي الداخلي */
@@ -311,40 +310,58 @@ button {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
   flex-wrap: wrap;
+}
+
+.page-header__text {
+  flex: 1 1 14rem;
+  min-width: 0;
 }
 
 .page-header__title {
   margin: 0;
-  font-size: clamp(1.4rem, 2vw, 1.85rem);
-  font-weight: 800;
-  color: var(--tmkeen-primary);
-  line-height: 1.25;
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  font-weight: var(--weight-black, 800);
+  color: var(--text-brand, var(--tmkeen-primary));
+  line-height: var(--leading-tight, 1.25);
 }
 
 .page-header__desc {
-  margin: 0.35rem 0 0;
-  font-size: 0.92rem;
-  color: var(--tmkeen-brand-gray);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary, var(--tmkeen-brand-gray));
   max-width: 42rem;
 }
 
 .page-header__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
   align-items: center;
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  max-width: 100%;
 }
 
 .panel {
-  background: #fff;
-  border: 1px solid var(--tmkeen-surface-border);
-  border-radius: 0.9rem;
-  padding: 1.25rem 1.35rem;
+  background: var(--surface-raised, #fff);
+  border: var(--border-hairline, 1px) solid var(--border-subtle, var(--tmkeen-surface-border));
+  border-radius: var(--radius-lg, 0.9rem);
+  padding: var(--space-4) var(--space-5);
   min-width: 0;
   max-width: 100%;
   overflow: visible;
+}
+
+/* فلتر داخل لوحة: بلا إطار مزدوج */
+.panel > .zad-filter-bar,
+.panel > .toolbar {
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  margin-block-end: var(--space-3);
 }
 
 .panel-title {
@@ -461,9 +478,9 @@ textarea.input-field {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
-  border: 1px solid var(--tmkeen-surface-border);
-  border-radius: 0.8rem;
-  background: #fff;
+  border: var(--border-hairline, 1px) solid var(--border-subtle, var(--tmkeen-surface-border));
+  border-radius: var(--radius-md, 0.8rem);
+  background: var(--surface-raised, #fff);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -485,22 +502,30 @@ textarea.input-field {
 
 .table-wrap th,
 .table-wrap td {
-  padding: 0.7rem 0.85rem;
-  border-bottom: 1px solid var(--tmkeen-surface-border);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border-hairline, 1px) solid var(--border-subtle, var(--tmkeen-surface-border));
   text-align: start;
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   vertical-align: middle;
 }
 
 .table-wrap th {
-  background: rgba(139, 21, 56, 0.05);
-  color: var(--tmkeen-primary);
-  font-weight: 800;
+  background: color-mix(in srgb, var(--brand-primary, var(--tmkeen-primary)) 6%, transparent);
+  color: var(--text-brand, var(--tmkeen-primary));
+  font-weight: var(--weight-bold, 800);
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 
 .table-wrap tr:last-child td {
   border-bottom: none;
+}
+
+.table-wrap .input-field {
+  min-height: 2.25rem;
+  padding-block: var(--space-1);
+  padding-inline: var(--space-2);
+  font-size: var(--text-sm);
 }
 
 /* خلايا الأرقام (هوية/جوال) LTR لكن محاذاتها تبقى تحت رأس العمود RTL */
@@ -517,12 +542,13 @@ textarea.input-field {
   position: sticky;
   inset-inline-start: 0;
   z-index: 1;
-  background: #fff;
-  box-shadow: -6px 0 10px -8px rgba(139, 21, 56, 0.18);
+  background: var(--surface-raised, #fff);
+  box-shadow: calc(var(--space-2) * -1) 0 var(--space-3) calc(var(--space-2) * -1)
+    color-mix(in srgb, var(--brand-primary, var(--tmkeen-primary)) 18%, transparent);
 }
 
 .table-wrap--sticky-name th:first-child {
-  background: rgba(139, 21, 56, 0.05);
+  background: color-mix(in srgb, var(--brand-primary, var(--tmkeen-primary)) 6%, transparent);
   z-index: 2;
 }
 
@@ -797,7 +823,7 @@ textarea.input-field {
     border-left: 1px solid var(--tmkeen-surface-border);
     pointer-events: none;
     visibility: hidden;
-    z-index: 50;
+    z-index: var(--z-sticky);
   }
 
   .app-sidebar.is-open {
@@ -816,7 +842,7 @@ textarea.input-field {
 
   .app-menu-btn {
     position: relative;
-    z-index: 60;
+    z-index: calc(var(--z-sticky) + 1);
     flex-shrink: 0;
   }
 
@@ -826,7 +852,7 @@ textarea.input-field {
     max-width: 100%;
     min-width: 0;
     padding-top: max(0.75rem, env(safe-area-inset-top));
-    z-index: 55;
+    z-index: var(--z-sticky);
   }
 
   .app-backdrop {
@@ -834,8 +860,8 @@ textarea.input-field {
     position: fixed;
     inset: 0;
     border: 0;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: 45;
+    background: color-mix(in srgb, var(--neutral-900, #000) 40%, transparent);
+    z-index: calc(var(--z-sticky) - 1);
   }
 
   .app-content {
@@ -899,10 +925,16 @@ textarea.input-field {
     width: 100%;
   }
 
+  /* رأس الصفحة: أزرار بعرض كامل لتفادي تداخل النصوص الطويلة */
   .page-header__actions .btn-primary,
   .page-header__actions .btn-secondary,
   .page-header__actions .btn-recommend,
-  .page-header__actions .btn-danger,
+  .page-header__actions .btn-danger {
+    flex: 1 1 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
   .form-actions .btn-primary,
   .form-actions .btn-secondary,
   .form-actions .btn-recommend,
@@ -915,7 +947,7 @@ textarea.input-field {
   .row-actions .btn-secondary,
   .row-actions .btn-recommend,
   .row-actions .btn-danger {
-    flex: 1 1 calc(50% - 0.35rem);
+    flex: 1 1 calc(50% - var(--space-1));
     min-width: 0;
     justify-content: center;
   }
@@ -1065,17 +1097,17 @@ textarea.input-field {
 .modal-root {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-modal);
   display: grid;
   place-items: center;
-  padding: 1rem;
+  padding: var(--space-4);
 }
 
 .modal-backdrop {
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: color-mix(in srgb, var(--neutral-900, #000) 45%, transparent);
   cursor: pointer;
 }
 
@@ -1088,12 +1120,12 @@ textarea.input-field {
   background: var(--surface-raised, #fff);
   border-radius: var(--radius-xl, 1rem);
   border: var(--border-hairline, 1px) solid var(--border-subtle, var(--tmkeen-surface-border));
-  box-shadow: 0 16px 48px rgba(40, 10, 20, 0.18);
-  padding: 1.1rem 1.2rem 1.25rem;
+  box-shadow: var(--shadow-lg, 0 16px 48px rgba(40, 10, 20, 0.18));
+  padding: var(--space-4) var(--space-5);
 }
 
 .modal-panel--wide {
-  width: min(100%, 48rem);
+  width: min(100%, 52rem);
 }
 
 @media (min-width: 1100px) {
@@ -1106,27 +1138,33 @@ textarea.input-field {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--tmkeen-surface-border);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-hairline, 1px) solid var(--border-subtle, var(--tmkeen-surface-border));
 }
 
 .modal-title {
   margin: 0;
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--tmkeen-primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold, 800);
+  color: var(--text-brand, var(--tmkeen-primary));
 }
 
 .modal-close {
-  padding: 0.4rem 0.75rem !important;
-  font-size: 0.85rem !important;
+  flex-shrink: 0;
 }
 
 .modal-body {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-3);
+}
+
+.idle-warning-root {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: color-mix(in srgb, var(--neutral-900, #000) 45%, transparent);
 }
 
 .scan-box {

@@ -353,13 +353,13 @@ export default function ReportsPage() {
                           <div className="row-actions">
                             <button
                               type="button"
-                              className="btn-secondary"
+                              className="btn-secondary btn-sm"
                               onClick={() => void copyUrl(l.url)}
                             >
                               نسخ
                             </button>
                             <a
-                              className="btn-secondary"
+                              className="btn-secondary btn-sm"
                               href={l.url}
                               target="_blank"
                               rel="noreferrer"
@@ -368,7 +368,7 @@ export default function ReportsPage() {
                             </a>
                             <button
                               type="button"
-                              className="btn-danger"
+                              className="btn-danger btn-sm"
                               disabled={liveBusy}
                               onClick={() => void deleteLiveLink(l.id)}
                             >

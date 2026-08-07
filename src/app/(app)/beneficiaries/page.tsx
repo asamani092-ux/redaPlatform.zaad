@@ -339,7 +339,7 @@ export default function BeneficiariesPage() {
               }
             }}
           />
-          <button type="button" className="btn-primary" onClick={() => void load(q, 1)}>
+          <button type="button" className="btn-primary btn-sm" onClick={() => void load(q, 1)}>
             بحث
           </button>
         </FilterBar>
@@ -366,8 +366,7 @@ export default function BeneficiariesPage() {
                   <td data-label="الاسم">
                     <button
                       type="button"
-                      className="btn-secondary"
-                      style={{ paddingInline: "var(--space-3)" }}
+                      className="btn-secondary btn-sm"
                       onClick={() => setDrawerId(r.id)}
                     >
                       {r.name}
@@ -391,14 +390,14 @@ export default function BeneficiariesPage() {
                       <div className="row-actions">
                         <button
                           type="button"
-                          className="btn-secondary"
+                          className="btn-secondary btn-sm"
                           onClick={() => openEdit(r)}
                         >
                           تعديل
                         </button>
                         <button
                           type="button"
-                          className="btn-danger"
+                          className="btn-danger btn-sm"
                           onClick={() => {
                             setDeleteConfirmText("");
                             setDeleting(r);

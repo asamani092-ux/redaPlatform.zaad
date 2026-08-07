@@ -47,7 +47,7 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="modal-root modal-overlay" role="presentation">
+    <div className="modal-root" role="presentation">
       <button
         type="button"
         className="modal-backdrop"
@@ -56,7 +56,7 @@ export function Modal({
       />
       <div
         ref={panelRef}
-        className={`modal-panel card ${wide ? "modal-panel--wide wide" : ""}`}
+        className={`modal-panel${wide ? " modal-panel--wide" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -68,7 +68,7 @@ export function Modal({
           </h2>
           <button
             type="button"
-            className="btn-secondary modal-close"
+            className="btn-secondary btn-sm modal-close"
             onClick={() => onCloseRef.current()}
           >
             إغلاق
