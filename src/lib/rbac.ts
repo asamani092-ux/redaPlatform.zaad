@@ -25,7 +25,8 @@ export type AppPermission =
   | "reports:export"
   | "users:manage"
   | "survey:manage"
-  | "audit:view";
+  | "audit:view"
+  | "messages:view";
 
 const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
   ADMIN: [
@@ -45,12 +46,24 @@ const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
     "users:manage",
     "survey:manage",
     "audit:view",
+    "messages:view",
   ],
-  REGISTRATION: ["beneficiaries:manage", "beneficiaries:view", "invites:manage"],
+  REGISTRATION: [
+    "beneficiaries:manage",
+    "beneficiaries:view",
+    "invites:manage",
+    "messages:view",
+  ],
   RECEPTION: ["beneficiaries:view", "attendance:manage", "attendance:exception"],
-  DISTRIBUTION: ["dispense:manage", "dispense:override"],
+  DISTRIBUTION: ["dispense:manage", "dispense:override", "messages:view"],
   INVENTORY: ["inventory:manage"],
-  REPORTS: ["dashboard:view", "reports:view", "reports:export", "survey:manage"],
+  REPORTS: [
+    "dashboard:view",
+    "reports:view",
+    "reports:export",
+    "survey:manage",
+    "messages:view",
+  ],
 };
 
 export type NavItem = {
@@ -68,6 +81,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/inventory", label: "المخزون", permission: "inventory:manage" },
   { href: "/reports", label: "التقارير", permission: "reports:view" },
   { href: "/survey", label: "الاستبيان", permission: "survey:manage" },
+  { href: "/messages", label: "سجل واتساب", permission: "messages:view" },
   { href: "/exhibitions", label: "المعارض", permission: "exhibitions:manage" },
   { href: "/settings", label: "الإعدادات", permission: "settings:manage" },
   { href: "/users", label: "المستخدمون", permission: "users:manage" },
@@ -116,6 +130,7 @@ export function canAccessPath(role: Role, pathname: string): boolean {
     { prefix: "/reports", permission: "reports:view" },
     { prefix: "/users", permission: "users:manage" },
     { prefix: "/survey", permission: "survey:manage" },
+    { prefix: "/messages", permission: "messages:view" },
     { prefix: "/audit", permission: "audit:view" },
   ];
 

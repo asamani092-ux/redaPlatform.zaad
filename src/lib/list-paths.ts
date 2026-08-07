@@ -12,4 +12,5 @@ export const LIST_PATHS = [
   { id: "attendance.recent", route: "GET /api/attendance", pageSize: 50 },
   { id: "dispense.recent", route: "GET /api/dispense", pageSize: 50 },
   { id: "liveLinks.list", route: "GET /api/live-links", pageSize: 50 },
+  { id: "messages.list", route: "GET /api/messages", pageSize: 50 },
 ] as const;
