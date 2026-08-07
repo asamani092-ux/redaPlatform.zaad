@@ -642,13 +642,13 @@
   justify-content: flex-start;
 }
 
-/* صف الإجراءات داخل الجداول: نفس الارتفاع، دون تصغير لمس */
+/* صف الإجراءات داخل الجداول — نفس مقاس الأزرار المضغوط */
 .zad-root .row-actions .btn-primary,
 .zad-root .row-actions .btn-secondary,
 .zad-root .row-actions .btn-recommend,
 .zad-root .row-actions .btn-danger {
-  min-height: var(--touch-min);
-  padding-inline: var(--space-4);
+  min-height: 2.25rem;
+  padding-inline: var(--space-3);
   font-size: var(--text-sm);
 }
 
