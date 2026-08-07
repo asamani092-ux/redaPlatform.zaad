@@ -315,8 +315,6 @@ export async function GET(req: NextRequest) {
       ["المؤشر", "القيمة"],
       ["المعرض", exhibition.name],
       ["إجمالي المستفيدين", summary.totalBeneficiaries],
-      ["عدد الأسر المستفيدة", summary.beneficiaryFamilies],
-      ["متوسط حجم الأسرة", summary.avgHouseholdSize],
       ["المدعوون", summary.invited],
       ["الحضور", summary.attended],
       ["المستلمون", summary.received],
@@ -398,7 +396,7 @@ export async function GET(req: NextRequest) {
       rowsShare.forEach((r) => sheet.addRow([r.key, r.count, r.percent]));
     };
     addShareSheet("حسب الجمعية", breakdowns.byAssociation);
-    addShareSheet("حسب حجم الأسرة", breakdowns.households.byHouseholdSize);
+    addShareSheet("حسب عدد الأفراد", breakdowns.households.byHouseholdSize);
     addShareSheet("حسب الحي", breakdowns.byNeighborhood);
     addShareSheet("حسب الجنس", breakdowns.byGender);
     addShareSheet("حسب المدينة", breakdowns.byCity);
@@ -442,7 +440,7 @@ export async function GET(req: NextRequest) {
     sections.push(shareTable("التوزيع حسب الجمعية", breakdowns.byAssociation));
     sections.push(shareTable("التوزيع حسب الحي", breakdowns.byNeighborhood));
     sections.push(
-      shareTable("توزيع حجم الأسرة", breakdowns.households.byHouseholdSize),
+      shareTable("توزيع عدد الأفراد", breakdowns.households.byHouseholdSize),
     );
     sections.push(`
       <section>
@@ -490,8 +488,6 @@ export async function GET(req: NextRequest) {
       subtitle: exhibition.active ? "المعرض النشط حالياً" : "معرض غير نشط (أرشيف)",
       tiles: [
         { label: "إجمالي المستفيدين", value: summary.totalBeneficiaries },
-        { label: "الأسر المستفيدة", value: summary.beneficiaryFamilies },
-        { label: "متوسط حجم الأسرة", value: summary.avgHouseholdSize },
         { label: "المدعوون", value: summary.invited },
         { label: "الحاضرون", value: summary.attended },
         { label: "استلموا", value: summary.received },

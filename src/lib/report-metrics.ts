@@ -45,19 +45,21 @@ export type HouseholdMetrics = {
   byHouseholdSize: ShareRow[];
 };
 
-/** أسر مستفيدة: كل مستفيد = أسرة؛ أ+ب داخل المؤشر */
+/**
+ * توزيع عدد الأفراد (مستفيد+تابعون) لكل سجل.
+ * ملاحظة: beneficiaryFamilies ≡ عدد السجلات فلا يُعرض كمؤشر منفصل عن إجمالي المستفيدين.
+ * Time: O(n)؛ Space: O(k) لأحجام التوزيع.
+ */
 export function buildHouseholdMetrics(dependentsCounts: number[]): HouseholdMetrics {
   const sizes = dependentsCounts.map(householdSize);
-  const beneficiaryFamilies = sizes.length;
+  const n = sizes.length;
   const avgHouseholdSize =
-    beneficiaryFamilies > 0
-      ? Math.round((sizes.reduce((s, n) => s + n, 0) / beneficiaryFamilies) * 10) / 10
-      : 0;
+    n > 0 ? Math.round((sizes.reduce((s, v) => s + v, 0) / n) * 10) / 10 : 0;
   const byHouseholdSize = toShareRows(
-    groupCount(sizes.map((n) => String(n))),
-    beneficiaryFamilies,
+    groupCount(sizes.map((v) => String(v))),
+    n,
   );
-  return { beneficiaryFamilies, avgHouseholdSize, byHouseholdSize };
+  return { beneficiaryFamilies: n, avgHouseholdSize, byHouseholdSize };
 }
 
 export type BreakdownShares = {

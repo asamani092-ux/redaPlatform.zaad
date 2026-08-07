@@ -235,8 +235,6 @@ export default function ReportsPage() {
           <div className="stat-grid">
             {[
               ["إجمالي المستفيدين", summary.totalBeneficiaries],
-              ["الأسر المستفيدة", summary.beneficiaryFamilies ?? summary.totalBeneficiaries],
-              ["متوسط حجم الأسرة", summary.avgHouseholdSize ?? "—"],
               ["المدعوون", summary.invited],
               ["الحاضرون", summary.attended],
               ["استلموا", summary.received],
@@ -255,16 +253,9 @@ export default function ReportsPage() {
               fallback={summary.byAssociation}
             />
             <ShareBreakdown
-              title="مؤشر الأسر — توزيع حجم الأسرة"
+              title="توزيع حسب عدد الأفراد (المستفيد + التابعون)"
               rows={summary.byHouseholdSizeShares}
               fallback={summary.byFamilySize}
-              footer={
-                <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
-                  عدد الأسر: {summary.beneficiaryFamilies ?? summary.totalBeneficiaries}
-                  {" — "}
-                  المتوسط: {summary.avgHouseholdSize ?? "—"} (المستفيد + التابعون)
-                </p>
-              }
             />
             <ShareBreakdown
               title="نسب التوزيع حسب الحي"

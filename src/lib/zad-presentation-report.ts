@@ -124,7 +124,6 @@ function itemLabel(attributes: Record<string, unknown>): string {
 export function buildZadPresentationReport(
   s: PresentationSummaryInput,
 ): ZadPresentationReport {
-  const families = s.beneficiaryFamilies ?? s.totalBeneficiaries;
   const gender = sharesOrRecord(s.byGenderShares, s.byGender);
   const city = sharesOrRecord(s.byCityShares, s.byCity);
   const assoc = sharesOrRecord(s.byAssociationShares, s.byAssociation);
@@ -142,13 +141,9 @@ export function buildZadPresentationReport(
     period: s.exhibitionActive ? "المعرض النشط — لقطة تشغيل" : `معرض: ${s.exhibitionName}`,
     summary: [
       {
-        text: `إجمالي المستفيدين المسجّلين ${ar(s.totalBeneficiaries)} يمثلون ${ar(families)} أسرة بمتوسط حجم ${ar(s.avgHouseholdSize ?? "—")}.`,
-        rows: [
-          ["المستفيدون", ar(s.totalBeneficiaries)],
-          ["الأسر", ar(families)],
-          ["متوسط حجم الأسرة", ar(s.avgHouseholdSize ?? "—")],
-        ],
-        note: "حجم الأسرة = المستفيد + التابعون.",
+        text: `إجمالي المستفيدين المسجّلين في التقرير ${ar(s.totalBeneficiaries)}.`,
+        rows: [["المستفيدون", ar(s.totalBeneficiaries)]],
+        note: "عدد سجلات المستفيدين المرتبطة بالتقرير.",
       },
       {
         text: `دُعي ${ar(s.invited)} وحضر ${ar(s.attended)} واستلم ${ar(s.received)} مستفيداً.`,
@@ -182,11 +177,14 @@ export function buildZadPresentationReport(
       ...(household[0]
         ? [
             {
-              text: `أكثر أحجام الأسر شيوعاً: ${household[0].key} أفراد (${ar(household[0].percent)}٪).`,
+              text: `أكثر تكرار لعدد الأفراد في السجل: ${household[0].key} (${ar(household[0].percent)}٪).`,
               rows: household
                 .slice(0, 5)
-                .map((r): [string, string] => [`حجم ${r.key}`, `${ar(r.count)} (${ar(r.percent)}٪)`]),
-              note: "مؤشر الأسر المستفيدة.",
+                .map((r): [string, string] => [
+                  `${r.key} أفراد`,
+                  `${ar(r.count)} (${ar(r.percent)}٪)`,
+                ]),
+              note: "عدد الأفراد = المستفيد + التابعون لكل سجل.",
             },
           ]
         : []),
@@ -195,11 +193,7 @@ export function buildZadPresentationReport(
       {
         label: "إجمالي المستفيدين",
         value: ar(s.totalBeneficiaries),
-        delta: `${ar(families)} أسرة`,
-        rows: [
-          ["الأسر المستفيدة", ar(families)],
-          ["متوسط حجم الأسرة", ar(s.avgHouseholdSize ?? "—")],
-        ],
+        rows: [["المستفيدون", ar(s.totalBeneficiaries)]],
         note: "من قاعدة مستفيدي المنصة لهذا المعرض.",
       },
       {
