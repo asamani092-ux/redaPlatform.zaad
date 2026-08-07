@@ -22,7 +22,7 @@ export function FilterBar({
         </div>
       ) : null}
       {onClear ? (
-        <button type="button" className="btn-secondary" onClick={onClear}>
+        <button type="button" className="btn-secondary btn-sm" onClick={onClear}>
           مسح
         </button>
       ) : null}

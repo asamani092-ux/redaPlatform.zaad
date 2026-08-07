@@ -1,9 +1,16 @@
 import type { ShareRow, TopDispensedItem } from "@/lib/report-metrics";
 
-/** عقد بيانات منشئ العرض التقديمي (نظام التصميم — window.ZAD_REPORT) */
+/** عقد بيانات منشئ العرض التقديمي (نظام التصميم v1.2.11 — window.ZAD_REPORT) */
 export type ZadPresentationReport = {
   title: string;
   period: string;
+  /** اسم الجهة على الغلاف والخاتمة */
+  orgName?: string;
+  /** السطر الثانوي (قسم/إدارة) — aliases: orgLine, closingLine */
+  deptName?: string;
+  orgLine?: string;
+  closingLine?: string;
+  closingTitle?: string;
   summary: Array<{ text: string; rows: [string, string][]; note?: string }>;
   kpis: Array<{
     label: string;
@@ -47,10 +54,13 @@ export type ZadPresentationReport = {
     note?: string;
   }>;
   evidence: Array<{
+    type?: "image" | "video";
     src: string;
+    poster?: string;
     caption: string;
     tag: string;
     note?: string;
+    rows?: [string, string][];
   }>;
   disb: Array<{
     label: string;
@@ -141,6 +151,9 @@ export function buildZadPresentationReport(
   return {
     title: `تقرير معرض ${s.exhibitionName}`,
     period: s.exhibitionActive ? "المعرض النشط — لقطة تشغيل" : `معرض: ${s.exhibitionName}`,
+    orgName: "منصة رداء",
+    deptName: s.exhibitionName,
+    closingTitle: "شكراً لكم",
     summary: [
       {
         text: `الأسر المستفيدة ${ar(families)} بإجمالي ${ar(individuals)} مستفيداً (أفراد يشملون التابعين).`,

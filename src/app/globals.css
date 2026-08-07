@@ -2,7 +2,8 @@
 @import "tailwindcss";
 @import "@zaad/design-system/tokens.css";
 @import "@zaad/design-system/components.css";
-@import "../styles/zaad-addons.css";
+@import "@zaad/design-system/zaad-addons.css";
+@import "../styles/platform.css";
 
 @theme inline {
   --color-primary: var(--brand-primary);
@@ -395,7 +396,7 @@ button {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
 }
 
-/* شبكة أسئلة الاستبيان: التعريف الكامل في zaad-addons (.zad-root) */
+/* شبكة أسئلة الاستبيان: التعريف الكامل في platform.css (.zad-root) */
 
 .row-actions {
   display: flex;
@@ -404,7 +405,7 @@ button {
   align-items: center;
 }
 
-/* أحجام الأزرار موحّدة من zaad-addons — لا تصغير هنا */
+/* مقاسات الأزرار من الحزمة: .btn-sm (36) | md (44) | .btn-lg (52) */
 
 .form-actions {
   display: flex;

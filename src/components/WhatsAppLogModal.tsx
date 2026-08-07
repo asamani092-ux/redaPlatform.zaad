@@ -275,7 +275,7 @@ export function WhatsAppLogModal({
             </select>
             <button
               type="button"
-              className="btn-secondary"
+              className="btn-secondary btn-sm"
               disabled={busy}
               onClick={() => void load(1)}
             >
@@ -353,7 +353,7 @@ export function WhatsAppLogModal({
                           {canEditMobile ? (
                             <button
                               type="button"
-                              className="btn-secondary"
+                              className="btn-secondary btn-sm"
                               disabled={busyRow}
                               onClick={() => void saveMobile(r)}
                             >
@@ -363,7 +363,7 @@ export function WhatsAppLogModal({
                           {channel === "invite" && canResendInvite ? (
                             <button
                               type="button"
-                              className="btn-recommend"
+                              className="btn-recommend btn-sm"
                               disabled={busyRow || !r.hasInvite}
                               onClick={() => void resend(r, "INVITATION")}
                             >
@@ -373,7 +373,7 @@ export function WhatsAppLogModal({
                           {channel === "survey" && canResendSurvey ? (
                             <button
                               type="button"
-                              className="btn-primary"
+                              className="btn-primary btn-sm"
                               disabled={busyRow}
                               onClick={() => void resend(r, "SURVEY")}
                             >

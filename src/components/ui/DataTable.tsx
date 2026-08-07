@@ -21,7 +21,7 @@ export function DataTable({
   if (loading) {
     return (
       <div
-        className={`table-wrap zad-data-table ${className}`.trim()}
+        className={`table-wrap zad-table-wrap zad-data-table ${className}`.trim()}
         role="status"
         aria-live="polite"
         aria-busy="true"
@@ -33,10 +33,14 @@ export function DataTable({
   }
   if (empty) {
     return (
-      <div className={`table-wrap zad-data-table ${className}`.trim()}>
+      <div className={`table-wrap zad-table-wrap zad-data-table ${className}`.trim()}>
         <EmptyState title={emptyTitle} body={emptyBody} />
       </div>
     );
   }
-  return <div className={`table-wrap zad-data-table ${className}`.trim()}>{children}</div>;
+  return (
+    <div className={`table-wrap zad-table-wrap zad-data-table ${className}`.trim()}>
+      {children}
+    </div>
+  );
 }

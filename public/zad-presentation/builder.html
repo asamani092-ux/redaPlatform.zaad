@@ -40,11 +40,186 @@
       .zrp-kpis { grid-template-columns: 1fr 1fr !important; }
       .zrp-evidence { grid-template-columns: 1fr 1fr !important; }
     }
+    .zrp-donut {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      flex-shrink: 0;
+      border-radius: 9999px;
+      padding: 10px;
+      background:
+        radial-gradient(circle at 32% 28%, rgba(255,255,255,0.18), transparent 42%),
+        linear-gradient(145deg, rgba(233,178,33,0.22), rgba(149,23,64,0.08));
+      box-shadow:
+        0 18px 48px rgba(15, 5, 10, 0.35),
+        0 0 0 1px rgba(255,255,255,0.08);
+    }
+    .zrp-donut__ring {
+      width: 100%;
+      height: 100%;
+      border-radius: 9999px;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.12),
+        0 8px 24px rgba(0,0,0,0.22);
+      transition: transform 0.45s cubic-bezier(.16,1,.3,1);
+    }
+    .zrp-donut:hover .zrp-donut__ring { transform: rotate(6deg) scale(1.02); }
+    .zrp-donut__hole {
+      position: absolute;
+      inset: 22%;
+      border-radius: 9999px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.12),
+        0 0 0 8px rgba(233,178,33,0.12),
+        0 10px 28px rgba(0,0,0,0.28);
+    }
+    .zrp-donut__label {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      opacity: 0.72;
+    }
+    .zrp-donut__value {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      color: #e9b221;
+    }
+    .zrp-dist-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 9999px;
+      flex-shrink: 0;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.25), 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .zrp-evidence-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      image-rendering: auto;
+      -webkit-backface-visibility: hidden;
+      transform: translateZ(0);
+    }
+    .zrp-media-view {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      pointer-events: none;
+    }
+    .zrp-media-view__backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 3, 6, 0.92);
+      pointer-events: auto;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+    .zrp-media-view__panel {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      pointer-events: auto;
+    }
+    .zrp-media-view__stage {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      overflow: auto;
+      border-radius: 16px;
+      background: rgba(0,0,0,0.35);
+      padding: 12px;
+    }
+    .zrp-media-view__img {
+      max-width: 100%;
+      max-height: calc(100% - 8px);
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      image-rendering: auto;
+      transform-origin: center center;
+      transition: transform 0.2s ease;
+      border-radius: 8px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.45);
+    }
+    .zrp-media-view__video {
+      width: min(960px, 96%);
+      max-height: min(62vh, 100%);
+      border-radius: 12px;
+      background: #000;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.45);
+    }
+    .zrp-media-view__controls {
+      width: min(960px, 96%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: rgba(15,5,10,0.85);
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .zrp-media-view__seek {
+      flex: 1;
+      min-width: 140px;
+      accent-color: #e9b221;
+      cursor: pointer;
+    }
+    .zrp-media-view__time {
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.85);
+      font-variant-numeric: tabular-nums;
+      direction: ltr;
+      min-width: 7.5rem;
+      text-align: center;
+    }
+    .zrp-media-view__bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 0 4px 12px;
+      color: #fff;
+    }
+    .zrp-media-view__btn {
+      border: 1px solid rgba(255,255,255,0.28);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .zrp-media-view__btn:hover { border-color: #e9b221; color: #e9b221; }
+    .zrp-media-view__btn.is-active { background: #e9b221; color: #65102a; border-color: #e9b221; }
     @media (max-width: 520px) {
       .zrp-kpis { grid-template-columns: 1fr !important; }
       .zrp-evidence { grid-template-columns: 1fr 1fr !important; }
       .zrp-dist { gap: 28px !important; justify-content: center; }
       .zrp-controls { padding: 14px 18px !important; }
+      .zrp-donut { width: 220px; height: 220px; }
+      .zrp-donut__value { font-size: 22px; }
     }
   </style>
 </helmet>
@@ -101,6 +276,12 @@
               <input value="{{ titleVal }}" onInput="{{ onTitle }}" style="width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 11px 14px; font-family: inherit; font-size: 14px; outline: none;" style-focus="border-color: #951740;">
               <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin: 12px 0 6px;">الفترة</label>
               <input value="{{ periodVal }}" onInput="{{ onPeriod }}" style="width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 11px 14px; font-family: inherit; font-size: 14px; outline: none;" style-focus="border-color: #951740;">
+              <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin: 12px 0 6px;">اسم الجهة</label>
+              <input value="{{ orgNameVal }}" onInput="{{ onOrgName }}" placeholder="جمعية الزاد للتمكين المستدام" style="width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 11px 14px; font-family: inherit; font-size: 14px; outline: none;" style-focus="border-color: #951740;">
+              <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin: 12px 0 6px;">القسم / الإدارة</label>
+              <input value="{{ deptNameVal }}" onInput="{{ onDeptName }}" placeholder="إدارة الأداء والنمو" style="width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 11px 14px; font-family: inherit; font-size: 14px; outline: none;" style-focus="border-color: #951740;">
+              <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin: 12px 0 6px;">عنوان الخاتمة</label>
+              <input value="{{ closingTitleVal }}" onInput="{{ onClosingTitle }}" placeholder="شكراً لكم" style="width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 11px 14px; font-family: inherit; font-size: 14px; outline: none;" style-focus="border-color: #951740;">
             </div>
           </div>
           <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; box-shadow: 0 8px 24px rgba(68,13,34,0.06); display: flex; flex-direction: column; gap: 10px;">
@@ -108,6 +289,35 @@
             <button onClick="{{ startPresent }}" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; background: #951740; color: #fff; border: none; padding: 14px; font-family: inherit; font-weight: 700; font-size: 15px; cursor: pointer;" style-hover="background: #65102a;">{{ playIcon }} بدء العرض</button>
             <button onClick="{{ startPresent }}" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; background: #e9b221; color: #65102a; border: none; padding: 12px; font-family: inherit; font-weight: 700; font-size: 14px; cursor: pointer;">{{ linkIcon }} معاينة الرابط</button>
             <div style="font-size: 11px; color: #9ca3af; line-height: 1.7;">التصدير كملف HTML مستقل يعمل محلياً على أي جهاز متاح عبر زر التصدير في المنصة بعد اعتماد العرض.</div>
+          </div>
+          <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; box-shadow: 0 8px 24px rgba(68,13,34,0.06);">
+            <div style="font-size: 13px; font-weight: 800; color: #951740; margin-bottom: 4px;">معرض الشواهد — صور وفيديو</div>
+            <div style="font-size: 12px; color: #6b7280; margin-bottom: 14px; line-height: 1.7;">كل منصة تغذّي شواهدها الخاصة عبر <code>ZAD_REPORT.evidence</code>. هنا يمكنك إضافة/تعديل الوسائط للمعاينة قبل الربط.</div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <sc-for list="{{ evidenceEditor }}" as="ev" hint-placeholder-count="2">
+                <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: #fafafa;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <strong style="font-size: 13px; color: #951740;">شاهد {{ ev.n }}</strong>
+                    <button onClick="{{ ev.remove }}" type="button" style="border: none; background: transparent; color: #991b1b; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;">حذف</button>
+                  </div>
+                  <input value="{{ ev.caption }}" onInput="{{ ev.onCaption }}" placeholder="العنوان" style="width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px 10px; font-family: inherit; font-size: 13px;">
+                  <input value="{{ ev.tag }}" onInput="{{ ev.onTag }}" placeholder="الوسم (فعالية / إنجاز…)" style="width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px 10px; font-family: inherit; font-size: 13px;">
+                  <div style="display: flex; gap: 8px;">
+                    <button onClick="{{ ev.setImage }}" type="button" style="flex: 1; border-radius: 8px; border: 1px solid {{ ev.imgBorder }}; background: {{ ev.imgBg }}; color: {{ ev.imgColor }}; padding: 8px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;">صورة</button>
+                    <button onClick="{{ ev.setVideo }}" type="button" style="flex: 1; border-radius: 8px; border: 1px solid {{ ev.vidBorder }}; background: {{ ev.vidBg }}; color: {{ ev.vidColor }}; padding: 8px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;">فيديو</button>
+                  </div>
+                  <input value="{{ ev.src }}" onInput="{{ ev.onSrc }}" placeholder="رابط الصورة أو الفيديو (URL)" style="width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px 10px; font-family: inherit; font-size: 13px; direction: ltr; text-align: start;">
+                  <sc-if value="{{ ev.isVideo }}" hint-placeholder-val="{{ false }}">
+                    <input value="{{ ev.poster }}" onInput="{{ ev.onPoster }}" placeholder="صورة غلاف الفيديو (poster URL)" style="width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px 10px; font-family: inherit; font-size: 13px; direction: ltr; text-align: start;">
+                  </sc-if>
+                  <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: #6b7280; cursor: pointer;">
+                    <input type="file" accept="{{ ev.accept }}" onChange="{{ ev.onFile }}" style="font-size: 12px;">
+                    رفع من الجهاز
+                  </label>
+                </div>
+              </sc-for>
+            </div>
+            <button onClick="{{ addEvidence }}" type="button" style="margin-top: 12px; width: 100%; border-radius: 10px; border: 1px dashed #951740; background: #fff; color: #951740; padding: 10px; font-family: inherit; font-weight: 700; font-size: 13px; cursor: pointer;">+ إضافة شاهد (صورة/فيديو)</button>
           </div>
         </div>
       </div>
@@ -121,8 +331,8 @@
       <div style="height: 4px; background: rgba(255,255,255,0.12);"><div style="height: 100%; width: {{ progressPct }}; background: #e9b221; transition: width 0.35s ease;"></div></div>
       <!-- slide -->
       <div style="flex: 1; position: relative; overflow: hidden;">
-        <img class="zrp-logo-light" src="/zad-presentation/assets/logo-full.png" alt="" style="position: absolute; top: 30px; inset-inline-end: 40px; height: 46px; width: auto; z-index: 3; display: {{ logoLightDisp }};">
-        <img class="zrp-logo-dark" src="/zad-presentation/assets/logo-white.png" alt="" style="position: absolute; top: 26px; inset-inline-end: 40px; height: 56px; width: auto; z-index: 3; display: {{ logoDarkDisp }};">
+        <img class="zrp-logo-light" src="/zad-presentation/assets/logo-full.png" alt="جمعية الزاد" style="position: absolute; top: 28px; left: 50%; transform: translateX(-50%); height: 68px; width: auto; z-index: 3; display: {{ logoLightDisp }};">
+        <img class="zrp-logo-dark" src="/zad-presentation/assets/logo-white.png" alt="جمعية الزاد" style="position: absolute; top: 24px; left: 50%; transform: translateX(-50%); height: 72px; width: auto; z-index: 3; display: {{ logoDarkDisp }};">
 
         <div class="zrp-slide" style="position: absolute; inset: 0; padding: 108px 8vw 90px; display: flex; flex-direction: column; justify-content: center; color: {{ textMain }};">
           <sc-if value="{{ sCover }}" hint-placeholder-val="{{ true }}">
@@ -130,7 +340,7 @@
               <div style="width: 96px; height: 8px; border-radius: 99px; background: #e9b221;"></div>
               <h1 class="zrp-cover-title" style="margin: 0; font-family: 'Rubik','Tajawal',sans-serif; font-size: 54px; font-weight: 700; line-height: 1.4; color: {{ headMain }};">{{ titleVal }}</h1>
               <div style="font-size: 22px; font-weight: 500; opacity: 0.85;">{{ periodVal }}</div>
-              <div style="font-size: 15px; opacity: 0.7; margin-top: 8px;">جمعية الزاد · إدارة الأداء والنمو</div>
+              <div style="font-size: 15px; opacity: 0.7; margin-top: 8px;">{{ orgNameVal }} · {{ deptNameVal }}</div>
             </div>
           </sc-if>
           <sc-if value="{{ sSummary }}" hint-placeholder-val="{{ false }}">
@@ -168,14 +378,19 @@
             <div style="display: flex; flex-direction: column; gap: 28px;">
               <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">توزيع الحالات</h2>
               <div class="zrp-dist" style="display: flex; align-items: center; gap: 56px; flex-wrap: wrap;">
-                <div style="position: relative; width: 260px; height: 260px; flex-shrink: 0;">
-                  <div style="width: 100%; height: 100%; border-radius: 9999px; background: {{ distGradient }};"></div>
-                  <div style="position: absolute; inset: 26%; border-radius: 9999px; background: {{ stageBg }}; display: flex; align-items: center; justify-content: center;"><span style="font-size: 15px; opacity: 0.8;">التوزيع</span></div>
+                <div class="zrp-donut" aria-hidden="true">
+                  <div class="zrp-donut__ring" style="background: {{ distGradient }};"></div>
+                  <div class="zrp-donut__hole" style="background: {{ stageBg }}; color: {{ textMain }};">
+                    <span class="zrp-donut__label">التوزيع</span>
+                    <span class="zrp-donut__value">{{ distCenterValue }}</span>
+                    <span class="zrp-donut__label">{{ distCenterHint }}</span>
+                  </div>
                 </div>
                 <div style="flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 12px;">
                   <sc-for list="{{ dist }}" as="x" hint-placeholder-count="3">
-                    <button onClick="{{ x.click }}" style="display: flex; flex-direction: column; gap: 0; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 12px; padding: 14px 16px; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }};" style-hover="border-color: #e9b221;">
-                      <div style="display: flex; align-items: center; gap: 12px; width: 100%;"><span style="width: 16px; height: 16px; border-radius: 5px; background: {{ x.color }}; flex-shrink: 0;"></span><span style="font-size: 18px; font-weight: 600; flex: 1;">{{ x.label }}</span><span style="font-size: 20px; font-weight: 800; color: {{ headMain }};">{{ x.value }}</span><span style="color: #e9b221; opacity: 0.8; display: flex;">{{ infoIcon }}</span></div>
+                    <button onClick="{{ x.click }}" style="display: flex; flex-direction: column; gap: 0; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 14px; padding: 14px 16px; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }}; box-shadow: 0 6px 18px rgba(15,5,10,0.08);" style-hover="border-color: #e9b221;">
+                      <div style="display: flex; align-items: center; gap: 12px; width: 100%;"><span class="zrp-dist-swatch" style="background: {{ x.color }};"></span><span style="font-size: 18px; font-weight: 600; flex: 1;">{{ x.label }}</span><span style="font-size: 20px; font-weight: 800; color: {{ headMain }};">{{ x.value }}</span><span style="color: #e9b221; opacity: 0.8; display: flex;">{{ infoIcon }}</span></div>
+                      <div style="margin-top: 10px; height: 6px; border-radius: 9999px; background: {{ panelBg }}; overflow: hidden;"><div style="height: 100%; width: {{ x.barW }}; border-radius: 9999px; background: linear-gradient(90deg, {{ x.color }}, #e9b221);"></div></div>
                       <sc-if value="{{ x.isDown }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-down" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 8px; width: 100%;"><sc-for list="{{ x.rowsList }}" as="row" hint-placeholder-count="2"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 15px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.6;">{{ x.note }}</div></div></sc-if>
                     </button>
                   </sc-for>
@@ -249,11 +464,17 @@
               <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">معرض الشواهد</h2>
               <div class="zrp-evidence" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;">
                 <sc-for list="{{ evidence }}" as="e" hint-placeholder-count="4">
-                  <button onClick="{{ e.click }}" style="background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 16px; overflow: hidden; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }}; display: flex; flex-direction: column; padding: 0;" style-hover="border-color: #e9b221;">
-                    <div style="aspect-ratio: 4 / 3; width: 100%; background: linear-gradient(135deg, rgba(149,23,64,0.12), rgba(233,178,33,0.12)); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                      <sc-if value="{{ e.hasImg }}" hint-placeholder-val="{{ false }}"><img src="{{ e.imgSrc }}" alt="{{ e.caption }}" style="width: 100%; height: 100%; object-fit: cover;"></sc-if>
-                      <sc-if value="{{ e.hasImg }}" hint-placeholder-val="{{ true }}"><span style="color: #e9b221; opacity: 0.55; display: flex;">{{ imageIcon }}</span></sc-if>
+                  <button onClick="{{ e.openMedia }}" type="button" style="background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 16px; overflow: hidden; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }}; display: flex; flex-direction: column; padding: 0;" style-hover="border-color: #e9b221;">
+                    <div style="aspect-ratio: 16 / 10; width: 100%; background: #1a0c12; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                      <sc-if value="{{ e.hasVideo }}" hint-placeholder-val="{{ false }}">
+                        <video class="zrp-evidence-thumb" src="{{ e.mediaSrc }}" poster="{{ e.posterSrc }}" muted playsinline preload="metadata"></video>
+                        <span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(15,5,10,0.28); pointer-events: none;"><span style="width: 48px; height: 48px; border-radius: 9999px; background: rgba(233,178,33,0.95); color: #65102a; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(0,0,0,0.35);">{{ playIcon }}</span></span>
+                      </sc-if>
+                      <sc-if value="{{ e.hasImg }}" hint-placeholder-val="{{ false }}"><img class="zrp-evidence-thumb" src="{{ e.mediaSrc }}" alt="{{ e.caption }}" decoding="async" loading="eager"></sc-if>
+                      <sc-if value="{{ e.noMedia }}" hint-placeholder-val="{{ true }}"><span style="color: #e9b221; opacity: 0.55; display: flex;">{{ imageIcon }}</span></sc-if>
                       <span style="position: absolute; top: 10px; inset-inline-start: 10px; background: rgba(101,16,42,0.85); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 12px; border-radius: 9999px;">{{ e.tag }}</span>
+                      <sc-if value="{{ e.hasVideo }}" hint-placeholder-val="{{ false }}"><span style="position: absolute; top: 10px; inset-inline-end: 10px; background: rgba(15,5,10,0.7); color: #e9b221; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">فيديو</span></sc-if>
+                      <span style="position: absolute; bottom: 10px; inset-inline-end: 10px; background: rgba(15,5,10,0.65); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 9999px;">تكبير</span>
                     </div>
                     <div style="padding: 14px 16px; display: flex; align-items: flex-start; gap: 8px;"><span style="font-size: 16px; font-weight: 600; line-height: 1.5; flex: 1;">{{ e.caption }}</span><span style="color: #e9b221; opacity: 0.8; display: flex; flex-shrink: 0; margin-top: 2px;">{{ infoIcon }}</span></div>
                   </button>
@@ -278,13 +499,49 @@
           <sc-if value="{{ sClosing }}" hint-placeholder-val="{{ false }}">
             <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px;">
               <div style="width: 96px; height: 8px; border-radius: 99px; background: #e9b221;"></div>
-              <h1 class="zrp-cover-title" style="margin: 0; font-family: 'Rubik','Tajawal',sans-serif; font-size: 48px; font-weight: 700; color: {{ headMain }};">شكراً لكم</h1>
-              <div style="font-size: 19px; opacity: 0.85;">إدارة الأداء والنمو · قسم الاستراتيجية</div>
-              <div style="font-size: 15px; opacity: 0.7;">جمعية الزاد للتمكين المستدام</div>
+              <h1 class="zrp-cover-title" style="margin: 0; font-family: 'Rubik','Tajawal',sans-serif; font-size: 48px; font-weight: 700; color: {{ headMain }};">{{ closingTitleVal }}</h1>
+              <div style="font-size: 19px; opacity: 0.85;">{{ deptNameVal }}</div>
+              <div style="font-size: 15px; opacity: 0.7;">{{ orgNameVal }}</div>
             </div>
           </sc-if>
         </div>
       </div>
+      <sc-if value="{{ mediaViewOpen }}" hint-placeholder-val="{{ false }}">
+        <div class="zrp-media-view">
+          <button class="zrp-media-view__backdrop" type="button" aria-label="إغلاق" onClick="{{ closeMediaView }}"></button>
+          <div class="zrp-media-view__panel">
+            <div class="zrp-media-view__bar">
+              <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                <strong style="font-size: 16px;">{{ mediaCaption }}</strong>
+                <span style="font-size: 12px; opacity: 0.75;">{{ mediaNote }}</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                <sc-if value="{{ mediaIsImage }}" hint-placeholder-val="{{ true }}">
+                  <button class="zrp-media-view__btn" type="button" onClick="{{ zoomOut }}">تصغير</button>
+                  <button class="zrp-media-view__btn" type="button" onClick="{{ zoomReset }}">١×</button>
+                  <button class="zrp-media-view__btn" type="button" onClick="{{ zoomIn }}">تكبير</button>
+                </sc-if>
+                <button class="zrp-media-view__btn" type="button" onClick="{{ closeMediaView }}">إغلاق</button>
+              </div>
+            </div>
+            <div class="zrp-media-view__stage">
+              <sc-if value="{{ mediaIsVideo }}" hint-placeholder-val="{{ false }}">
+                <video class="zrp-media-view__video" src="{{ mediaSrc }}" poster="{{ mediaPoster }}" controls controlslist="nodownload" playsinline preload="auto" onPlay="{{ onVideoPlay }}" onPause="{{ onVideoPause }}" onTimeUpdate="{{ onVideoTime }}" onLoadedMetadata="{{ onVideoMeta }}"></video>
+                <div class="zrp-media-view__controls">
+                  <button class="zrp-media-view__btn {{ mediaPlayClass }}" type="button" onClick="{{ toggleVideoPlay }}">{{ mediaPlayLabel }}</button>
+                  <input class="zrp-media-view__seek" type="range" min="0" max="{{ mediaDuration }}" step="0.1" value="{{ mediaCurrent }}" onInput="{{ onVideoSeek }}" aria-label="شريط التنقل">
+                  <span class="zrp-media-view__time">{{ mediaTimeLabel }}</span>
+                  <button class="zrp-media-view__btn" type="button" onClick="{{ toggleVideoMute }}">{{ mediaMuteLabel }}</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ mediaIsImage }}" hint-placeholder-val="{{ false }}">
+                <img class="zrp-media-view__img" src="{{ mediaSrc }}" alt="{{ mediaCaption }}" style="transform: scale({{ mediaZoom }});" decoding="async">
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
       <sc-if value="{{ detailOpen }}" hint-placeholder-val="{{ false }}">
         <div onClick="{{ closeDetail }}" style="position: absolute; inset: 0; z-index: 8; background: rgba(15,5,10,0.55); display: flex; justify-content: center; align-items: {{ overlayAlign }}; padding: 24px;">
           <div class="{{ panelClass }}" onClick="{{ stopDetail }}" style="background: {{ detailBg }}; color: {{ textMain }}; max-width: 640px; box-shadow: 0 30px 80px rgba(0,0,0,0.5); border: 1px solid {{ borderMain }}; display: flex; flex-direction: column; overflow: hidden;">
@@ -327,19 +584,113 @@
   &quot;theme&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;dark&quot;, &quot;options&quot;: [&quot;dark&quot;, &quot;light&quot;], &quot;tsType&quot;: &quot;\&quot;dark\&quot; | \&quot;light\&quot;&quot;, &quot;section&quot;: &quot;العرض&quot;, &quot;label&quot;: &quot;مظهر العرض&quot; }
 }">
 class Component extends DCLogic {
-  state = { present: false, idx: 0, theme: 'dark', title: 'تقرير الأداء الاستراتيجي', period: 'الربع الثاني 2026م', on: { summary: true, kpi: true, dist: true, funnel: true, progress: true, table: true, timeline: true, evidence: true, disb: true }, reveal: { summary: 'float', kpi: 'float', dist: 'float', funnel: 'float', progress: 'down', table: 'down', timeline: 'down', evidence: 'float', disb: 'float' }, detail: null, openKey: null };
+  state = { present: false, idx: 0, theme: 'dark', title: 'تقرير الأداء الاستراتيجي', period: 'الربع الثاني 2026م', orgName: 'جمعية الزاد للتمكين المستدام', deptName: 'إدارة الأداء والنمو', closingTitle: 'شكراً لكم', evidenceItems: null, mediaView: null, on: { summary: true, kpi: true, dist: true, funnel: true, progress: true, table: true, timeline: true, evidence: true, disb: true }, reveal: { summary: 'float', kpi: 'float', dist: 'float', funnel: 'float', progress: 'down', table: 'down', timeline: 'down', evidence: 'float', disb: 'float' }, detail: null, openKey: null };
   icon(p, fill) { return React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', width: 20, height: 20, viewBox: '0 0 24 24', fill: fill || 'none', stroke: fill ? 'none' : 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', dangerouslySetInnerHTML: { __html: p } }); }
-  deckKeys() { const o = this.state.on; const D = this.reportData(); const has = { summary: D.summary.length, kpi: D.kpis.length, dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: D.evidence.length, disb: D.disb.length }; const order = ['summary','kpi','dist','funnel','progress','table','timeline','evidence','disb']; const mid = order.filter(k => o[k] && has[k]); return ['cover', ...mid, 'closing']; }
+  deckKeys() { const o = this.state.on; const D = this.reportData(); const evN = this.evidenceList().length; const has = { summary: D.summary.length, kpi: D.kpis.length, dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: evN, disb: D.disb.length }; const order = ['summary','kpi','dist','funnel','progress','table','timeline','evidence','disb']; const mid = order.filter(k => o[k] && has[k]); return ['cover', ...mid, 'closing']; }
   componentDidMount() {
     const D = this.reportData();
-    if (D.title || D.period) this.setState(s => ({ title: D.title || s.title, period: D.period || s.period }));
-    this._key = (e) => { if (!this.state.present) return; if (e.key === 'ArrowLeft') this.go(1); else if (e.key === 'ArrowRight') this.go(-1); else if (e.key === 'Escape') this.setState({ present: false }); }; window.addEventListener('keydown', this._key);
+    if (D.title || D.period || D.orgName || D.deptName || D.closingTitle || D.orgLine || D.closingLine) this.setState(s => ({
+      title: D.title || s.title,
+      period: D.period || s.period,
+      orgName: D.orgName || s.orgName,
+      deptName: D.deptName || D.closingLine || D.orgLine || s.deptName,
+      closingTitle: D.closingTitle || s.closingTitle,
+    }));
+    if (Array.isArray(D.evidence) && D.evidence.length) {
+      this.setState({ evidenceItems: D.evidence.map(e => ({ ...e })) });
+    }
+    this._key = (e) => {
+      if (!this.state.present) return;
+      if (e.key === 'Escape') {
+        if (this.state.mediaView) { this.setState({ mediaView: null }); return; }
+        this.setState({ present: false });
+        return;
+      }
+      if (this.state.mediaView) return;
+      if (e.key === 'ArrowLeft') this.go(1);
+      else if (e.key === 'ArrowRight') this.go(-1);
+    }; window.addEventListener('keydown', this._key);
   }
   componentWillUnmount() { window.removeEventListener('keydown', this._key); }
-  go(d) { const len = this.deckKeys().length; this.setState(s => ({ idx: Math.max(0, Math.min(len - 1, s.idx + d)) })); }
+  go(d) { const len = this.deckKeys().length; this.setState(s => ({ idx: Math.max(0, Math.min(len - 1, s.idx + d)), mediaView: null, detail: null, openKey: null })); }
   tog(key) { this.setState(s => ({ openKey: s.openKey === key ? null : key })); }
   rowObjs(rows) { return rows.map(r => ({ k: r[0], v: r[1] })); }
-  openDetail(comp, d) { const has = (d.rows && d.rows.length) || (d.note && d.note.length); const note = (d.note && d.note.length) ? d.note : (has ? '' : 'لا تتوفر تفاصيل إضافية لهذا العنصر.'); this.setState({ detail: { ...d, note, mode: this.state.reveal[comp] } }); }
+  openDetail(comp, d) { const has = (d.rows && d.rows.length) || (d.note && d.note.length); const note = (d.note && d.note.length) ? d.note : (has ? '' : 'لا تتوفر تفاصيل إضافية لهذا العنصر.'); this.setState({ detail: { ...d, note, mode: this.state.reveal[comp] }, mediaView: null }); }
+  openMediaView(item) {
+    if (!item || !(item.src && item.src.length)) return;
+    const isVideo = this.isVideoMedia(item);
+    this.setState({
+      detail: null,
+      openKey: null,
+      mediaView: {
+        type: isVideo ? 'video' : 'image',
+        src: item.src,
+        poster: item.poster || '',
+        caption: item.caption || '',
+        note: item.note || '',
+        zoom: 1,
+        playing: false,
+        muted: false,
+        current: 0,
+        duration: 0,
+      },
+    });
+    if (isVideo) {
+      setTimeout(() => {
+        const v = this.getMediaVideoEl();
+        if (v) { v.muted = false; v.play().catch(() => {}); }
+      }, 80);
+    }
+  }
+  closeMediaView(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const v = this.getMediaVideoEl();
+    if (v) { try { v.pause(); } catch (_) {} }
+    this.setState({ mediaView: null });
+  }
+  stopMediaView(e) { if (e && e.stopPropagation) e.stopPropagation(); }
+  getMediaVideoEl() {
+    return (typeof document !== 'undefined') ? document.querySelector('.zrp-media-view__video') : null;
+  }
+  formatMediaTime(sec) {
+    const s = Math.max(0, Math.floor(Number(sec) || 0));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return String(m).padStart(2, '0') + ':' + String(r).padStart(2, '0');
+  }
+  patchMediaView(patch) {
+    this.setState(s => (s.mediaView ? { mediaView: { ...s.mediaView, ...patch } } : null));
+  }
+  setMediaZoom(next) {
+    this.setState(s => {
+      if (!s.mediaView) return null;
+      const z = Math.max(1, Math.min(3, next));
+      return { mediaView: { ...s.mediaView, zoom: z } };
+    });
+  }
+  toggleVideoPlay(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const v = this.getMediaVideoEl();
+    if (!v) return;
+    if (v.paused) v.play().catch(() => {});
+    else v.pause();
+  }
+  toggleVideoMute(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const v = this.getMediaVideoEl();
+    if (!v) return;
+    v.muted = !v.muted;
+    this.patchMediaView({ muted: !!v.muted });
+  }
+  onVideoSeek(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const v = this.getMediaVideoEl();
+    const t = Number(e && e.target && e.target.value);
+    if (v && Number.isFinite(t)) {
+      v.currentTime = t;
+      this.patchMediaView({ current: t });
+    }
+  }
 
   /* ═══════════════════════════════════════════════════════════════════════
      DATA INTEGRATION CONTRACT  —  READ THIS, AGENT.
@@ -367,6 +718,10 @@ class Component extends DCLogic {
      {
        title:    "Report title (any language)",
        period:   "Q2 2026 / any period label",
+       orgName:  "Organization name — used on cover + closing (مرة واحدة)",
+       deptName: "Department / admin — used on cover + closing (مرة واحدة)",
+       closingTitle: "Closing headline — e.g. شكراً لكم",
+       // legacy aliases still accepted: orgLine, closingLine → mapped to deptName
        summary:  [ { text, rows:[[key,value], ...], note } ],   // exec summary
        kpis:     [ { label, value, delta, rows:[[..]], note } ],// KPI cards
        dist:     [ { label, pct(0-100), color?, rows:[[..]], note } ], // donut / status split
@@ -374,9 +729,17 @@ class Component extends DCLogic {
        progress: [ { label, pct(0-100), rows:[[..]], note } ],  // progress bars
        programs: [ { prog, total, done, pct, rows:[[..]], note } ], // table
        timeline: [ { title, time, rows:[[..]], note } ],        // agenda / milestones
-       evidence: [ { src(imageURL), caption, tag, note } ],     // proof / photo gallery
+       evidence: [ { type:'image'|'video', src, poster?, caption, tag, note, rows? } ], // click opens lightbox (play video / zoom image)
        disb:     [ { label, amount, rows:[[..]], note } ]       // financials
      }
+
+     EVIDENCE MEDIA:
+       • type: "image" | "video" (optional — inferred from URL extension if omitted)
+       • src: absolute/relative URL or data: URL (prefer same-origin / uploaded assets for video)
+       • poster: optional cover image for video
+       • UI: thumbnail on slide; click opens fullscreen viewer with video controls or image zoom
+       • Each platform supplies its OWN evidence from its storage — NOT a shared central album.
+       • Builder UI can override evidence for preview via local state before platform wiring.
 
      RULES:
        • Values render verbatim — send Arabic digits (٠-٩) as-is, or call
@@ -389,15 +752,36 @@ class Component extends DCLogic {
        • Numbers/labels come 100% from platform data; only sampleData() is demo.
      ═══════════════════════════════════════════════════════════════════════ */
   toArabicDigits(n) { return String(n).replace(/[0-9]/g, d => "٠١٢٣٤٥٦٧٨٩"[d]); }
+  isVideoMedia(item) {
+    if (!item) return false;
+    if (item.type === 'video') return true;
+    if (item.type === 'image') return false;
+    const src = item.src || '';
+    return /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(src) || /^data:video\//i.test(src);
+  }
+  evidenceList() {
+    if (Array.isArray(this.state.evidenceItems)) return this.state.evidenceItems;
+    return this.reportData().evidence || [];
+  }
+  patchEvidence(i, patch) {
+    this.setState(s => {
+      const base = Array.isArray(s.evidenceItems) ? s.evidenceItems : (this.reportData().evidence || []).map(e => ({ ...e }));
+      const next = base.map((e, idx) => idx === i ? { ...e, ...patch } : e);
+      return { evidenceItems: next };
+    });
+  }
   reportData() {
     const src = (typeof window !== 'undefined' && window.ZAD_REPORT) || (this.props && this.props.report) || this.sampleData();
     const A = k => Array.isArray(src[k]) ? src[k] : [];
-    return { title: src.title, period: src.period,
+    return { title: src.title, period: src.period, orgName: src.orgName, deptName: src.deptName || src.closingLine || src.orgLine, closingTitle: src.closingTitle,
       summary: A('summary'), kpis: A('kpis'), dist: A('dist'), funnel: A('funnel'), progress: A('progress'), programs: A('programs'), timeline: A('timeline'), evidence: A('evidence'), disb: A('disb') };
   }
   sampleData() {
     return {
       title: 'تقرير الأداء الاستراتيجي', period: 'الربع الثاني 2026م',
+      orgName: 'جمعية الزاد للتمكين المستدام',
+      deptName: 'إدارة الأداء والنمو',
+      closingTitle: 'شكراً لكم',
       summary: [
         { text: 'نمو إجمالي المستفيدين بنسبة ٨٪ مقارنة بالربع السابق.', rows: [['الربع الأول','١٬١٥٤'],['الربع الثاني','١٬٢٤٧'],['النمو','+٩٣']], note: 'أعلى نمو في مسار التمكين المالي.' },
         { text: 'اعتماد ٣٤ برنامجاً مكتملاً ضمن مسارات التمكين.', rows: [['التمكين المالي','١٤'],['ريادة الأعمال','٩'],['التدريب المهني','١١']], note: '٣ برامج جديدة اكتملت هذا الربع.' },
@@ -433,10 +817,10 @@ class Component extends DCLogic {
         { title: 'إغلاق تقرير الربع الثاني', time: '٣٠ يونيو ٢٠٢٦', rows: [['المؤشرات','٢٤'],['الحالة','مكتمل']], note: 'رُفع للإدارة في موعده.' },
       ],
       evidence: [
-        { src: '', caption: 'ورشة التمكين المالي — الرياض', tag: 'فعالية', note: 'حضور ١٤٠ مستفيداً على مدى يومين.' },
-        { src: '', caption: 'توزيع شهادات ريادة الأعمال', tag: 'إنجاز', note: 'تخريج ٩ مشاريع ناشئة.' },
-        { src: '', caption: 'زيارة ميدانية للمستفيدين', tag: 'متابعة', note: 'تقييم أثر مباشر في ٣ مدن.' },
-        { src: '', caption: 'ملتقى المتطوعين السنوي', tag: 'مجتمع', note: '٣٢٠ متطوعاً، ١٬٢٠٠ ساعة تطوعية.' },
+        { type: 'image', src: 'screenshots/01-found.png', caption: 'ورشة التمكين المالي — الرياض', tag: 'فعالية', note: 'حضور ١٤٠ مستفيداً على مدى يومين.' },
+        { type: 'image', src: 'screenshots/02-cards.png', caption: 'توزيع شهادات ريادة الأعمال', tag: 'إنجاز', note: 'تخريج ٩ مشاريع ناشئة.' },
+        { type: 'video', src: '/zad-presentation/assets/media/sample.mp4', poster: '/zad-presentation/assets/ben.png', caption: 'زيارة ميدانية للمستفيدين', tag: 'متابعة', note: 'تقييم أثر مباشر في ٣ مدن — اضغط للتشغيل بملء الشاشة.' },
+        { type: 'image', src: 'screenshots/phone.png', caption: 'ملتقى المتطوعين السنوي', tag: 'مجتمع', note: '٣٢٠ متطوعاً، ١٬٢٠٠ ساعة تطوعية.' },
       ],
       programs: [
         { prog: 'التمكين المالي', total: '٥٤٢', done: '٣٩٠', pct: '٧٢٪', rows: [['قيد التنفيذ','١١٢'],['بانتظار الصرف','٤٠'],['مكتمل','٣٩٠']], note: 'أكبر البرامج حجماً.' },
@@ -480,8 +864,12 @@ class Component extends DCLogic {
       isBuilder: !this.state.present,
       isPresenting: this.state.present,
       titleVal: this.state.title, periodVal: this.state.period,
+      orgNameVal: this.state.orgName, deptNameVal: this.state.deptName, closingTitleVal: this.state.closingTitle,
       onTitle: (e) => { const v = e.target.value; this.setState({ title: v }); },
       onPeriod: (e) => { const v = e.target.value; this.setState({ period: v }); },
+      onOrgName: (e) => { const v = e.target.value; this.setState({ orgName: v }); },
+      onDeptName: (e) => { const v = e.target.value; this.setState({ deptName: v }); },
+      onClosingTitle: (e) => { const v = e.target.value; this.setState({ closingTitle: v }); },
       toggles: [
         t('summary', 'الملخّص التنفيذي', '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'),
         t('kpi', 'المؤشرات (KPI)', '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>'),
@@ -492,13 +880,56 @@ class Component extends DCLogic {
         t('timeline', 'الخط الزمني / الأجندة', '<line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="14" r="2"/>'),
         t('evidence', 'معرض الشواهد', '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'),
         t('disb', 'الصرف المالي', '<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>'),
-      ].filter(x => ({ summary: D.summary.length, kpi: D.kpis.length, dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: D.evidence.length, disb: D.disb.length }[x.key] > 0)),
+      ].filter(x => ({ summary: D.summary.length, kpi: D.kpis.length, dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: this.evidenceList().length, disb: D.disb.length }[x.key] > 0)),
       selectAll: () => this.setState({ on: { summary: true, kpi: true, dist: true, funnel: true, progress: true, table: true, timeline: true, evidence: true, disb: true } }),
+      addEvidence: () => this.setState(s => {
+        const base = Array.isArray(s.evidenceItems) ? s.evidenceItems : (this.reportData().evidence || []).map(e => ({ ...e }));
+        return { evidenceItems: [...base, { type: 'image', src: '', poster: '', caption: 'شاهد جديد', tag: 'شاهد', note: '' }] };
+      }),
+      evidenceEditor: this.evidenceList().map((e, i) => {
+        const isVideo = this.isVideoMedia(e);
+        return {
+          n: this.toArabicDigits(i + 1),
+          caption: e.caption || '',
+          tag: e.tag || '',
+          src: e.src || '',
+          poster: e.poster || '',
+          isVideo,
+          accept: isVideo ? 'video/*' : 'image/*,video/*',
+          imgBorder: !isVideo ? '#951740' : '#e5e7eb',
+          imgBg: !isVideo ? 'rgba(149,23,64,0.08)' : '#fff',
+          imgColor: !isVideo ? '#951740' : '#6b7280',
+          vidBorder: isVideo ? '#951740' : '#e5e7eb',
+          vidBg: isVideo ? 'rgba(149,23,64,0.08)' : '#fff',
+          vidColor: isVideo ? '#951740' : '#6b7280',
+          setImage: () => this.patchEvidence(i, { type: 'image' }),
+          setVideo: () => this.patchEvidence(i, { type: 'video' }),
+          onCaption: (ev) => this.patchEvidence(i, { caption: ev.target.value }),
+          onTag: (ev) => this.patchEvidence(i, { tag: ev.target.value }),
+          onSrc: (ev) => this.patchEvidence(i, { src: ev.target.value }),
+          onPoster: (ev) => this.patchEvidence(i, { poster: ev.target.value }),
+          onFile: (ev) => {
+            const file = ev.target.files && ev.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result;
+              const type = file.type.startsWith('video/') ? 'video' : 'image';
+              this.patchEvidence(i, { src: dataUrl, type });
+            };
+            reader.readAsDataURL(file);
+          },
+          remove: () => this.setState(s => {
+            const base = Array.isArray(s.evidenceItems) ? s.evidenceItems : (this.reportData().evidence || []).map(e => ({ ...e }));
+            return { evidenceItems: base.filter((_, idx) => idx !== i) };
+          }),
+        };
+      }),
       setLight: () => this.setState({ theme: 'light' }), setDark: () => this.setState({ theme: 'dark' }),
       lightBorder: dark ? '#e5e7eb' : '#951740', darkBorder: dark ? '#951740' : '#e5e7eb',
       deckCount: this.arNumSafe(deck.length),
-      startPresent: () => this.setState({ present: true, idx: 0 }),
-      exitPresent: () => this.setState({ present: false }),
+      startPresent: () => this.setState({ present: true, idx: 0, mediaView: null, detail: null }),
+      exitPresent: () => this.setState({ present: false, mediaView: null, detail: null }),
       playIcon: I('<polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/>'),
       linkIcon: I('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'),
       closeIcon: I('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
@@ -524,11 +955,99 @@ class Component extends DCLogic {
       progress: D.progress.map((p,i) => ({ ...p, ...this.decorate('progress', i, { title: 'نسبة الإنجاز', head: p.label, value: p.pct + '٪', delta: '', rows: this.rowObjs(p.rows || []), note: p.note }) })),
       programs: D.programs.map((r,i) => ({ ...r, ...this.decorate('table', i, { title: 'أداء البرنامج', head: r.prog, value: r.pct, delta: '', rows: this.rowObjs(r.rows || []), note: r.note }) })),
       disb: D.disb.map((d,i) => ({ ...d, ...this.decorate('disb', i, { title: d.label, head: '', value: d.amount + ' ر.س', delta: '', rows: this.rowObjs(d.rows || []), note: d.note }) })),
-      dist: (() => { let acc = 0; return D.dist.map((x,i) => { const from = acc; acc += (x.pct || 0); return { ...x, color: x.color || ['#951740','#e9b221','#3f8f5f','#c0563a','#4a6fa5'][i % 5], from, to: acc, ...this.decorate('dist', i, { title: x.label, head: '', value: (x.pct || 0) + '٪', delta: '', rows: this.rowObjs(x.rows || []), note: x.note }) }; }); })(),
-      distGradient: (() => { let acc = 0; const stops = D.dist.map((x,i) => { const c = x.color || ['#951740','#e9b221','#3f8f5f','#c0563a','#4a6fa5'][i % 5]; const s = `${c} ${acc}% ${acc + (x.pct || 0)}%`; acc += (x.pct || 0); return s; }); return 'conic-gradient(' + stops.join(', ') + ')'; })(),
+      dist: (() => { let acc = 0; return D.dist.map((x,i) => { const from = acc; acc += (x.pct || 0); return { ...x, color: x.color || ['#951740','#e9b221','#3f8f5f','#c0563a','#4a6fa5'][i % 5], from, to: acc, barW: Math.max(0, Math.min(100, x.pct || 0)) + '%', ...this.decorate('dist', i, { title: x.label, head: '', value: (x.pct || 0) + '٪', delta: '', rows: this.rowObjs(x.rows || []), note: x.note }) }; }); })(),
+      distGradient: (() => {
+        const palette = ['#951740','#e9b221','#3f8f5f','#c0563a','#4a6fa5'];
+        const gap = D.dist.length > 1 ? 1.4 : 0;
+        let acc = 0;
+        const stops = [];
+        D.dist.forEach((x, i) => {
+          const c = x.color || palette[i % palette.length];
+          const pct = Math.max(0, x.pct || 0);
+          const start = acc;
+          const end = acc + pct;
+          const soft = c; // solid brand colors; depth comes from ring chrome
+          if (pct <= gap) {
+            stops.push(`${soft} ${start}% ${end}%`);
+          } else {
+            stops.push(`${soft} ${start}% ${end - gap}%`);
+            stops.push(`rgba(255,255,255,0.04) ${end - gap}% ${end}%`);
+          }
+          acc = end;
+        });
+        if (!stops.length) stops.push('rgba(255,255,255,0.12) 0% 100%');
+        return `conic-gradient(from -90deg, ${stops.join(', ')})`;
+      })(),
+      distCenterValue: (() => {
+        const top = [...D.dist].sort((a,b) => (b.pct||0) - (a.pct||0))[0];
+        return top ? this.toArabicDigits(Math.round(top.pct || 0)) + '٪' : '—';
+      })(),
+      distCenterHint: (() => {
+        const top = [...D.dist].sort((a,b) => (b.pct||0) - (a.pct||0))[0];
+        return top ? (top.label || '') : '';
+      })(),
       funnel: D.funnel.map((f,i) => ({ ...f, width: (f.pct || 0) + '%', ...this.decorate('funnel', i, { title: f.stage, head: '', value: (f.pct || 0) + '٪', delta: '', rows: this.rowObjs(f.rows || []), note: f.note }) })),
       timeline: D.timeline.map((tm,i) => ({ ...tm, last: i === D.timeline.length - 1, ...this.decorate('timeline', i, { title: tm.title, head: '', value: '', delta: '', rows: this.rowObjs(tm.rows || []), note: tm.note }) })),
-      evidence: D.evidence.map((e,i) => ({ ...e, hasImg: !!(e.src && e.src.length), imgSrc: (e.src && e.src.length) ? e.src : 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==', ...this.decorate('evidence', i, { title: e.caption, head: '', value: '', delta: '', rows: this.rowObjs(e.rows || []), note: e.note }) })),
+      evidence: this.evidenceList().map((e,i) => {
+        const hasSrc = !!(e.src && String(e.src).length);
+        const hasVideo = hasSrc && this.isVideoMedia(e);
+        const hasImg = hasSrc && !hasVideo;
+        return {
+          ...e,
+          hasVideo,
+          hasImg,
+          noMedia: !hasSrc,
+          mediaSrc: hasSrc ? e.src : '',
+          posterSrc: e.poster || '',
+          openMedia: () => this.openMediaView(e),
+          ...this.decorate('evidence', i, {
+            title: e.caption,
+            head: e.tag || '',
+            value: '',
+            delta: '',
+            rows: this.rowObjs(e.rows || []),
+            note: e.note,
+          }),
+        };
+      }),
+      mediaViewOpen: !!this.state.mediaView,
+      mediaIsVideo: !!(this.state.mediaView && this.state.mediaView.type === 'video'),
+      mediaIsImage: !!(this.state.mediaView && this.state.mediaView.type === 'image'),
+      mediaSrc: (this.state.mediaView && this.state.mediaView.src) || '',
+      mediaPoster: (this.state.mediaView && this.state.mediaView.poster) || '',
+      mediaCaption: (this.state.mediaView && this.state.mediaView.caption) || '',
+      mediaNote: (this.state.mediaView && this.state.mediaView.note) || '',
+      mediaZoom: (this.state.mediaView && this.state.mediaView.zoom) || 1,
+      mediaCurrent: (this.state.mediaView && this.state.mediaView.current) || 0,
+      mediaDuration: Math.max(0.1, (this.state.mediaView && this.state.mediaView.duration) || 0.1),
+      mediaTimeLabel: this.formatMediaTime((this.state.mediaView && this.state.mediaView.current) || 0) + ' / ' + this.formatMediaTime((this.state.mediaView && this.state.mediaView.duration) || 0),
+      mediaPlayLabel: (this.state.mediaView && this.state.mediaView.playing) ? 'إيقاف' : 'تشغيل',
+      mediaPlayClass: (this.state.mediaView && this.state.mediaView.playing) ? 'is-active' : '',
+      mediaMuteLabel: (this.state.mediaView && this.state.mediaView.muted) ? 'صوت' : 'كتم',
+      closeMediaView: (e) => this.closeMediaView(e),
+      stopMediaView: (e) => this.stopMediaView(e),
+      toggleVideoPlay: (e) => this.toggleVideoPlay(e),
+      toggleVideoMute: (e) => this.toggleVideoMute(e),
+      onVideoSeek: (e) => this.onVideoSeek(e),
+      onVideoPlay: () => this.patchMediaView({ playing: true }),
+      onVideoPause: () => this.patchMediaView({ playing: false }),
+      onVideoTime: (e) => {
+        const v = e && e.target;
+        if (!v) return;
+        this.patchMediaView({ current: v.currentTime || 0, duration: v.duration || (this.state.mediaView && this.state.mediaView.duration) || 0 });
+      },
+      onVideoMeta: (e) => {
+        const v = e && e.target;
+        if (!v) return;
+        this.patchMediaView({ duration: v.duration || 0, current: v.currentTime || 0 });
+      },
+      zoomIn: (e) => { this.stopMediaView(e); this.setMediaZoom(((this.state.mediaView && this.state.mediaView.zoom) || 1) + 0.25); },
+      zoomOut: (e) => { this.stopMediaView(e); this.setMediaZoom(((this.state.mediaView && this.state.mediaView.zoom) || 1) - 0.25); },
+      zoomReset: (e) => { this.stopMediaView(e); this.setMediaZoom(1); },
+      detailHasVideo: false,
+      detailHasImg: false,
+      detailMediaSrc: '',
+      detailPosterSrc: '',
       detail: this.state.detail,
       detailOpen: !!this.state.detail,
       closeDetail: () => this.setState({ detail: null }),

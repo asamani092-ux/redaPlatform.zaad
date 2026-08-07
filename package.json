@@ -21,7 +21,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
-    "@zaad/design-system": "github:asamani092-ux/designSystemFinal#v1.2.0",
+    "@zaad/design-system": "github:asamani092-ux/designSystemFinal#v1.2.11",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.4.0",
     "dotenv": "^17.2.1",
