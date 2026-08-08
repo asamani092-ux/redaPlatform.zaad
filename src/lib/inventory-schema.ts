@@ -71,6 +71,14 @@ export function validateInventorySchemaMutation(
   return null;
 }
 
+/** خريطة مفتاح→تسمية عربية — O(k) */
+export function attributeLabelsFromSchema(
+  schema?: InventorySchemaField[] | null,
+): Record<string, string> {
+  const src = schema?.length ? schema : DEFAULT_INVENTORY_SCHEMA;
+  return Object.fromEntries(src.map((f) => [f.key, f.label]));
+}
+
 export function parseInventorySchema(raw: unknown): InventorySchemaField[] {
   if (!Array.isArray(raw)) return DEFAULT_INVENTORY_SCHEMA;
   const parsed = raw

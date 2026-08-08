@@ -16,8 +16,15 @@ import {
   sharesToRecord,
 } from "@/lib/report-metrics";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
-import { buildZadPresentationReport } from "@/lib/zad-presentation-report";
+import {
+  applyPresentationSelection,
+  buildZadPresentationReport,
+} from "@/lib/zad-presentation-report";
 import { countDistinctReceived } from "@/lib/report-counts";
+import {
+  attributeLabelsFromSchema,
+  parseInventorySchema,
+} from "@/lib/inventory-schema";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -141,9 +148,21 @@ export async function GET(req: NextRequest) {
       byAssociationShares: breakdowns.byAssociation,
       byHouseholdSizeShares: breakdowns.households.byHouseholdSize,
       topItems,
+      attributeLabels: attributeLabelsFromSchema(
+        parseInventorySchema(exhibition.settings?.inventorySchemaJson),
+      ),
     };
 
-    const report = buildZadPresentationReport(summary);
+    const slidesParam = req.nextUrl.searchParams.get("slides");
+    const kpisParam = req.nextUrl.searchParams.get("kpis");
+    const report = applyPresentationSelection(buildZadPresentationReport(summary), {
+      slides: slidesParam
+        ? slidesParam.split(",").map((s) => s.trim()).filter(Boolean)
+        : undefined,
+      kpis: kpisParam
+        ? kpisParam.split(",").map((s) => s.trim()).filter(Boolean)
+        : undefined,
+    });
     const asHtml = req.nextUrl.searchParams.get("html") === "1";
     if (!asHtml) {
       return NextResponse.json({ report });
@@ -298,6 +317,9 @@ export async function GET(req: NextRequest) {
     byAssociationShares: breakdowns.byAssociation,
     byHouseholdSizeShares: breakdowns.households.byHouseholdSize,
     topItems,
+    attributeLabels: attributeLabelsFromSchema(
+      parseInventorySchema(exhibition.settings?.inventorySchemaJson),
+    ),
   };
 
   if (format === "json") {

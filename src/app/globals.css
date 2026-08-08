@@ -1391,3 +1391,58 @@ textarea.input-field {
   background: var(--brand-primary);
 }
 
+/* تلفاز / شاشات عريضة — مقاسات أوضح ومسافات آمنة */
+@media (min-width: 1280px) {
+  .live-screen {
+    padding: clamp(1.5rem, 2.5vw, 3rem) clamp(2rem, 4vw, 4.5rem) clamp(2rem, 3vw, 3.5rem);
+  }
+  .live-screen__brand {
+    font-size: clamp(1.1rem, 1.4vw, 1.4rem);
+  }
+  .live-screen__title {
+    font-size: clamp(2.2rem, 3.5vw, 3.4rem);
+  }
+  .live-screen__sub {
+    font-size: clamp(1rem, 1.3vw, 1.25rem);
+  }
+  .live-screen__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(0.85rem, 1.2vw, 1.25rem);
+    margin-bottom: clamp(1.25rem, 2vw, 2rem);
+  }
+  .live-screen .zad-kpi {
+    padding: clamp(1rem, 1.5vw, 1.5rem);
+  }
+  .live-screen .zad-kpi__value {
+    font-size: clamp(2rem, 3vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .live-screen .zad-kpi__label {
+    font-size: clamp(0.95rem, 1.2vw, 1.15rem);
+    font-weight: 700;
+  }
+  .live-screen__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(1rem, 1.5vw, 1.5rem);
+  }
+  .live-screen__panel h2 {
+    font-size: clamp(1.2rem, 1.6vw, 1.5rem);
+  }
+  .live-screen__row {
+    font-size: clamp(1rem, 1.3vw, 1.2rem);
+  }
+  .live-screen .attr-chip,
+  .live-screen .zad-chip {
+    font-size: clamp(0.85rem, 1.1vw, 1rem);
+  }
+}
+@media (min-width: 1920px) {
+  .live-screen__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .live-screen .zad-kpi__value {
+    font-size: clamp(2.4rem, 2.8vw, 3.2rem);
+  }
+}
+

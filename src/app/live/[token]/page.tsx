@@ -32,6 +32,7 @@ type LivePayload = {
     quantity: number;
     attributes: Record<string, unknown>;
   }>;
+  attributeLabels?: Record<string, string>;
 };
 
 export default function LiveDisplayPage() {
@@ -125,7 +126,7 @@ export default function LiveDisplayPage() {
                   <span>#{i + 1}</span>
                   <strong>{t.quantity}</strong>
                 </div>
-                <AttrChips attributes={t.attributes} />
+                <AttrChips attributes={t.attributes} labels={data.attributeLabels} />
               </li>
             ))}
             {!data.topItems.length ? (

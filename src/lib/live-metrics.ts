@@ -2,12 +2,22 @@ import { prisma } from "@/lib/prisma";
 import { buildBreakdownShares } from "@/lib/report-metrics";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 import { countDistinctReceived } from "@/lib/report-counts";
+import {
+  attributeLabelsFromSchema,
+  parseInventorySchema,
+} from "@/lib/inventory-schema";
 
 /** مؤشرات العرض الحي بلا PII — O(n) للمستفيدين + تجميعات المعرض */
 export async function buildLiveMetrics(exhibitionId: string) {
   const exhibition = await prisma.exhibition.findUnique({
     where: { id: exhibitionId },
-    select: { id: true, name: true, location: true, active: true },
+    select: {
+      id: true,
+      name: true,
+      location: true,
+      active: true,
+      settings: { select: { inventorySchemaJson: true } },
+    },
   });
   if (!exhibition) return null;
 
@@ -57,8 +67,10 @@ export async function buildLiveMetrics(exhibitionId: string) {
     dependentsCounts: beneficiaries.map((b) => b.dependentsCount),
   });
 
+  const { settings, ...exhibitionPublic } = exhibition;
+
   return {
-    exhibition,
+    exhibition: exhibitionPublic,
     updatedAt: new Date().toISOString(),
     stats: {
       totalBeneficiaries,
@@ -76,5 +88,8 @@ export async function buildLiveMetrics(exhibitionId: string) {
     byNeighborhoodShares: breakdowns.byNeighborhood,
     byHouseholdSizeShares: breakdowns.households.byHouseholdSize,
     topItems,
+    attributeLabels: attributeLabelsFromSchema(
+      parseInventorySchema(settings?.inventorySchemaJson),
+    ),
   };
 }

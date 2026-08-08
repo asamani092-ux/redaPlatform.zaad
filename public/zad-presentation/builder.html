@@ -589,13 +589,19 @@ class Component extends DCLogic {
   deckKeys() { const o = this.state.on; const D = this.reportData(); const evN = this.evidenceList().length; const has = { summary: D.summary.length, kpi: D.kpis.length, dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: evN, disb: D.disb.length }; const order = ['summary','kpi','dist','funnel','progress','table','timeline','evidence','disb']; const mid = order.filter(k => o[k] && has[k]); return ['cover', ...mid, 'closing']; }
   componentDidMount() {
     const D = this.reportData();
-    if (D.title || D.period || D.orgName || D.deptName || D.closingTitle || D.orgLine || D.closingLine) this.setState(s => ({
-      title: D.title || s.title,
-      period: D.period || s.period,
-      orgName: D.orgName || s.orgName,
-      deptName: D.deptName || D.closingLine || D.orgLine || s.deptName,
-      closingTitle: D.closingTitle || s.closingTitle,
-    }));
+    const raw = (typeof window !== 'undefined' && window.ZAD_REPORT) || {};
+    const patch = {};
+    if (D.title || D.period || D.orgName || D.deptName || D.closingTitle || D.orgLine || D.closingLine) {
+      patch.title = D.title || this.state.title;
+      patch.period = D.period || this.state.period;
+      patch.orgName = D.orgName || this.state.orgName;
+      patch.deptName = D.deptName || D.closingLine || D.orgLine || this.state.deptName;
+      patch.closingTitle = D.closingTitle || this.state.closingTitle;
+    }
+    if (raw.meta && raw.meta.on && typeof raw.meta.on === 'object') {
+      patch.on = { ...this.state.on, ...raw.meta.on };
+    }
+    if (Object.keys(patch).length) this.setState(patch);
     if (Array.isArray(D.evidence) && D.evidence.length) {
       this.setState({ evidenceItems: D.evidence.map(e => ({ ...e })) });
     }

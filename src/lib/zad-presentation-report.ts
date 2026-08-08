@@ -1,5 +1,30 @@
 import type { ShareRow, TopDispensedItem } from "@/lib/report-metrics";
 
+/** مفاتيح شرائح منشئ العرض (بدون الغلاف/الخاتمة الثابتين) */
+export const PRESENTATION_SLIDE_OPTIONS = [
+  { id: "summary", label: "الملخص التنفيذي" },
+  { id: "kpi", label: "المؤشرات الرئيسية" },
+  { id: "dist", label: "توزيع الحالات" },
+  { id: "funnel", label: "قمع المراحل" },
+  { id: "progress", label: "نسب الإنجاز" },
+  { id: "table", label: "أداء الأصناف" },
+  { id: "timeline", label: "الخط الزمني" },
+  { id: "evidence", label: "معرض الشواهد" },
+  { id: "disb", label: "الصرف المالي" },
+] as const;
+
+export type PresentationSlideId = (typeof PRESENTATION_SLIDE_OPTIONS)[number]["id"];
+
+/** تسميات مؤشرات KPI كما تُبنى في التقرير */
+export const PRESENTATION_KPI_OPTIONS = [
+  "إجمالي المستفيدين",
+  "الأسر المستفيدة",
+  "المدعوون",
+  "الحضور",
+  "المستلمون",
+  "القطع المصروفة",
+] as const;
+
 /** عقد بيانات منشئ العرض التقديمي (نظام التصميم v1.2.11 — window.ZAD_REPORT) */
 export type ZadPresentationReport = {
   title: string;
@@ -68,6 +93,10 @@ export type ZadPresentationReport = {
     rows: [string, string][];
     note?: string;
   }>;
+  /** اختيار الشرائح من المنصة قبل فتح المنشئ */
+  meta?: {
+    on?: Partial<Record<PresentationSlideId, boolean>>;
+  };
 };
 
 export type PresentationSummaryInput = {
@@ -92,6 +121,7 @@ export type PresentationSummaryInput = {
   byAssociation?: Record<string, number>;
   byFamilySize?: Record<string, number>;
   topItems?: TopDispensedItem[];
+  attributeLabels?: Record<string, string>;
 };
 
 const DIST_COLORS = ["#951740", "#e9b221", "#3f8f5f", "#c0563a", "#4a6fa5"];
@@ -122,9 +152,51 @@ function sharesOrRecord(
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key, "ar"));
 }
 
-function itemLabel(attributes: Record<string, unknown>): string {
-  const parts = Object.entries(attributes ?? {}).map(([k, v]) => `${k}: ${String(v)}`);
+function itemLabel(
+  attributes: Record<string, unknown>,
+  labels?: Record<string, string>,
+): string {
+  const parts = Object.entries(attributes ?? {}).map(([k, v]) => {
+    const name = labels?.[k] ?? k;
+    return `${name}: ${String(v)}`;
+  });
   return parts.length ? parts.join(" · ") : "صنف";
+}
+
+export type PresentationSelection = {
+  slides?: string[];
+  kpis?: string[];
+};
+
+/**
+ * تطبيق اختيار الشرائح/المؤشرات على عقد العرض.
+ * Time: O(k) — Space: O(k).
+ */
+export function applyPresentationSelection(
+  report: ZadPresentationReport,
+  selection?: PresentationSelection | null,
+): ZadPresentationReport {
+  const slideSet = selection?.slides?.length
+    ? new Set(selection.slides)
+    : null;
+  const on = Object.fromEntries(
+    PRESENTATION_SLIDE_OPTIONS.map((s) => [
+      s.id,
+      slideSet ? slideSet.has(s.id) : true,
+    ]),
+  ) as Record<PresentationSlideId, boolean>;
+
+  let kpis = report.kpis;
+  if (selection?.kpis?.length) {
+    const want = new Set(selection.kpis);
+    kpis = report.kpis.filter((k) => want.has(k.label));
+  }
+
+  return {
+    ...report,
+    kpis,
+    meta: { on },
+  };
 }
 
 /**
@@ -134,6 +206,7 @@ function itemLabel(attributes: Record<string, unknown>): string {
 export function buildZadPresentationReport(
   s: PresentationSummaryInput,
 ): ZadPresentationReport {
+  const attrLabels = s.attributeLabels;
   const families = s.beneficiaryFamilies ?? s.totalBeneficiaries;
   const individuals = s.totalIndividuals ?? s.totalBeneficiaries;
   const gender = sharesOrRecord(s.byGenderShares, s.byGender);
@@ -260,7 +333,9 @@ export function buildZadPresentationReport(
       {
         label: "القطع المصروفة",
         value: ar(s.piecesDispensed),
-        rows: top.slice(0, 5).map((t) => [itemLabel(t.attributes), ar(t.quantity)]),
+        rows: top
+          .slice(0, 5)
+          .map((t) => [itemLabel(t.attributes, attrLabels), ar(t.quantity)]),
         note: top.length ? "أعلى الأصناف المصروفة." : "لا أصناف بعد.",
       },
     ],
@@ -343,7 +418,7 @@ export function buildZadPresentationReport(
       },
     ],
     programs: top.map((t) => {
-      const label = itemLabel(t.attributes);
+      const label = itemLabel(t.attributes, attrLabels);
       const share = pctOf(t.quantity, Math.max(s.piecesDispensed, 1));
       return {
         prog: label,
