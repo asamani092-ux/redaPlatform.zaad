@@ -281,7 +281,7 @@ button {
   padding: 1.35rem clamp(0.85rem, 2.5vw, 1.5rem) 2.5rem;
   padding-bottom: max(2.5rem, calc(1.5rem + env(safe-area-inset-bottom)));
   min-width: 0;
-  overflow-x: clip;
+  overflow-x: auto;
 }
 
 /* ── Page primitives ── */
