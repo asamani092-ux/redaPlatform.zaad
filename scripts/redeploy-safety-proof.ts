@@ -16,8 +16,12 @@ function pgUrl(dbName?: string): string {
   return u.toString();
 }
 
-function run(cmd: string, env: NodeJS.ProcessEnv) {
-  execSync(cmd, { stdio: "inherit", env: { ...process.env, ...env }, cwd: process.cwd() });
+function run(cmd: string, env: Record<string, string>) {
+  execSync(cmd, {
+    stdio: "inherit",
+    env: { ...process.env, ...env },
+    cwd: process.cwd(),
+  });
 }
 
 async function main() {
