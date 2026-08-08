@@ -223,10 +223,10 @@ export function WhatsAppLogModal({
               <Chip label={`${counts.total} مستفيد`} tone="neutral" />
               <Chip
                 label={`${failedCount ?? 0} فشل`}
-                tone={(failedCount ?? 0) > 0 ? "danger" : "success"}
+                tone={(failedCount ?? 0) > 0 ? "danger" : "neutral"}
               />
               <Chip
-                label={`${counts.invalidMobile} جوال`}
+                label={`${counts.invalidMobile} جوال غير صالح`}
                 tone={counts.invalidMobile > 0 ? "warning" : "neutral"}
               />
             </div>
@@ -234,8 +234,8 @@ export function WhatsAppLogModal({
 
           <div className="wa-log__filters" role="search">
             <input
-              className="input-field"
-              placeholder="بحث…"
+              className="input-field wa-log__filters-q"
+              placeholder="بحث بالاسم أو الجوال…"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
@@ -275,7 +275,7 @@ export function WhatsAppLogModal({
             </select>
             <button
               type="button"
-              className="btn-secondary btn-sm"
+              className="btn-primary btn-sm"
               disabled={busy}
               onClick={() => void load(1)}
             >
@@ -301,25 +301,26 @@ export function WhatsAppLogModal({
               </thead>
               <tbody>
                 {rows.map((r) => {
+                  const rowStatus =
+                    channel === "invite" ? r.inviteStatus : r.surveyStatus;
                   const statusLabel =
                     channel === "invite" ? r.inviteStatusLabel : r.surveyStatusLabel;
-                  const statusTone = chipToneForStatus(
-                    channel === "invite" ? r.inviteStatus : r.surveyStatus,
-                  );
+                  const statusTone = chipToneForStatus(rowStatus);
                   const statusError =
                     channel === "invite" ? r.inviteError : r.surveyError;
                   const busyRow = rowBusy === r.beneficiaryId;
+                  const canFixMobile =
+                    canEditMobile && (!r.mobileValid || rowStatus === "FAILED");
                   return (
                     <tr key={r.beneficiaryId}>
                       <td data-label="المستفيد">
                         <strong>{r.name}</strong>
-                        <div className="meta-ltr">{r.nationalId}</div>
                         {channel === "survey" && !r.hasDispense ? (
                           <div className="page-header__desc">لم يستلم قطعاً</div>
                         ) : null}
                       </td>
                       <td data-label="الجوال">
-                        {canEditMobile ? (
+                        {canFixMobile ? (
                           <div className="wa-log__mobile">
                             <input
                               className="input-field"
@@ -338,7 +339,7 @@ export function WhatsAppLogModal({
                           </div>
                         ) : (
                           <span className="meta-ltr" dir="ltr">
-                            {r.mobile}
+                            {r.mobile || "—"}
                           </span>
                         )}
                       </td>
@@ -350,7 +351,7 @@ export function WhatsAppLogModal({
                       </td>
                       <td data-label="إجراء">
                         <div className="row-actions">
-                          {canEditMobile ? (
+                          {canFixMobile ? (
                             <button
                               type="button"
                               className="btn-secondary btn-sm"

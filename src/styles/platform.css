@@ -226,21 +226,25 @@
   align-items: center;
 }
 .wa-log__filters {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: var(--space-2);
   align-items: center;
 }
 .wa-log__filters .input-field,
 .wa-log__filters select.input-field {
-  flex: 1 1 8rem;
-  min-width: 7rem;
-  max-width: 14rem;
-  width: auto;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
 }
-.wa-log__filters .input-field[placeholder] {
-  flex: 1 1 12rem;
-  max-width: 18rem;
+@media (max-width: 720px) {
+  .wa-log__filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wa-log__filters .btn-primary,
+  .wa-log__filters .btn-secondary {
+    width: 100%;
+  }
 }
 .wa-log__mobile {
   display: grid;
