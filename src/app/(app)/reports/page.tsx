@@ -428,6 +428,67 @@ export default function ReportsPage() {
           <Skeleton lines={6} height="2.5rem" />
         </div>
       )}
+
+      <Modal
+        open={presOpen}
+        title="اختيار مؤشرات وشرائح العرض"
+        onClose={() => setPresOpen(false)}
+        wide
+      >
+        <p className="page-header__desc">
+          حدّد الشرائح والمؤشرات قبل فتح المنشئ — تُفعَّل الشرائح المختارة فقط.
+        </p>
+        <div className="form-grid" style={{ marginTop: "1rem" }}>
+          <div className="full">
+            <h3 className="panel-title">الشرائح</h3>
+            <div className="toolbar" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
+              {PRESENTATION_SLIDE_OPTIONS.map((s) => (
+                <label key={s.id} className="check-field">
+                  <input
+                    type="checkbox"
+                    checked={!!presSlides[s.id]}
+                    onChange={(e) =>
+                      setPresSlides((prev) => ({ ...prev, [s.id]: e.target.checked }))
+                    }
+                  />
+                  {s.label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="full">
+            <h3 className="panel-title">المؤشرات (KPI)</h3>
+            <div className="toolbar" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
+              {PRESENTATION_KPI_OPTIONS.map((k) => (
+                <label key={k} className="check-field">
+                  <input
+                    type="checkbox"
+                    checked={!!presKpis[k]}
+                    onChange={(e) =>
+                      setPresKpis((prev) => ({ ...prev, [k]: e.target.checked }))
+                    }
+                  />
+                  {k}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="form-actions">
+          <a
+            className="btn-primary"
+            href={presentationHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setPresOpen(false)}
+          >
+            فتح المنشئ
+          </a>
+          <button type="button" className="btn-secondary" onClick={() => setPresOpen(false)}>
+            إلغاء
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
