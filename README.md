@@ -14,27 +14,32 @@
 
 ```bash
 cp .env.example .env
-# شغّل PostgreSQL ثم عيّن DATABASE_URL
+# عيّن DATABASE_URL و AUTH_SECRET و ADMIN_PASSWORD
 npm install
-npx prisma db push
-npm run db:seed
+npm run db:migrate
+npm run init
 npm run dev
 ```
 
-التطبيق يعمل على المنفذ **3100**:
+التطبيق على المنفذ **3100**: `http://localhost:3100`
 
-`http://localhost:3100`
-
-أو عبر Docker Compose من جذر المستودع:
+Docker Compose (بيانات على volumes — ممنوع `down -v`):
 
 ```bash
-docker compose up --build
+docker compose up -d --build
+docker compose run --rm -e ADMIN_PASSWORD -e ADMIN_MOBILE -e DATABASE_URL web npm run init
 ```
 
-دخول المدير الافتراضي (من البذرة):
+بعد أول دخول: غيّر كلمة مدير النظام فوراً.
 
-- الجوال: `0500000000`
-- كلمة المرور: `Admin@1234`
+## حماية البيانات عند النشر
+
+- إقلاع الحاوية: `apply-pending.sh && node server.js` فقط — **بلا بذرة**
+- تهيئة مرة واحدة: `npm run init` على قاعدة فارغة
+- ترحيل تراكمي فقط — ممنوع `migrate reset` / `db push` على الإنتاج
+- Postgres دائم منفصل + volume `/data`
+
+التفاصيل: [`docs/LAUNCH_STEPS.md`](docs/LAUNCH_STEPS.md) · [`docs/DEPLOY.md`](docs/DEPLOY.md) · [`docs/RUNBOOK_EVENT_DAY.md`](docs/RUNBOOK_EVENT_DAY.md)
 
 ## الوحدات
 
@@ -47,9 +52,6 @@ docker compose up --build
 7. استبيان ورسالة شكر (واتساب stub حتى نهاية التجربة)
 8. تنبيه خمول الجلسة بعد ساعة
 
-## النشر على Coolify
+## النشر على Coolify + دومين العميل
 
-1. اربط المستودع بتطبيق Coolify (مجلد البناء: جذر المستودع / Dockerfile في الجذر)
-2. عيّن متغيرات البيئة من `.env.example`
-3. (اختياري) أضف سر `COOLIFY_WEBHOOK` في GitHub لتفعيل النشر التلقائي من `main`
-4. اربط الدومين لاحقاً من لوحة Coolify
+راجع **`docs/LAUNCH_STEPS.md`**. باختصار: Postgres دائم → تطبيق Dockerfile → volume `/data` → أسرار البيئة → `npm run init` مرة واحدة → دومين HTTPS → `AUTH_URL`.

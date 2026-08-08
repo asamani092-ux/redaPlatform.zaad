@@ -33,48 +33,66 @@ export async function GET(req: NextRequest) {
   if ("error" in authz) return authz.error;
 
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const associationId = req.nextUrl.searchParams.get("associationId")?.trim() || "";
+  const statusFilter = req.nextUrl.searchParams.get("status")?.trim() || "";
   const exhibition = await getActiveExhibition();
   const { page, pageSize, skip, take } = parsePageParams(req.nextUrl.searchParams);
 
-  const where = q
-    ? {
-        OR: [
-          { name: { contains: q, mode: "insensitive" as const } },
-          { nationalId: { contains: q } },
-          { mobile: { contains: q } },
-        ],
-      }
-    : undefined;
+  const and: object[] = [];
+  if (q) {
+    and.push({
+      OR: [
+        { name: { contains: q, mode: "insensitive" as const } },
+        { nationalId: { contains: q } },
+        { mobile: { contains: q } },
+      ],
+    });
+  }
+  if (associationId === "__other__") {
+    and.push({
+      AND: [{ associationOther: { not: null } }, { NOT: { associationOther: "" } }],
+    });
+  } else if (associationId === "__none__") {
+    and.push({
+      AND: [
+        { associationId: null },
+        { OR: [{ associationOther: null }, { associationOther: "" }] },
+      ],
+    });
+  } else if (associationId) {
+    and.push({ associationId });
+  }
 
-  const [total, beneficiaries] = await Promise.all([
-    prisma.beneficiary.count({ where }),
-    prisma.beneficiary.findMany({
-      where,
-      include: {
-        association: true,
-        invites: exhibition
-          ? { where: { exhibitionId: exhibition.id }, take: 1 }
-          : false,
-        attendances: exhibition
-          ? { where: { exhibitionId: exhibition.id }, take: 1 }
-          : false,
-        dispenseOrders: exhibition
-          ? { where: { exhibitionId: exhibition.id }, take: 1 }
-          : false,
-      },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take,
-    }),
-  ]);
+  const where = and.length ? { AND: and } : undefined;
 
-  const rows = beneficiaries.map((b) => {
+  // عند فلتر الحالة نحتاج علاقات المعرض ثم نفلتر في الذاكرة — O(n) للحجم المحدود بالصفحة أو كل المطابقين
+  const include = {
+    association: true,
+    invites: exhibition
+      ? { where: { exhibitionId: exhibition.id }, take: 1 }
+      : (false as const),
+    attendances: exhibition
+      ? { where: { exhibitionId: exhibition.id }, take: 1 }
+      : (false as const),
+    dispenseOrders: exhibition
+      ? { where: { exhibitionId: exhibition.id }, take: 1 }
+      : (false as const),
+  };
+
+  function mapRow(
+    b: Awaited<ReturnType<typeof prisma.beneficiary.findMany>>[number] & {
+      invites?: { invited: boolean; qrToken: string }[];
+      attendances?: { type: string }[];
+      dispenseOrders?: { id: string }[];
+      association?: { id: string; name: string } | null;
+    },
+  ) {
     const invite = Array.isArray(b.invites) ? b.invites[0] : undefined;
     const attendance = Array.isArray(b.attendances) ? b.attendances[0] : undefined;
     const dispense = Array.isArray(b.dispenseOrders) ? b.dispenseOrders[0] : undefined;
     const status = resolveStatus({
       invited: invite?.invited,
-      attendanceType: attendance?.type ?? null,
+      attendanceType: (attendance?.type as "NORMAL" | "EXCEPTION" | null) ?? null,
       received: !!dispense,
     });
     return {
@@ -83,8 +101,32 @@ export async function GET(req: NextRequest) {
       statusLabel: STATUS_LABELS[status],
       qrToken: invite?.qrToken ?? null,
     };
-  });
+  }
 
+  if (statusFilter) {
+    const all = await prisma.beneficiary.findMany({
+      where,
+      include,
+      orderBy: { createdAt: "desc" },
+    });
+    const filtered = all.map(mapRow).filter((r) => r.status === statusFilter);
+    const total = filtered.length;
+    const rows = filtered.slice(skip, skip + take);
+    return NextResponse.json(paginatedPayload(rows, page, pageSize, total));
+  }
+
+  const [total, beneficiaries] = await Promise.all([
+    prisma.beneficiary.count({ where }),
+    prisma.beneficiary.findMany({
+      where,
+      include,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+  ]);
+
+  const rows = beneficiaries.map(mapRow);
   return NextResponse.json(paginatedPayload(rows, page, pageSize, total));
 }
 

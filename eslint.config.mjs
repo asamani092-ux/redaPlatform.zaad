@@ -20,6 +20,8 @@ const eslintConfig = [
       "next-env.d.ts",
       "src/generated/**",
       "Zaad.design.system/**",
+      // منشئ العرض من نظام التصميم — يُخدم كملفات ثابتة وليس كود Next
+      "public/zad-presentation/**",
     ],
   },
 ];

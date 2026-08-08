@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
 import { AttrChips } from "@/components/AttrChips";
+import { Modal } from "@/components/Modal";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -11,6 +12,10 @@ import { useToast } from "@/components/ui/Toast";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
 import type { ShareRow } from "@/lib/report-metrics";
+import {
+  PRESENTATION_KPI_OPTIONS,
+  PRESENTATION_SLIDE_OPTIONS,
+} from "@/lib/zad-presentation-report";
 
 type TopItem = {
   inventoryItemId: string;
@@ -44,6 +49,7 @@ type Summary = {
   byAssociationShares?: ShareRow[];
   byHouseholdSizeShares?: ShareRow[];
   topItems?: TopItem[];
+  attributeLabels?: Record<string, string>;
 };
 
 type ExhibitionOpt = { id: string; name: string; active: boolean };
@@ -76,6 +82,18 @@ export default function ReportsPage() {
   const [liveMsg, setLiveMsg] = useState("");
   const [liveBusy, setLiveBusy] = useState(false);
   const [newLabel, setNewLabel] = useState("");
+  const [presOpen, setPresOpen] = useState(false);
+  const [presSlides, setPresSlides] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(
+      PRESENTATION_SLIDE_OPTIONS.map((s) => [
+        s.id,
+        !["timeline", "evidence", "disb"].includes(s.id),
+      ]),
+    ),
+  );
+  const [presKpis, setPresKpis] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(PRESENTATION_KPI_OPTIONS.map((k) => [k, true])),
+  );
   const toast = useToast();
 
   const load = useCallback(async (id?: string) => {
@@ -119,6 +137,16 @@ export default function ReportsPage() {
   }, [exhibitionId, loadLiveLinks]);
 
   const exportQs = exhibitionId ? `&exhibitionId=${encodeURIComponent(exhibitionId)}` : "";
+
+  const presentationHref = useMemo(() => {
+    const slides = PRESENTATION_SLIDE_OPTIONS.map((s) => s.id).filter((id) => presSlides[id]);
+    const kpis = PRESENTATION_KPI_OPTIONS.filter((k) => presKpis[k]);
+    const qs = new URLSearchParams({ format: "presentation", html: "1" });
+    if (exhibitionId) qs.set("exhibitionId", exhibitionId);
+    if (slides.length) qs.set("slides", slides.join(","));
+    if (kpis.length) qs.set("kpis", kpis.join(","));
+    return `/api/reports?${qs}`;
+  }, [exhibitionId, presSlides, presKpis]);
 
   async function createLiveLink() {
     if (!exhibitionId || liveBusy) return;
@@ -182,14 +210,13 @@ export default function ReportsPage() {
             <a className="btn-primary" href={`/api/reports?format=xlsx${exportQs}`}>
               تصدير Excel
             </a>
-            <a
+            <button
+              type="button"
               className="btn-recommend"
-              href={`/api/reports?format=presentation&html=1${exportQs}`}
-              target="_blank"
-              rel="noreferrer"
+              onClick={() => setPresOpen(true)}
             >
               منشئ العرض التقديمي
-            </a>
+            </button>
             <a
               className="btn-secondary"
               href={`/api/reports?format=pdf${exportQs}`}
@@ -298,7 +325,10 @@ export default function ReportsPage() {
                       <strong>#{idx + 1}</strong>
                       <strong style={{ color: "var(--tmkeen-primary)" }}>{t.quantity}</strong>
                     </div>
-                    <AttrChips attributes={t.attributes} />
+                    <AttrChips
+                      attributes={t.attributes}
+                      labels={summary.attributeLabels}
+                    />
                   </li>
                 ))}
                 {!(summary.topItems ?? []).length ? <li className="empty">لا بيانات بعد</li> : null}
@@ -353,13 +383,13 @@ export default function ReportsPage() {
                           <div className="row-actions">
                             <button
                               type="button"
-                              className="btn-secondary"
+                              className="btn-secondary btn-sm"
                               onClick={() => void copyUrl(l.url)}
                             >
                               نسخ
                             </button>
                             <a
-                              className="btn-secondary"
+                              className="btn-secondary btn-sm"
                               href={l.url}
                               target="_blank"
                               rel="noreferrer"
@@ -368,7 +398,7 @@ export default function ReportsPage() {
                             </a>
                             <button
                               type="button"
-                              className="btn-danger"
+                              className="btn-danger btn-sm"
                               disabled={liveBusy}
                               onClick={() => void deleteLiveLink(l.id)}
                             >
@@ -398,6 +428,67 @@ export default function ReportsPage() {
           <Skeleton lines={6} height="2.5rem" />
         </div>
       )}
+
+      <Modal
+        open={presOpen}
+        title="اختيار مؤشرات وشرائح العرض"
+        onClose={() => setPresOpen(false)}
+        wide
+      >
+        <p className="page-header__desc">
+          حدّد الشرائح والمؤشرات قبل فتح المنشئ — تُفعَّل الشرائح المختارة فقط.
+        </p>
+        <div className="form-grid" style={{ marginTop: "1rem" }}>
+          <div className="full">
+            <h3 className="panel-title">الشرائح</h3>
+            <div className="toolbar" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
+              {PRESENTATION_SLIDE_OPTIONS.map((s) => (
+                <label key={s.id} className="check-field">
+                  <input
+                    type="checkbox"
+                    checked={!!presSlides[s.id]}
+                    onChange={(e) =>
+                      setPresSlides((prev) => ({ ...prev, [s.id]: e.target.checked }))
+                    }
+                  />
+                  {s.label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="full">
+            <h3 className="panel-title">المؤشرات (KPI)</h3>
+            <div className="toolbar" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
+              {PRESENTATION_KPI_OPTIONS.map((k) => (
+                <label key={k} className="check-field">
+                  <input
+                    type="checkbox"
+                    checked={!!presKpis[k]}
+                    onChange={(e) =>
+                      setPresKpis((prev) => ({ ...prev, [k]: e.target.checked }))
+                    }
+                  />
+                  {k}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="form-actions">
+          <a
+            className="btn-primary"
+            href={presentationHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => setPresOpen(false)}
+          >
+            فتح المنشئ
+          </a>
+          <button type="button" className="btn-secondary" onClick={() => setPresOpen(false)}>
+            إلغاء
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

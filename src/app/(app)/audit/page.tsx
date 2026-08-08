@@ -19,10 +19,17 @@ type Log = {
   user?: { name: string; mobile: string } | null;
 };
 
-function statusBadgeClass(status?: string | null): string {
+function statusBadgeClass(status?: string | null, action?: string): string {
+  if (action === "CHECKIN_FROM_DISPENSE") return "badge badge-warning";
   if (status === "FAILED") return "badge badge-danger";
   if (status === "PARTIAL") return "badge badge-warning";
   return "badge badge-success";
+}
+
+function actionBadgeClass(action: string): string {
+  if (action === "CHECKIN_FROM_DISPENSE") return "badge badge-warning";
+  if (action === "CHECKIN_EXCEPTION") return "badge badge-warning";
+  return "badge badge-muted";
 }
 
 export default function AuditPage() {
@@ -86,10 +93,15 @@ export default function AuditPage() {
                 <tr key={l.id}>
                   <td data-label="الوقت">{new Date(l.createdAt).toLocaleString("ar-SA")}</td>
                   <td data-label="المستخدم">{l.user?.name ?? "—"}</td>
-                  <td data-label="الإجراء">{actionLabel(l.action)}</td>
+                  <td data-label="الإجراء">
+                    <span className={actionBadgeClass(l.action)}>{actionLabel(l.action)}</span>
+                  </td>
                   <td data-label="الكيان">{entityLabel(l.entityType)}</td>
                   <td data-label="الحالة">
-                    <span className={statusBadgeClass(l.status)} title={l.statusReason ?? undefined}>
+                    <span
+                      className={statusBadgeClass(l.status, l.action)}
+                      title={l.statusReason ?? undefined}
+                    >
                       {l.statusLabel ?? "نجاح"}
                     </span>
                     {l.statusReason ? (

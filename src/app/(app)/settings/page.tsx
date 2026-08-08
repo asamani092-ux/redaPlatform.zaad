@@ -508,16 +508,33 @@ export default function SettingsPage() {
         <form onSubmit={onSaveSection}>
           <div className="form-grid">
             <div className="full">
-              <label className="label-field">
-                قالب الدعوة — المتغيرات: {"{{name}}"} {"{{exhibition}}"} {"{{date}}"} {"{{location}}"}{" "}
-                {"{{qr}}"} {"{{qr_url}}"}
-              </label>
+              <label className="label-field">قالب الدعوة</label>
               <textarea
                 className="input-field"
                 rows={4}
                 value={inviteTpl}
                 onChange={(e) => setInviteTpl(e.target.value)}
               />
+              <ul className="page-header__desc" style={{ marginTop: "0.5rem", paddingInlineStart: "1.25rem" }}>
+                <li>
+                  <code>{"{{name}}"}</code> — اسم المستفيد
+                </li>
+                <li>
+                  <code>{"{{exhibition}}"}</code> — اسم المعرض
+                </li>
+                <li>
+                  <code>{"{{date}}"}</code> — تاريخ المعرض
+                </li>
+                <li>
+                  <code>{"{{location}}"}</code> — موقع المعرض
+                </li>
+                <li>
+                  <code>{"{{qr}}"}</code> — رمز QR (نص)
+                </li>
+                <li>
+                  <code>{"{{qr_url}}"}</code> — رابط صورة/صفحة QR
+                </li>
+              </ul>
             </div>
             <div className="full">
               <label className="label-field">قالب الشكر</label>
@@ -527,6 +544,14 @@ export default function SettingsPage() {
                 value={thanksTpl}
                 onChange={(e) => setThanksTpl(e.target.value)}
               />
+              <ul className="page-header__desc" style={{ marginTop: "0.5rem", paddingInlineStart: "1.25rem" }}>
+                <li>
+                  <code>{"{{name}}"}</code> — اسم المستفيد
+                </li>
+                <li>
+                  <code>{"{{exhibition}}"}</code> — اسم المعرض
+                </li>
+              </ul>
             </div>
           </div>
           <div className="form-actions">

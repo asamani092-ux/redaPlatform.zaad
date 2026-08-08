@@ -5,6 +5,7 @@ import { requireActiveExhibition } from "@/lib/exhibition";
 import { DEFAULT_INVENTORY_SCHEMA, parseInventorySchema } from "@/lib/inventory-schema";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 import { countDistinctReceived } from "@/lib/report-counts";
+import { buildHouseholdMetrics } from "@/lib/report-metrics";
 
 export async function GET() {
   const authz = await requirePermission("dashboard:view");
@@ -22,7 +23,7 @@ export async function GET() {
   const exhibitionId = exhibition.id;
 
   const [
-    totalBeneficiaries,
+    dependentsRows,
     invited,
     attended,
     received,
@@ -32,7 +33,7 @@ export async function GET() {
     inventory,
     topDetailed,
   ] = await Promise.all([
-    prisma.beneficiary.count(),
+    prisma.beneficiary.findMany({ select: { dependentsCount: true } }),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
     countDistinctReceived(exhibitionId),
@@ -50,6 +51,10 @@ export async function GET() {
     }),
     fetchTopDispensedItems(exhibitionId, 5),
   ]);
+
+  const households = buildHouseholdMetrics(
+    dependentsRows.map((r) => r.dependentsCount ?? 0),
+  );
 
   const remainingToReceive = Math.max(attended - received, 0);
   const piecesDispensed = piecesAgg._sum.piecesCount ?? 0;
@@ -70,7 +75,10 @@ export async function GET() {
       location: exhibition.location,
     },
     stats: {
-      totalBeneficiaries,
+      /** توافق خلفي: كان يُعرض كـ«مستفيدين» وهو عدد الأسر */
+      totalBeneficiaries: households.beneficiaryFamilies,
+      beneficiaryFamilies: households.beneficiaryFamilies,
+      totalIndividuals: households.totalIndividuals,
       invited,
       attended,
       received,

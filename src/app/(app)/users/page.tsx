@@ -189,19 +189,23 @@ export default function UsersPage() {
                   </td>
                   <td data-label="إجراءات">
                     <div className="row-actions">
-                      <button type="button" className="btn-secondary" onClick={() => setEditing(u)}>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        onClick={() => setEditing(u)}
+                      >
                         تعديل
                       </button>
                       <button
                         type="button"
-                        className="btn-secondary"
+                        className="btn-secondary btn-sm"
                         onClick={() => setPasswordFor(u)}
                       >
                         كلمة المرور
                       </button>
                       <button
                         type="button"
-                        className="btn-danger"
+                        className="btn-danger btn-sm"
                         onClick={() => {
                           setDeleteConfirmText("");
                           setDeleting(u);

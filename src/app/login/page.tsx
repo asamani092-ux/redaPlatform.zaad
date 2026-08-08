@@ -39,7 +39,18 @@ function LoginForm() {
           <h1>منصة رداء</h1>
           <p>دخول الموظفين بالجوال وكلمة المرور</p>
         </div>
-        <form onSubmit={onSubmit} className="login-form" method="post" action="#">
+        <form
+          onSubmit={onSubmit}
+          className={`login-form${loading ? " login-form--busy" : ""}`}
+          method="post"
+          action="#"
+          aria-busy={loading}
+        >
+          {loading ? (
+            <p className="msg login-form__busy" role="status" aria-live="polite">
+              جاري التحقق من بيانات الدخول…
+            </p>
+          ) : null}
           <div>
             <label className="label-field" htmlFor="mobile">
               رقم الجوال
@@ -52,17 +63,26 @@ function LoginForm() {
               inputMode="tel"
               required
               placeholder="05xxxxxxxx"
+              disabled={loading}
             />
           </div>
           <div>
             <label className="label-field" htmlFor="password">
               كلمة المرور
             </label>
-            <input id="password" name="password" type="password" className="input-field" dir="ltr" required />
+            <input
+              id="password"
+              name="password"
+              type="password"
+              className="input-field"
+              dir="ltr"
+              required
+              disabled={loading}
+            />
           </div>
           {error ? <p className="msg msg-error" role="alert">{error}</p> : null}
           <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading} aria-busy={loading}>
-            {loading ? "جاري الدخول..." : "دخول"}
+            {loading ? "جاري الدخول…" : "دخول"}
           </button>
           <Link
             href="/forgot-password"

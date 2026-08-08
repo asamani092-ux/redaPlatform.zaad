@@ -50,6 +50,7 @@ export default function DispensePage() {
   const { data: session } = useSession();
   const role = session?.user?.role as Role | undefined;
   const canOverride = role ? hasPermission(role, "dispense:override") : false;
+  const canDispense = role ? hasPermission(role, "dispense:manage") : false;
 
   const [q, setQ] = useState("");
   const [lookup, setLookup] = useState<Lookup | null>(null);
@@ -114,6 +115,37 @@ export default function DispensePage() {
     },
     [preview],
   );
+
+  /**
+   * تسجيل حضور من شاشة الصرف ثم إعادة المعاينة.
+   * Time: O(1) — Space: O(1).
+   */
+  async function checkInFromDispense() {
+    if (!lookup || busy || !canDispense) return;
+    setBusy(true);
+    setMsg("");
+    setMsgError(false);
+    const res = await fetch("/api/dispense/checkin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ beneficiaryId: lookup.beneficiary.id }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      const err = json.error || "فشل تسجيل الحضور";
+      setMsg(err);
+      setMsgError(true);
+      toast.push({ title: err, tone: "danger" });
+      return;
+    }
+    toast.push({
+      title: json.data?.alreadyPresent ? "الحضور مسجل مسبقاً" : "تم تسجيل الحضور من شاشة الصرف",
+      tone: "warning",
+    });
+    const token = lookup.beneficiary.nationalId;
+    await preview({ q: token });
+  }
 
   const computed = lookup?.computedEntitlement ?? lookup?.entitledPieces ?? 0;
 
@@ -283,6 +315,9 @@ export default function DispensePage() {
                 <span className={`badge ${lookup.attendance ? "badge-success" : "badge-danger"}`}>
                   الحضور: {lookup.attendance ? "مسجل" : "غير مسجل"}
                 </span>
+                {!lookup.attendance && canDispense ? (
+                  <span className="badge badge-warning">يلزم تحضير قبل الصرف</span>
+                ) : null}
                 <span className="badge badge-muted">
                   الاستحقاق الفعلي: {effective}
                 </span>
@@ -302,6 +337,31 @@ export default function DispensePage() {
               </>
             }
           />
+
+          {!lookup.attendance && canDispense ? (
+            <div
+              className="panel"
+              style={{
+                marginTop: "var(--space-4)",
+                borderColor: "var(--warning-border, var(--warning-text))",
+              }}
+            >
+              <p className="page-header__desc">
+                المستفيد غير حاضر. يمكنك تسجيل الحضور من هنا ثم متابعة الصرف — يُسجّل في سجل
+                العمليات كتنبيه «من شاشة الصرف».
+              </p>
+              <div className="form-actions" style={{ marginTop: "0.75rem" }}>
+                <button
+                  type="button"
+                  className="btn-recommend"
+                  disabled={busy}
+                  onClick={() => void checkInFromDispense()}
+                >
+                  {busy ? "جاري…" : "تسجيل حضور ثم صرف"}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {lookup.dispensed ? (
             <div className="panel" style={{ marginTop: "var(--space-4)", borderColor: "var(--warning-border, var(--warning-text))" }}>

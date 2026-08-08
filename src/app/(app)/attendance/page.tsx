@@ -139,11 +139,14 @@ export default function AttendancePage() {
       return;
     }
     if (!res.ok) {
-      setMsg(json.error || "فشل التسجيل");
+      const err = json.error || "فشل التسجيل";
+      setMsg(err);
       setMsgError(true);
+      toast.push({ title: err, tone: "danger" });
       return;
     }
-    setMsg("تم تسجيل الحضور");
+    // تنبيه واحد فقط للنجاح
+    setMsg("");
     setMsgError(false);
     toast.push({ title: "تم تسجيل الحضور", tone: "success" });
     setLookup(null);
@@ -223,7 +226,7 @@ export default function AttendancePage() {
             statusLabel={lookup.statusLabel}
             extra={
               lookup.attendance ? (
-                <span className="badge badge-warning">سبق الحضور</span>
+                <span className="badge badge-success">تم تسجيل الحضور</span>
               ) : null
             }
           />

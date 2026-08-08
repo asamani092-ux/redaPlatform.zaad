@@ -12,6 +12,8 @@ type DashboardData = {
   exhibition: { name: string; location?: string | null };
   stats: {
     totalBeneficiaries: number;
+    beneficiaryFamilies?: number;
+    totalIndividuals?: number;
     invited: number;
     attended: number;
     received: number;
@@ -73,8 +75,12 @@ export default function DashboardPage() {
     );
   }
 
+  const families =
+    data.stats.beneficiaryFamilies ?? data.stats.totalBeneficiaries;
+  const individuals = data.stats.totalIndividuals ?? data.stats.totalBeneficiaries;
   const tiles = [
-    { label: "إجمالي المستفيدين", value: data.stats.totalBeneficiaries },
+    { label: "إجمالي الأسر", value: families },
+    { label: "إجمالي المستفيدين", value: individuals },
     { label: "المدعوون", value: data.stats.invited },
     { label: "الحاضرون", value: data.stats.attended },
     { label: "استلموا", value: data.stats.received },
@@ -108,7 +114,7 @@ export default function DashboardPage() {
       <div className="split-2">
         <section className="panel zad-card">
           <h2 className="panel-title">الكميات المتبقية</h2>
-          <div className="table-wrap zad-table-wrap">
+          <div className="table-wrap table-wrap--stack zad-table-wrap">
             <table>
               <thead>
                 <tr>
@@ -120,11 +126,11 @@ export default function DashboardPage() {
               <tbody>
                 {data.inventory.map((i) => (
                   <tr key={i.id}>
-                    <td>
+                    <td data-label="الصنف">
                       <AttrChips attributes={i.attributes} labels={data.attributeLabels} />
                     </td>
-                    <td>{i.quantity}</td>
-                    <td>
+                    <td data-label="الكمية">{i.quantity}</td>
+                    <td data-label="الحالة">
                       <span className={`zad-badge ${i.lowStock ? "zad-badge--warning" : "zad-badge--success"}`}>
                         {i.lowStock ? "قرب النفاد" : "متوفر"}
                       </span>

@@ -7,6 +7,8 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { Chip } from "@/components/ui/Chip";
+import { Tabs } from "@/components/ui/Tabs";
+import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
 
 type Row = {
   id: string;
@@ -38,6 +40,7 @@ export default function InvitesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [invitedTotal, setInvitedTotal] = useState(0);
+  const [waLogOpen, setWaLogOpen] = useState(false);
   const toast = useToast();
 
   async function loadPick(search = q, p = 1) {
@@ -283,10 +286,31 @@ export default function InvitesPage() {
             >
               طباعة قائمة المدعوين ({invitedTotal})
             </button>
+            <button
+              className="btn-secondary"
+              type="button"
+              onClick={() => setWaLogOpen(true)}
+            >
+              حالة واتساب
+            </button>
           </>
         }
       />
       {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
+      <WhatsAppLogModal
+        open={waLogOpen}
+        onClose={() => setWaLogOpen(false)}
+        channel="invite"
+      />
+
+      <Tabs
+        items={[
+          { id: "pick", label: "للدعوة" },
+          { id: "invited", label: `المدعوون (${invitedTotal})` },
+        ]}
+        value={view}
+        onChange={(id) => void switchView(id as "pick" | "invited")}
+      />
 
       <section className="panel">
         <div className="toolbar">
@@ -305,32 +329,18 @@ export default function InvitesPage() {
             }}
           />
           <button
-            className="btn-secondary"
+            className="btn-secondary btn-sm"
             type="button"
             onClick={() => void (view === "invited" ? loadInvited(page) : loadPick(q, 1))}
           >
             تحديث
-          </button>
-          <button
-            type="button"
-            className={view === "pick" ? "btn-primary" : "btn-secondary"}
-            onClick={() => void switchView("pick")}
-          >
-            اختيار للدعوة
-          </button>
-          <button
-            type="button"
-            className={view === "invited" ? "btn-primary" : "btn-secondary"}
-            onClick={() => void switchView("invited")}
-          >
-            المدعوون فقط ({invitedTotal})
           </button>
         </div>
       </section>
 
       <section className="panel">
         <h2 className="panel-title">
-          {view === "invited" ? "المدعوون" : "المستفيدون"} ({total})
+          {view === "invited" ? "المدعوون" : "للدعوة"} ({total})
         </h2>
         <div className="table-wrap table-wrap--stack">
           <table>
@@ -425,14 +435,16 @@ export default function InvitesPage() {
                   </td>
                   {view === "invited" ? (
                     <td data-label="إجراءات">
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        disabled={busy}
-                        onClick={() => void resendWhatsApp([r.id])}
-                      >
-                        {resendingId === r.id ? "جاري…" : "إعادة إرسال"}
-                      </button>
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          disabled={busy}
+                          onClick={() => void resendWhatsApp([r.id])}
+                        >
+                          {resendingId === r.id ? "جاري…" : "إعادة إرسال"}
+                        </button>
+                      </div>
                     </td>
                   ) : null}
                 </tr>
