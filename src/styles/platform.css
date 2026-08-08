@@ -255,3 +255,60 @@
   height: 2.75rem;
   object-fit: contain;
 }
+
+/* تقييم التجربة — بطاقات متجاوبة بالكامل */
+.trial-eval-list {
+  display: grid;
+  gap: var(--space-3);
+}
+.trial-eval-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-hairline) solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+.trial-eval-card__head {
+  display: grid;
+  gap: var(--space-1);
+}
+.trial-eval-card__title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-bold);
+  color: var(--text-brand);
+  line-height: var(--leading-tight, 1.3);
+}
+.trial-eval-card__path {
+  font-size: var(--text-xs);
+  color: var(--text-link);
+  word-break: break-all;
+  text-decoration: none;
+}
+.trial-eval-card__path:hover {
+  text-decoration: underline;
+}
+.trial-eval-card__verify {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.trial-eval-card__fields {
+  display: grid;
+  gap: var(--space-2);
+}
+.trial-eval-card__fields .label-field {
+  margin-bottom: 0;
+}
+@media (min-width: 900px) {
+  .trial-eval-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .trial-eval-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

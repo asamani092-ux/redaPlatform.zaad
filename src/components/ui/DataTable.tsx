@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-/** غلاف جدول وفق عقد DataTable — يحافظ على table-wrap الحالي للتجاوب */
+/** غلاف جدول وفق عقد DataTable — يكدّس الصفوف على الشاشات الضيقة */
 export function DataTable({
   children,
   loading,
@@ -18,10 +18,12 @@ export function DataTable({
   emptyBody?: string;
   className?: string;
 }) {
+  const wrap =
+    `table-wrap table-wrap--stack zad-table-wrap zad-data-table ${className}`.trim();
   if (loading) {
     return (
       <div
-        className={`table-wrap zad-table-wrap zad-data-table ${className}`.trim()}
+        className={wrap}
         role="status"
         aria-live="polite"
         aria-busy="true"
@@ -33,14 +35,10 @@ export function DataTable({
   }
   if (empty) {
     return (
-      <div className={`table-wrap zad-table-wrap zad-data-table ${className}`.trim()}>
+      <div className={wrap}>
         <EmptyState title={emptyTitle} body={emptyBody} />
       </div>
     );
   }
-  return (
-    <div className={`table-wrap zad-table-wrap zad-data-table ${className}`.trim()}>
-      {children}
-    </div>
-  );
+  return <div className={wrap}>{children}</div>;
 }

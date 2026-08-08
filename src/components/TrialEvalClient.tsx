@@ -20,7 +20,10 @@ type RowState = {
   note: string;
 };
 
-/** زمن التحديث O(1) لكل صف؛ نسخ التقرير O(n) */
+/**
+ * تقييم الأدوات — بطاقات متجاوبة (لا جدول عريض على الجوال).
+ * Time: تحديث صف O(1)؛ نسخ التقرير O(n).
+ */
 export function TrialEvalClient() {
   const tools = useMemo(() => getTrialEvalTools(), []);
   const [state, setState] = useState<Record<string, RowState>>({});
@@ -35,7 +38,6 @@ export function TrialEvalClient() {
         setState(JSON.parse(raw) as Record<string, RowState>);
         return;
       }
-      // تراكمي: دمج تقييمات v1 إن وُجدت
       const legacy = localStorage.getItem("ridaa-trial-eval-v1");
       if (legacy) {
         const old = JSON.parse(legacy) as Record<string, RowState>;
@@ -148,57 +150,48 @@ export function TrialEvalClient() {
 
       <section className="panel">
         <h2 className="panel-title">قائمة الأدوات ({tools.length})</h2>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>الأداة</th>
-                <th>المسار</th>
-                <th>ما يُتحقق منه</th>
-                <th>التقييم</th>
-                <th>ملاحظة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tools.map((t) => {
-                const href = t.path.split("#")[0] || t.path;
-                return (
-                <tr key={t.id}>
-                  <td>
-                    <strong>{t.tool}</strong>
-                  </td>
-                  <td>
-                    <Link href={href} className="mono" dir="ltr">
-                      {t.path}
-                    </Link>
-                  </td>
-                  <td>{t.verify}</td>
-                  <td>
-                    <select
-                      className="input-field"
-                      value={ratingFor(t.id)}
-                      onChange={(e) => setRating(t.id, e.target.value as TrialEvalRating)}
-                    >
-                      {TRIAL_EVAL_RATINGS.map((r) => (
-                        <option key={r} value={r}>
-                          {r}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      className="input-field"
-                      placeholder="ملاحظة إصلاح"
-                      value={state[t.id]?.note ?? ""}
-                      onChange={(e) => setNote(t.id, e.target.value)}
-                    />
-                  </td>
-                </tr>
-              );
-              })}
-            </tbody>
-          </table>
+        <div className="trial-eval-list">
+          {tools.map((t) => {
+            const href = t.path.split("#")[0] || t.path;
+            return (
+              <article key={t.id} className="trial-eval-card">
+                <header className="trial-eval-card__head">
+                  <h3 className="trial-eval-card__title">{t.tool}</h3>
+                  <Link href={href} className="trial-eval-card__path mono" dir="ltr">
+                    {t.path}
+                  </Link>
+                </header>
+                <p className="trial-eval-card__verify">{t.verify}</p>
+                <div className="trial-eval-card__fields">
+                  <label className="label-field" htmlFor={`rating-${t.id}`}>
+                    التقييم
+                  </label>
+                  <select
+                    id={`rating-${t.id}`}
+                    className="input-field"
+                    value={ratingFor(t.id)}
+                    onChange={(e) => setRating(t.id, e.target.value as TrialEvalRating)}
+                  >
+                    {TRIAL_EVAL_RATINGS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="label-field" htmlFor={`note-${t.id}`}>
+                    ملاحظة
+                  </label>
+                  <input
+                    id={`note-${t.id}`}
+                    className="input-field"
+                    placeholder="ملاحظة إصلاح"
+                    value={state[t.id]?.note ?? ""}
+                    onChange={(e) => setNote(t.id, e.target.value)}
+                  />
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 

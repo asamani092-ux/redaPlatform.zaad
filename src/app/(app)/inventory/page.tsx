@@ -249,17 +249,17 @@ export default function InventoryPage() {
             <tbody>
               {items.map((i) => (
                 <tr key={i.id}>
-                  <td>
+                  <td data-label="السمات">
                     <AttrChips attributes={i.attributes} schema={schema} />
                   </td>
-                  <td>{i.quantity}</td>
-                  <td>
+                  <td data-label="الكمية">{i.quantity}</td>
+                  <td data-label="تنبيه">
                     <Chip
                       tone={i.lowStock ? "warning" : "success"}
                       label={i.lowStock ? "قرب النفاد" : "متوفر"}
                     />
                   </td>
-                  <td>
+                  <td data-label="إجراءات">
                     <div className="row-actions">
                       <button type="button" className="btn-secondary btn-sm" onClick={() => openEdit(i)}>
                         تعديل

@@ -108,7 +108,7 @@ export default function DashboardPage() {
       <div className="split-2">
         <section className="panel zad-card">
           <h2 className="panel-title">الكميات المتبقية</h2>
-          <div className="table-wrap zad-table-wrap">
+          <div className="table-wrap table-wrap--stack zad-table-wrap">
             <table>
               <thead>
                 <tr>
@@ -120,11 +120,11 @@ export default function DashboardPage() {
               <tbody>
                 {data.inventory.map((i) => (
                   <tr key={i.id}>
-                    <td>
+                    <td data-label="الصنف">
                       <AttrChips attributes={i.attributes} labels={data.attributeLabels} />
                     </td>
-                    <td>{i.quantity}</td>
-                    <td>
+                    <td data-label="الكمية">{i.quantity}</td>
+                    <td data-label="الحالة">
                       <span className={`zad-badge ${i.lowStock ? "zad-badge--warning" : "zad-badge--success"}`}>
                         {i.lowStock ? "قرب النفاد" : "متوفر"}
                       </span>
