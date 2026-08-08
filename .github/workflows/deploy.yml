@@ -33,11 +33,14 @@ jobs:
       WHATSAPP_PROVIDER: stub
     steps:
       - uses: actions/checkout@v4
-      - name: Require AUTH_SECRET repository secret
+      - name: Resolve AUTH_SECRET (repo secret or ephemeral CI)
         run: |
-          if [ -z "${AUTH_SECRET}" ]; then
-            echo "Set repository secret AUTH_SECRET (no literals in workflow)" >&2
-            exit 1
+          if [ -n "${AUTH_SECRET}" ]; then
+            echo "Using repository secret AUTH_SECRET"
+          else
+            EPHEMERAL="$(openssl rand -hex 32)"
+            echo "AUTH_SECRET=${EPHEMERAL}" >> "$GITHUB_ENV"
+            echo "::warning::AUTH_SECRET repo secret missing — ephemeral CI value only (set secret for production)"
           fi
       - uses: actions/setup-node@v4
         with:
