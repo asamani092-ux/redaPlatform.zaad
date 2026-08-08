@@ -12,6 +12,8 @@ type DashboardData = {
   exhibition: { name: string; location?: string | null };
   stats: {
     totalBeneficiaries: number;
+    beneficiaryFamilies?: number;
+    totalIndividuals?: number;
     invited: number;
     attended: number;
     received: number;
@@ -73,8 +75,12 @@ export default function DashboardPage() {
     );
   }
 
+  const families =
+    data.stats.beneficiaryFamilies ?? data.stats.totalBeneficiaries;
+  const individuals = data.stats.totalIndividuals ?? data.stats.totalBeneficiaries;
   const tiles = [
-    { label: "إجمالي المستفيدين", value: data.stats.totalBeneficiaries },
+    { label: "إجمالي الأسر", value: families },
+    { label: "إجمالي المستفيدين", value: individuals },
     { label: "المدعوون", value: data.stats.invited },
     { label: "الحاضرون", value: data.stats.attended },
     { label: "استلموا", value: data.stats.received },

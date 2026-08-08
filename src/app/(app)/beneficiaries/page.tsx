@@ -15,6 +15,7 @@ import { Dropzone } from "@/components/ui/Dropzone";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ProfileDrawer } from "@/components/ui/ProfileDrawer";
+import { STATUS_LABELS, type BeneficiaryExhibitionStatus } from "@/lib/status";
 
 type Association = { id: string; name: string };
 type Beneficiary = {
@@ -40,6 +41,8 @@ export default function BeneficiariesPage() {
   const canManage = role ? hasPermission(role, "beneficiaries:manage") : false;
 
   const [q, setQ] = useState("");
+  const [associationFilter, setAssociationFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [rows, setRows] = useState<Beneficiary[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -58,10 +61,20 @@ export default function BeneficiariesPage() {
   const toast = useToast();
   const drawerRow = rows.find((r) => r.id === drawerId) ?? null;
 
-  async function load(search = q, p = page) {
-    const res = await fetch(
-      `/api/beneficiaries?q=${encodeURIComponent(search)}&page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`,
-    );
+  async function load(
+    search = q,
+    p = page,
+    assoc = associationFilter,
+    status = statusFilter,
+  ) {
+    const qs = new URLSearchParams({
+      page: String(p),
+      pageSize: String(DEFAULT_PAGE_SIZE),
+    });
+    if (search.trim()) qs.set("q", search.trim());
+    if (assoc) qs.set("associationId", assoc);
+    if (status) qs.set("status", status);
+    const res = await fetch(`/api/beneficiaries?${qs}`);
     const json = await res.json();
     if (res.ok) {
       setRows(json.data ?? []);
@@ -317,12 +330,38 @@ export default function BeneficiariesPage() {
 
       <section className="panel">
         <FilterBar
-          chips={q.trim() ? [{ key: "q", label: `بحث: ${q.trim()}` }] : []}
+          chips={[
+            ...(q.trim() ? [{ key: "q", label: `بحث: ${q.trim()}` }] : []),
+            ...(associationFilter
+              ? [
+                  {
+                    key: "assoc",
+                    label: `جمعية: ${
+                      associationFilter === "__other__"
+                        ? "أخرى"
+                        : associationFilter === "__none__"
+                          ? "بدون"
+                          : associations.find((a) => a.id === associationFilter)?.name ?? "—"
+                    }`,
+                  },
+                ]
+              : []),
+            ...(statusFilter
+              ? [
+                  {
+                    key: "status",
+                    label: `حالة: ${STATUS_LABELS[statusFilter as BeneficiaryExhibitionStatus] ?? statusFilter}`,
+                  },
+                ]
+              : []),
+          ]}
           onClear={
-            q
+            q || associationFilter || statusFilter
               ? () => {
                   setQ("");
-                  void load("", 1);
+                  setAssociationFilter("");
+                  setStatusFilter("");
+                  void load("", 1, "", "");
                 }
               : undefined
           }
@@ -339,6 +378,42 @@ export default function BeneficiariesPage() {
               }
             }}
           />
+          <select
+            className="input-field"
+            value={associationFilter}
+            onChange={(e) => {
+              const v = e.target.value;
+              setAssociationFilter(v);
+              void load(q, 1, v, statusFilter);
+            }}
+            aria-label="فلتر الجمعية"
+          >
+            <option value="">كل الجمعيات</option>
+            <option value="__none__">بدون جمعية</option>
+            {associations.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+            <option value="__other__">أخرى</option>
+          </select>
+          <select
+            className="input-field"
+            value={statusFilter}
+            onChange={(e) => {
+              const v = e.target.value;
+              setStatusFilter(v);
+              void load(q, 1, associationFilter, v);
+            }}
+            aria-label="فلتر الحالة"
+          >
+            <option value="">كل الحالات</option>
+            {(Object.keys(STATUS_LABELS) as BeneficiaryExhibitionStatus[]).map((k) => (
+              <option key={k} value={k}>
+                {STATUS_LABELS[k]}
+              </option>
+            ))}
+          </select>
           <button type="button" className="btn-primary btn-sm" onClick={() => void load(q, 1)}>
             بحث
           </button>
