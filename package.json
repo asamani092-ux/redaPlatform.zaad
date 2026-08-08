@@ -12,6 +12,7 @@
     "db:apply-pending": "./scripts/apply-pending.sh",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-once": "./scripts/seed-once.sh",
+    "db:purge-launch": "tsx scripts/purge-for-launch.ts",
     "db:generate": "prisma generate",
     "test": "tsx tests/run-all.ts",
     "test:entitlement": "tsx tests/entitlement.integration.ts",
