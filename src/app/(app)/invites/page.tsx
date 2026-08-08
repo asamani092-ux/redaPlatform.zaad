@@ -7,6 +7,7 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { Chip } from "@/components/ui/Chip";
+import { Tabs } from "@/components/ui/Tabs";
 import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
 
 type Row = {
@@ -302,6 +303,15 @@ export default function InvitesPage() {
         channel="invite"
       />
 
+      <Tabs
+        items={[
+          { id: "pick", label: "للدعوة" },
+          { id: "invited", label: `المدعوون (${invitedTotal})` },
+        ]}
+        value={view}
+        onChange={(id) => void switchView(id as "pick" | "invited")}
+      />
+
       <section className="panel">
         <div className="toolbar">
           <input
@@ -325,26 +335,12 @@ export default function InvitesPage() {
           >
             تحديث
           </button>
-          <button
-            type="button"
-            className={`${view === "pick" ? "btn-primary" : "btn-secondary"} btn-sm`}
-            onClick={() => void switchView("pick")}
-          >
-            اختيار للدعوة
-          </button>
-          <button
-            type="button"
-            className={`${view === "invited" ? "btn-primary" : "btn-secondary"} btn-sm`}
-            onClick={() => void switchView("invited")}
-          >
-            المدعوون فقط ({invitedTotal})
-          </button>
         </div>
       </section>
 
       <section className="panel">
         <h2 className="panel-title">
-          {view === "invited" ? "المدعوون" : "المستفيدون"} ({total})
+          {view === "invited" ? "المدعوون" : "للدعوة"} ({total})
         </h2>
         <div className="table-wrap table-wrap--stack">
           <table>

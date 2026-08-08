@@ -19,6 +19,7 @@ export const WRITE_PATHS: WritePathSpec[] = [
   { id: "invite.create", entityType: "ExhibitionInvite", action: "INVITE", route: "POST /api/invites", audited: true },
   { id: "invite.resend", entityType: "ExhibitionInvite", action: "INVITE_RESEND", route: "POST /api/invites/resend", audited: true },
   { id: "attendance.create", entityType: "Attendance", action: "CHECKIN|CHECKIN_EXCEPTION", route: "POST /api/attendance", audited: true },
+  { id: "dispense.checkin", entityType: "Attendance", action: "CHECKIN_FROM_DISPENSE", route: "POST /api/dispense/checkin", audited: true },
   { id: "dispense.create", entityType: "DispenseOrder", action: "DISPENSE", route: "POST /api/dispense", audited: true },
   { id: "dispense.override", entityType: "DispenseOrder", action: "ENTITLEMENT_OVERRIDE", route: "POST /api/dispense", audited: true },
   { id: "inventory.create", entityType: "InventoryItem", action: "INVENTORY_CREATE", route: "POST /api/inventory", audited: true },

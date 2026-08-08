@@ -4,7 +4,10 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { AttrChips } from "@/components/AttrChips";
 import { Modal } from "@/components/Modal";
-import type { InventorySchemaField } from "@/lib/inventory-schema";
+import {
+  optionsWithNone,
+  type InventorySchemaField,
+} from "@/lib/inventory-schema";
 import { sanitizeNumericInput, toNumberOrNull } from "@/lib/num";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
@@ -99,6 +102,7 @@ export default function InventoryPage() {
   }
 
   const moveIsRemove = move.type === "REMOVE";
+  const moveIsReturn = move.type === "RETURN";
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -174,10 +178,12 @@ export default function InventoryPage() {
     const json = await res.json();
     setBusy(false);
     const moveOk = res.ok
-        ? move.type === "REMOVE"
-          ? "تم حذف الكمية من المخزون"
+      ? move.type === "REMOVE"
+        ? "تم حذف الكمية من المخزون"
+        : move.type === "RETURN"
+          ? "تم استرجاع الكمية إلى المخزون"
           : "تم تحديث الكمية"
-        : json.error || "فشل التحديث";
+      : json.error || "فشل التحديث";
     setMsg(moveOk);
     toast.push({ title: moveOk, tone: res.ok ? "success" : "danger" });
     if (res.ok) {
@@ -187,23 +193,26 @@ export default function InventoryPage() {
   }
 
   function attrFields() {
-    return schema.map((f) => (
-      <div key={f.key}>
-        <label className="label-field">{f.label}</label>
-        <select
-          className="input-field"
-          value={attrs[f.key] ?? ""}
-          onChange={(e) => setAttrs((a) => ({ ...a, [f.key]: e.target.value }))}
-          required
-        >
-          {f.options.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-      </div>
-    ));
+    return schema.map((f) => {
+      const opts = optionsWithNone(f.options);
+      return (
+        <div key={f.key}>
+          <label className="label-field">{f.label}</label>
+          <select
+            className="input-field"
+            value={attrs[f.key] ?? ""}
+            onChange={(e) => setAttrs((a) => ({ ...a, [f.key]: e.target.value }))}
+            required
+          >
+            {opts.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    });
   }
 
   return (
@@ -373,6 +382,7 @@ export default function InventoryPage() {
                 onChange={(e) => setMove((m) => ({ ...m, type: e.target.value }))}
               >
                 <option value="ADD">إضافة</option>
+                <option value="RETURN">استرجاع</option>
                 <option value="REMOVE">حذف</option>
               </select>
             </div>
@@ -399,7 +409,13 @@ export default function InventoryPage() {
                 value={move.note}
                 onChange={(e) => setMove((m) => ({ ...m, note: e.target.value }))}
                 required={moveIsRemove}
-                placeholder={moveIsRemove ? "مثال: تالف / خطأ إدخال / منتهي الصلاحية" : ""}
+                placeholder={
+                  moveIsRemove
+                    ? "مثال: تالف / خطأ إدخال / منتهي الصلاحية"
+                    : moveIsReturn
+                      ? "مثال: إرجاع من مستفيد / تصحيح صرف"
+                      : ""
+                }
               />
             </div>
           </div>
@@ -409,7 +425,13 @@ export default function InventoryPage() {
               type="submit"
               disabled={busy || (moveIsRemove && !move.note.trim())}
             >
-              {busy ? "جاري التنفيذ…" : moveIsRemove ? "تأكيد الحذف" : "تنفيذ الإضافة"}
+              {busy
+                ? "جاري التنفيذ…"
+                : moveIsRemove
+                  ? "تأكيد الحذف"
+                  : moveIsReturn
+                    ? "تنفيذ الاسترجاع"
+                    : "تنفيذ الإضافة"}
             </button>
             <button type="button" className="btn-secondary" disabled={busy} onClick={() => setMoveOpen(false)}>
               إلغاء

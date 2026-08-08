@@ -4,6 +4,9 @@ export type InventorySchemaField = {
   options: string[];
 };
 
+/** خيار تصنيف فارغ عند كفاية النوع/الصنف فقط */
+export const INVENTORY_NONE_OPTION = "بدون";
+
 /** سمات معتمدة لا تُحذف: اللون + الوحدة (أساس الكمية) */
 export const REQUIRED_INVENTORY_ATTR_KEYS = ["color", "unit"] as const;
 
@@ -12,14 +15,20 @@ export const REQUIRED_INVENTORY_ATTR_LABELS: Record<string, string> = {
   unit: "الوحدة",
 };
 
+/** خيارات السمة مع «بدون» في المقدمة — O(k) */
+export function optionsWithNone(options: string[]): string[] {
+  const rest = options.filter((o) => o !== INVENTORY_NONE_OPTION);
+  return [INVENTORY_NONE_OPTION, ...rest];
+}
+
 export function isRequiredInventoryAttrKey(key: string): boolean {
   return (REQUIRED_INVENTORY_ATTR_KEYS as readonly string[]).includes(key);
 }
 
 export const DEFAULT_INVENTORY_SCHEMA: InventorySchemaField[] = [
-  { key: "type", label: "النوع", options: ["قماش", "ملابس"] },
-  { key: "category", label: "الصنف", options: ["ثوب", "شال", "غطاء"] },
-  { key: "color", label: "اللون", options: ["أحمر", "أزرق", "أخضر", "أسود"] },
+  { key: "type", label: "النوع", options: [INVENTORY_NONE_OPTION, "قماش", "ملابس"] },
+  { key: "category", label: "الصنف", options: [INVENTORY_NONE_OPTION, "ثوب", "شال", "غطاء"] },
+  { key: "color", label: "اللون", options: [INVENTORY_NONE_OPTION, "أحمر", "أزرق", "أخضر", "أسود"] },
   { key: "unit", label: "الوحدة", options: ["قطعة", "متر"] },
 ];
 
