@@ -4,6 +4,9 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
+import { sanitizeAuthEnv } from "@/lib/auth-env";
+
+sanitizeAuthEnv();
 
 const credentialsSchema = z.object({
   mobile: z.string().min(9).max(15),

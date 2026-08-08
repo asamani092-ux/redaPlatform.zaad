@@ -24,6 +24,7 @@ services:
       DATABASE_URL: postgresql://ridaa:ridaa@db:5432/ridaa?schema=public
       AUTH_SECRET: change-me-in-production
       AUTH_TRUST_HOST: "true"
+      # للوصول المحلي فقط؛ على نطاق عام عيّن AUTH_URL لرابط الموقع أو احذفه
       NEXTAUTH_URL: http://localhost:3100
       PORT: "3100"
       IDLE_TIMEOUT_MS: "3600000"
