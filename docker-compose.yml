@@ -1,15 +1,21 @@
+# نشر محلي/سيرفر: البيانات على volumes دائمة — لا تستخدم `docker compose down -v`
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ridaa
-      POSTGRES_PASSWORD: ridaa
-      POSTGRES_DB: ridaa
+      POSTGRES_USER: ${POSTGRES_USER:-ridaa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ridaa}
+      POSTGRES_DB: ${POSTGRES_DB:-ridaa}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - ridaa_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   web:
     build:
@@ -17,20 +23,35 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
-      - "3100:3100"
+      - "${APP_PORT:-3100}:3100"
     environment:
-      DATABASE_URL: postgresql://ridaa:ridaa@db:5432/ridaa?schema=public
-      AUTH_SECRET: change-me-in-production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ridaa}:${POSTGRES_PASSWORD:-ridaa}@db:5432/${POSTGRES_DB:-ridaa}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production-use-long-random}
       AUTH_TRUST_HOST: "true"
-      # للوصول المحلي فقط؛ على نطاق عام عيّن AUTH_URL لرابط الموقع أو احذفه
-      NEXTAUTH_URL: http://localhost:3100
+      # على النطاق العام: AUTH_URL=https://client-domain.example
+      AUTH_URL: ${AUTH_URL:-}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3100}
       PORT: "3100"
-      IDLE_TIMEOUT_MS: "3600000"
-      ADMIN_MOBILE: "0500000000"
-      ADMIN_PASSWORD: "Admin@1234"
-      WHATSAPP_PROVIDER: stub
+      IDLE_TIMEOUT_MS: ${IDLE_TIMEOUT_MS:-3600000}
+      ADMIN_MOBILE: ${ADMIN_MOBILE:-0500000000}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@1234}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-stub}
+      # أول تنصيب فقط: SEED_ON_BOOT=1 ثم أعد التشغيل بـ 0
+      SEED_ON_BOOT: ${SEED_ON_BOOT:-0}
+      SEED_RESET_ADMIN: ${SEED_RESET_ADMIN:-0}
+      BACKUP_BEFORE_MIGRATE: ${BACKUP_BEFORE_MIGRATE:-1}
+      BACKUP_DIR: /data/backups
+      UPLOADS_DIR: /data/uploads
+      TRIAL_EVAL_ENABLED: ${TRIAL_EVAL_ENABLED:-false}
+    volumes:
+      # مرفقات + نسخ SQL — تبقى بعد إعادة البناء/التحديث
+      - ridaa_data:/data
 
 volumes:
   ridaa_pg:
+    name: ridaa_pg
+  ridaa_data:
+    name: ridaa_data

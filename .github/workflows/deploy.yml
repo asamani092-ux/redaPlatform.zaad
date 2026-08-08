@@ -53,9 +53,10 @@ jobs:
       - name: Integration tests (blocks deploy on failure)
         run: npm test
 
-  # Coolify webhook deploy (optional): set repository secret COOLIFY_WEBHOOK
-  # Migrations MUST apply before API serves traffic (also in container CMD).
-  # `deploy` needs `build` — failed npm test prevents deploy.
+  # Coolify webhook (optional): repository secret COOLIFY_WEBHOOK
+  # Production boot: scripts/boot.sh → backup → migrate deploy only → start
+  # NEVER migrate reset / db push / docker compose down -v on production.
+  # See docs/DEPLOY.md
   deploy:
     if: |
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&

@@ -16,7 +16,12 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+# pg_dump للنسخ قبل الترحيل — لا يُحذف مع إعادة بناء الصورة بفضل VOLUME /data
+RUN (apk add --no-cache postgresql16-client || apk add --no-cache postgresql-client) \
+  && addgroup -S nodejs && adduser -S nextjs -G nodejs \
+  && mkdir -p /data/backups /data/uploads \
+  && chown -R nextjs:nodejs /data
+
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
@@ -26,9 +31,19 @@ COPY --from=builder /app/assets ./assets
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+RUN chmod +x ./scripts/boot.sh ./scripts/apply-pending.sh ./scripts/backup.sh ./scripts/seed-once.sh \
+  && chown -R nextjs:nodejs /app
+
 USER nextjs
 EXPOSE 3100
 ENV PORT=3100
 ENV HOSTNAME=0.0.0.0
-# apply-pending BEFORE API process starts — fail loud on migration errors
-CMD ["sh", "-c", "./scripts/apply-pending.sh && npx tsx prisma/seed.ts && node server.js"]
+ENV BACKUP_DIR=/data/backups
+ENV UPLOADS_DIR=/data/uploads
+# مهم: لا تُشغَّل البذرة تلقائياً — عيّن SEED_ON_BOOT=1 لأول تنصيب فقط
+ENV SEED_ON_BOOT=0
+ENV BACKUP_BEFORE_MIGRATE=1
+VOLUME ["/data"]
+# ترحيل تراكمي فقط + نسخ قبل الترحيل — ممنوع reset/push هنا
+CMD ["sh", "./scripts/boot.sh"]

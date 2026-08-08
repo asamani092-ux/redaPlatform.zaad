@@ -11,10 +11,21 @@ async function main() {
   const mobile = process.env.ADMIN_MOBILE ?? "0500000000";
   const password = process.env.ADMIN_PASSWORD ?? "Admin@1234";
   const passwordHash = await bcrypt.hash(password, 10);
+  /** في الإنتاج: لا تُعاد كتابة كلمة المرور إلا بـ SEED_RESET_ADMIN=1 */
+  const resetAdmin = process.env.SEED_RESET_ADMIN === "1";
+  /** لا تفعيل قسري لمعرض قديم إلا بـ SEED_ACTIVATE_EXHIBITION=1 */
+  const forceActivate = process.env.SEED_ACTIVATE_EXHIBITION === "1";
+  const migrateSchema = process.env.SEED_MIGRATE_SCHEMA === "1";
 
+  const existingAdmin = await prisma.user.findUnique({ where: { mobile } });
   const admin = await prisma.user.upsert({
     where: { mobile },
-    update: { name: "مدير النظام", role: Role.ADMIN, passwordHash, active: true },
+    update: {
+      name: existingAdmin?.name?.trim() ? existingAdmin.name : "مدير النظام",
+      role: Role.ADMIN,
+      active: true,
+      ...(resetAdmin ? { passwordHash } : {}),
+    },
     create: {
       mobile,
       name: "مدير النظام",
@@ -60,7 +71,7 @@ async function main() {
         },
       },
     });
-  } else if (!exhibition.active) {
+  } else if (!exhibition.active && forceActivate) {
     await prisma.exhibition.updateMany({ data: { active: false } });
     exhibition = await prisma.exhibition.update({
       where: { id: exhibition.id },
@@ -68,11 +79,11 @@ async function main() {
     });
   }
 
-  // ترقية المخطط القديم إلى options إن لزم
+  // ترقية المخطط القديم إلى options — فقط عند الطلب الصريح حتى لا تُمس إعدادات الإنتاج
   const settings = await prisma.exhibitionSettings.findUnique({
     where: { exhibitionId: exhibition.id },
   });
-  if (settings) {
+  if (settings && migrateSchema) {
     const raw = settings.inventorySchemaJson as Array<Record<string, unknown>>;
     if (Array.isArray(raw) && raw.some((r) => !Array.isArray(r.options))) {
       await prisma.exhibitionSettings.update({

@@ -11,11 +11,13 @@
     "db:migrate": "prisma migrate deploy",
     "db:apply-pending": "./scripts/apply-pending.sh",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed-once": "./scripts/seed-once.sh",
     "db:generate": "prisma generate",
     "test": "tsx tests/run-all.ts",
     "test:entitlement": "tsx tests/entitlement.integration.ts",
     "backup": "./scripts/backup.sh",
     "restore-drill": "./scripts/restore-drill.sh",
+    "boot": "./scripts/boot.sh",
     "postinstall": "prisma generate"
   },
   "dependencies": {
