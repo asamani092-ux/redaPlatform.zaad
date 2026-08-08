@@ -14,34 +14,32 @@
 
 ```bash
 cp .env.example .env
-# شغّل PostgreSQL ثم عيّن DATABASE_URL
+# عيّن DATABASE_URL و AUTH_SECRET و ADMIN_PASSWORD
 npm install
 npm run db:migrate
-npm run db:seed
+npm run init
 npm run dev
 ```
 
-التطبيق يعمل على المنفذ **3100**: `http://localhost:3100`
+التطبيق على المنفذ **3100**: `http://localhost:3100`
 
-أو عبر Docker Compose:
+Docker Compose (بيانات على volumes — ممنوع `down -v`):
 
 ```bash
-SEED_ON_BOOT=1 docker compose up --build
-# بعد أول نجاح: SEED_ON_BOOT=0 ثم أعد التشغيل — لا تستخدم down -v
+docker compose up -d --build
+docker compose run --rm -e ADMIN_PASSWORD -e ADMIN_MOBILE -e DATABASE_URL web npm run init
 ```
 
-دخول المدير الافتراضي (من البذرة):
-
-- الجوال: `0500000000`
-- كلمة المرور: `Admin@1234`
+بعد أول دخول: غيّر كلمة مدير النظام فوراً.
 
 ## حماية البيانات عند النشر
 
-- الترحيل فقط: `migrate deploy` — ممنوع `migrate reset` / `db push` على الإنتاج
-- Volumes دائمة: Postgres + `/data` (نسخ ومرفقات)
-- الإقلاع: `scripts/boot.sh` (نسخة قبل الترحيل → ترحيل → تشغيل؛ البذرة اختيارية)
+- إقلاع الحاوية: `apply-pending.sh && node server.js` فقط — **بلا بذرة**
+- تهيئة مرة واحدة: `npm run init` على قاعدة فارغة
+- ترحيل تراكمي فقط — ممنوع `migrate reset` / `db push` على الإنتاج
+- Postgres دائم منفصل + volume `/data`
 
-التفاصيل: [`docs/DEPLOY.md`](docs/DEPLOY.md)
+التفاصيل: [`docs/LAUNCH_STEPS.md`](docs/LAUNCH_STEPS.md) · [`docs/DEPLOY.md`](docs/DEPLOY.md) · [`docs/RUNBOOK_EVENT_DAY.md`](docs/RUNBOOK_EVENT_DAY.md)
 
 ## الوحدات
 
@@ -56,9 +54,4 @@ SEED_ON_BOOT=1 docker compose up --build
 
 ## النشر على Coolify + دومين العميل
 
-راجع **`docs/DEPLOY.md`** بالكامل. باختصار:
-
-1. Postgres دائم منفصل + Volume `/data` للتطبيق
-2. اربط GitHub → Coolify (Dockerfile في الجذر) + سر `COOLIFY_WEBHOOK` اختياري
-3. `AUTH_URL` / `NEXTAUTH_URL` = `https://دومين-العميل`
-4. `SEED_ON_BOOT=1` لأول تنصيب فقط ثم `0` دائماً
+راجع **`docs/LAUNCH_STEPS.md`**. باختصار: Postgres دائم → تطبيق Dockerfile → volume `/data` → أسرار البيئة → `npm run init` مرة واحدة → دومين HTTPS → `AUTH_URL`.

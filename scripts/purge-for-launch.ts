@@ -19,7 +19,10 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const mobile = (process.env.ADMIN_MOBILE ?? "0500000000").trim();
-  const password = process.env.ADMIN_PASSWORD ?? "Admin@1234";
+  const password = process.env.ADMIN_PASSWORD?.trim();
+  if (!password) {
+    throw new Error("ADMIN_PASSWORD مطلوب من البيئة — لا افتراضي");
+  }
   const passwordHash = await bcrypt.hash(password, 10);
 
   console.log("purge: starting — keep admin mobile =", mobile);

@@ -1,158 +1,102 @@
 # خطوات الرفع والنشر كاملة — منصة رداء
 
-## أ) قبل الرفع — تنظيف قاعدة التطوير/التجربة
-
-نفِّذ مرة واحدة على القاعدة التي تريد تصفيرها (يستبقي مشرف النظام فقط):
+## أ) تنظيف قاعدة التجربة (اختياري قبل الإطلاق)
 
 ```bash
-cd /path/to/redaPlatform.zaad
-cp .env.example .env   # إن لم يوجد
-# تأكد من DATABASE_URL الصحيح
 export CONFIRM_PURGE=YES_LAUNCH
+export ADMIN_PASSWORD='كلمة-قوية'
 npm run db:purge-launch
 ```
 
-النتيجة المتوقعة:
-- مستخدم واحد: `مدير النظام` / الجوال من `ADMIN_MOBILE` (افتراضي `0500000000`)
-- معرض نشط واحد فارغ + جمعيات أساسية
-- لا مستفيدين / حضور / صرف / مستخدمي تجريب
-
-دخول بعد التنظيف:
-- الجوال: قيمة `ADMIN_MOBILE`
-- كلمة المرور: قيمة `ADMIN_PASSWORD` (افتراضي `Admin@1234`) — غيّرها بعد الدخول
+يستبقي مشرف النظام فقط. غيّر كلمة المرور بعد أول دخول.
 
 ---
 
 ## ب) GitHub
 
-1. ادفع الفرع وادمج إلى `main` بعد نجاح CI.
-2. المستودع → Settings → Secrets and variables → Actions:
-   - أضف `COOLIFY_WEBHOOK` = رابط Deploy Webhook من Coolify (اختياري للنشر التلقائي).
-3. عند كل دفع إلى `main`: GitHub Actions يبني ويختبر؛ إن وُجد الـ webhook يستدعي Coolify.
+1. ادفع/ادمج إلى `main` بعد نجاح CI.
+2. Secrets:
+   - `AUTH_SECRET` — إلزامي لـ CI (لا يُخزَّن حرفياً في workflow)
+   - `COOLIFY_WEBHOOK` — اختياري للنشر التلقائي
 
 ---
 
-## ج) السيرفر السحابي (Coolify) + قاعدة دائمة
+## ج) Coolify + Postgres دائم
 
-### 1) خدمة PostgreSQL
-1. في Coolify: New Resource → PostgreSQL 16.
-2. فعّل **Persistent Storage** (قرص دائم) — لا تحذف هذه الخدمة عند تحديث التطبيق.
-3. انسخ بيانات الاتصال: host / port / user / password / database.
-
-### 2) تطبيق المنصة
-1. New Resource → Application → ربط مستودع GitHub → الفرع `main`.
-2. Build Pack: **Dockerfile** (المسار: جذر المستودع، الملف `Dockerfile`).
-3. Port: `3100`.
-4. أضف **Persistent Storage / Volume**:
-   - Destination path داخل الحاوية: `/data`
-   - هذا يحفظ النسخ الاحتياطية والمرفقات بعد كل تحديث.
-
-### 3) متغيرات البيئة (Environment)
+1. أنشئ PostgreSQL مع Persistent Storage.
+2. أنشئ تطبيق Dockerfile من جذر المستودع؛ Port `3100`.
+3. Volume دائم على `/data`.
+4. متغيرات البيئة:
 
 ```env
-DATABASE_URL=postgresql://USER:PASS@DB_HOST:5432/DB_NAME?schema=public
-AUTH_SECRET=<ولّد سلسلة عشوائية ≥ 32 حرفاً>
+DATABASE_URL=postgresql://USER:PASS@HOST:5432/DB?schema=public
+AUTH_SECRET=<عشوائي ≥32>
 AUTH_TRUST_HOST=true
 AUTH_URL=https://YOUR-CLIENT-DOMAIN
 NEXTAUTH_URL=https://YOUR-CLIENT-DOMAIN
 ADMIN_MOBILE=05xxxxxxxx
-ADMIN_PASSWORD=<كلمة قوية لأول مرة فقط>
-SEED_ON_BOOT=1
-SEED_RESET_ADMIN=0
-BACKUP_BEFORE_MIGRATE=1
-BACKUP_DIR=/data/backups
-UPLOADS_DIR=/data/uploads
-ALLOW_MIGRATE_WITHOUT_BACKUP=0
+ADMIN_PASSWORD=<لقيمة init فقط — لا تُستخدم عند الإقلاع>
 WHATSAPP_PROVIDER=stub
 TRIAL_EVAL_ENABLED=false
+BACKUP_DIR=/data/backups
+UPLOADS_DIR=/data/uploads
 ```
 
-5. انشر (Deploy) وانتظر السجلات حتى يظهر نجاح الإقلاع / البذرة.
-6. **فوراً بعد أول نجاح** غيّر:
+5. Deploy — الإقلاع: ترحيل فقط ثم `node server.js` (**بلا بذرة**).
+6. One-off مرة واحدة على القاعدة الفارغة:
 
-```env
-SEED_ON_BOOT=0
+```bash
+# من Coolify Exec أو حاوية one-shot
+npm run init
 ```
 
-ثم Redeploy مرة واحدة — بعدها أي تحديث لا يعيد البذرة ولا يمس البيانات.
+7. احذف/أخفِ `ADMIN_PASSWORD` من بيئة التشغيل بعد init إن أمكن؛ غيّر كلمة المدير من الواجهة.
 
 ---
 
 ## د) دومين العميل + SSL
 
-1. في Coolify → التطبيق → Domains → أضف دومين العميل (مثال: `ridaa.example.org`).
-2. عند مزوّد DNS: سجل `A` أو `CNAME` كما يطلب Coolify إلى IP السيرفر.
-3. فعّل Let's Encrypt / SSL.
-4. تأكد أن `AUTH_URL` و`NEXTAUTH_URL` = نفس رابط HTTPS بدون شرطة أخيرة زائدة.
-5. افتح `https://YOUR-CLIENT-DOMAIN/login` وتأكد من الدخول.
+1. Coolify → Domains → أضف الدومين + Let's Encrypt.
+2. DNS: A/CNAME كما يوجّه Coolify.
+3. تأكد `AUTH_URL` / `NEXTAUTH_URL` = نفس HTTPS.
+4. افتح `/login` وتحقق من الدخول ثم **تدوير كلمة المدير فوراً**.
 
 ---
 
-## هـ) ماذا يحدث عند كل تحديث لاحق من GitHub؟
+## هـ) تحديث لاحق من GitHub
 
-1. دمج/دفع إلى `main` → CI أخضر.
-2. Coolify يعيد بناء **صورة التطبيق فقط**.
-3. داخل الحاوية `boot.sh`:
-   - نسخة SQL إلى `/data/backups` (volume دائم)
-   - `prisma migrate deploy` فقط (إضافة ترحيلات — لا حذف)
-   - تشغيل التطبيق — **بدون بذرة** إن `SEED_ON_BOOT=0`
-4. قرص Postgres + volume `/data` كما هما → البيانات والمرفقات تبقى.
+1. دفع إلى `main` → CI.
+2. Coolify يعيد بناء الصورة.
+3. CMD: `apply-pending` → `node server.js` فقط.
+4. Volumes كما هي → لا مساس بكلمة المدير / المستفيدين / الإعدادات.
 
-### ممنوع في الإنتاج
-- `prisma migrate reset`
-- `prisma db push`
+### ممنوع
+- بذرة عند كل إقلاع
+- `migrate reset` / `db push`
 - `docker compose down -v`
-- حذف خدمة Postgres أو volume `/data`
-- الإبقاء على `SEED_ON_BOOT=1` بعد الإطلاق
+- ترحيل هدّام (حذف/إعادة تسمية عمود) دون خطة expand–contract
 
 ---
 
-## و) نشر بديل بـ Docker Compose على السيرفر
+## و) Docker Compose على السيرفر
 
 ```bash
-git clone <REPO_URL> redaPlatform.zaad
-cd redaPlatform.zaad
-cp .env.example .env
-# عدّل: AUTH_SECRET, AUTH_URL, NEXTAUTH_URL, POSTGRES_PASSWORD, ADMIN_*
-nano .env
-
-SEED_ON_BOOT=1 docker compose up -d --build
-# تحقق من السجلات ثم:
-# اضبط SEED_ON_BOOT=0 في .env
+git clone <REPO> && cd redaPlatform.zaad
+cp .env.example .env   # AUTH_SECRET + ADMIN_PASSWORD + AUTH_URL
 docker compose up -d --build
+docker compose run --rm web npm run init
 ```
 
-تحديث لاحق:
-
-```bash
-git pull origin main
-docker compose up -d --build
-```
-
-**لا تستخدم:** `docker compose down -v`
+تحديث: `git pull && docker compose up -d --build`
 
 ---
 
-## ز) نسخ احتياطي دوري
+## ز) قائمة تحقق
 
-```bash
-export DATABASE_URL='postgresql://...'
-./scripts/backup.sh
-./scripts/restore-drill.sh   # على قاعدة scratch فقط
-```
-
-داخل الحاوية: الملفات تحت `/data/backups`.
-
----
-
-## ح) قائمة تحقق الإطلاق
-
-- [ ] تنظيف التجربة (`db:purge-launch`) إن لزم
-- [ ] Postgres دائم منفصل
-- [ ] Volume `/data` مربوط
-- [ ] `SEED_ON_BOOT=0` بعد أول تنصيب
-- [ ] دومين + SSL + دخول يعمل
-- [ ] `AUTH_URL` = HTTPS الدومين
+- [ ] Postgres دائم منفصل عن صورة التطبيق
+- [ ] Volume `/data`
+- [ ] `npm run init` مرة واحدة فقط
+- [ ] تدوير كلمة المدير بعد أول دخول
+- [ ] دومين + SSL + `AUTH_URL`
+- [ ] سر `AUTH_SECRET` في GitHub
 - [ ] `TRIAL_EVAL_ENABLED=false`
-- [ ] نسخة احتياطية ناجحة مرة واحدة
-- [ ] تغيير كلمة مدير النظام بعد أول دخول

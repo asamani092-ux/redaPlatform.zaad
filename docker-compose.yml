@@ -37,12 +37,9 @@ services:
       PORT: "3100"
       IDLE_TIMEOUT_MS: ${IDLE_TIMEOUT_MS:-3600000}
       ADMIN_MOBILE: ${ADMIN_MOBILE:-0500000000}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@1234}
+      # لا تُمرَّر كلمة افتراضية — عيّن ADMIN_PASSWORD في .env ثم: docker compose run --rm web npm run init
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-stub}
-      # أول تنصيب فقط: SEED_ON_BOOT=1 ثم أعد التشغيل بـ 0
-      SEED_ON_BOOT: ${SEED_ON_BOOT:-0}
-      SEED_RESET_ADMIN: ${SEED_RESET_ADMIN:-0}
-      BACKUP_BEFORE_MIGRATE: ${BACKUP_BEFORE_MIGRATE:-1}
       BACKUP_DIR: /data/backups
       UPLOADS_DIR: /data/uploads
       TRIAL_EVAL_ENABLED: ${TRIAL_EVAL_ENABLED:-false}

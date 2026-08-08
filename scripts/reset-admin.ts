@@ -1,18 +1,29 @@
+/** إعادة تعيين كلمة المدير يدوياً — يتطلب ADMIN_PASSWORD من البيئة. */
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter });
+
 async function main() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-  const prisma = new PrismaClient({ adapter });
-  const hash = await bcrypt.hash("Admin@1234", 10);
-  const u = await prisma.user.update({
-    where: { mobile: "0500000000" },
+  const mobile = (process.env.ADMIN_MOBILE ?? "0500000000").trim();
+  const password = process.env.ADMIN_PASSWORD?.trim();
+  if (!password) {
+    throw new Error("ADMIN_PASSWORD مطلوب من البيئة");
+  }
+  const hash = await bcrypt.hash(password, 10);
+  const updated = await prisma.user.updateMany({
+    where: { mobile },
     data: { passwordHash: hash, active: true },
   });
-  console.log("reset ok", u.mobile);
-  await prisma.$disconnect();
+  console.log("reset-admin:", { mobile, updated: updated.count });
 }
 
-main();
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());

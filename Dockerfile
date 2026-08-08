@@ -16,7 +16,6 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-# pg_dump للنسخ قبل الترحيل — لا يُحذف مع إعادة بناء الصورة بفضل VOLUME /data
 RUN (apk add --no-cache postgresql16-client || apk add --no-cache postgresql-client) \
   && addgroup -S nodejs && adduser -S nextjs -G nodejs \
   && mkdir -p /data/backups /data/uploads \
@@ -32,7 +31,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-RUN chmod +x ./scripts/boot.sh ./scripts/apply-pending.sh ./scripts/backup.sh ./scripts/seed-once.sh \
+RUN chmod +x ./scripts/apply-pending.sh ./scripts/backup.sh ./scripts/seed-once.sh ./scripts/boot.sh \
   && chown -R nextjs:nodejs /app
 
 USER nextjs
@@ -41,9 +40,6 @@ ENV PORT=3100
 ENV HOSTNAME=0.0.0.0
 ENV BACKUP_DIR=/data/backups
 ENV UPLOADS_DIR=/data/uploads
-# مهم: لا تُشغَّل البذرة تلقائياً — عيّن SEED_ON_BOOT=1 لأول تنصيب فقط
-ENV SEED_ON_BOOT=0
-ENV BACKUP_BEFORE_MIGRATE=1
 VOLUME ["/data"]
-# ترحيل تراكمي فقط + نسخ قبل الترحيل — ممنوع reset/push هنا
-CMD ["sh", "./scripts/boot.sh"]
+# ترحيل تراكمي فقط — لا بذرة عند كل إقلاع (البذرة: npm run init مرة واحدة)
+CMD ["sh", "-c", "./scripts/apply-pending.sh && node server.js"]
