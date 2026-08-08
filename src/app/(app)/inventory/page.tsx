@@ -71,7 +71,8 @@ export default function InventoryPage() {
     for (const f of schema) {
       const raw = item.attributes?.[f.key];
       const asStr = raw != null ? String(raw) : "";
-      next[f.key] = f.options.includes(asStr) ? asStr : (f.options[0] ?? "");
+      const opts = optionsWithNone(f.options);
+      next[f.key] = opts.includes(asStr) ? asStr : (opts[0] ?? "");
     }
     return next;
   }
