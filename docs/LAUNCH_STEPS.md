@@ -42,15 +42,16 @@ BACKUP_DIR=/data/backups
 UPLOADS_DIR=/data/uploads
 ```
 
-5. Deploy — الإقلاع: ترحيل فقط ثم `node server.js` (**بلا بذرة**).
-6. One-off مرة واحدة على القاعدة الفارغة:
+5. في Coolify: اجعل `DATABASE_URL` و`AUTH_SECRET` و`ADMIN_PASSWORD` **Available at Runtime فقط** (ليس Buildtime). صورة البناء تستخدم placeholder داخلي لـ `next build`.
+6. Deploy — الإقلاع: ترحيل فقط ثم `node server.js` (**بلا بذرة**).
+7. One-off مرة واحدة على القاعدة الفارغة:
 
 ```bash
 # من Coolify Exec أو حاوية one-shot
 npm run init
 ```
 
-7. احذف/أخفِ `ADMIN_PASSWORD` من بيئة التشغيل بعد init إن أمكن؛ غيّر كلمة المدير من الواجهة.
+8. احذف/أخفِ `ADMIN_PASSWORD` من بيئة التشغيل بعد init إن أمكن؛ غيّر كلمة المدير من الواجهة.
 
 ---
 

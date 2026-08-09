@@ -10,6 +10,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Placeholders for `next build` page-data collection only — real secrets stay runtime-only in Coolify
+ENV DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public"
+ENV AUTH_SECRET="build-time-placeholder-not-used-at-runtime"
 RUN npx prisma generate && npm run build
 
 FROM node:22-alpine AS runner
