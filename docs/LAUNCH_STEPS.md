@@ -43,7 +43,8 @@ UPLOADS_DIR=/data/uploads
 ```
 
 5. في Coolify: اجعل `DATABASE_URL` و`AUTH_SECRET` و`ADMIN_PASSWORD` **Available at Runtime فقط** (ليس Buildtime). صورة البناء تستخدم placeholder داخلي لـ `next build`.
-6. Deploy — الإقلاع: ترحيل فقط ثم `node server.js` (**بلا بذرة**).
+6. Domains: أضف `redaa.alzaad.org.sa` على **نفس** مورد التطبيق (Port Exposes `3100`) وفعّل SSL.
+7. Deploy — الإقلاع: ترحيل فقط ثم `node server.js` (**بلا بذرة**). عند فشل الإقلاع تبقى الحاوية ~120 ثانية لالتقاط السجلات.
 8. One-off مرة واحدة على القاعدة الفارغة:
 
 ```bash
