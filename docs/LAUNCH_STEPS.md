@@ -51,7 +51,7 @@ UPLOADS_DIR=/data/uploads
 npm run init
 ```
 
-7. احذف/أخفِ `ADMIN_PASSWORD` من بيئة التشغيل بعد init إن أمكن؛ غيّر كلمة المدير من الواجهة.
+8. احذف/أخفِ `ADMIN_PASSWORD` من بيئة التشغيل بعد init إن أمكن؛ غيّر كلمة المدير من الواجهة.
 
 ---
 
