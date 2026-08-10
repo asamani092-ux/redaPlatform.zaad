@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Stepper } from "@/components/ui/Stepper";
+import { PasswordField } from "@/components/PasswordField";
 
 /**
  * نسيت كلمة المرور: إدخال الجوال ثم فتح نموذج التغيير مباشرة.
@@ -135,28 +136,24 @@ export default function ForgotPasswordPage() {
               <label className="label-field" htmlFor="password">
                 كلمة المرور الجديدة
               </label>
-              <input
+              <PasswordField
                 id="password"
                 name="password"
-                type="password"
-                className="input-field"
-                dir="ltr"
                 minLength={8}
                 required
+                autoComplete="new-password"
               />
             </div>
             <div>
               <label className="label-field" htmlFor="confirm">
                 تأكيد كلمة المرور
               </label>
-              <input
+              <PasswordField
                 id="confirm"
                 name="confirm"
-                type="password"
-                className="input-field"
-                dir="ltr"
                 minLength={8}
                 required
+                autoComplete="new-password"
               />
             </div>
             <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading}>

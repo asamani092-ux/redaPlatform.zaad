@@ -4,6 +4,8 @@ import { FormEvent, useState, Suspense } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { PasswordField } from "@/components/PasswordField";
+import { normalizeMobile } from "@/lib/mobile";
 
 function LoginForm() {
   const router = useRouter();
@@ -17,8 +19,8 @@ function LoginForm() {
     setError("");
     const fd = new FormData(e.currentTarget);
     const res = await signIn("credentials", {
-      mobile: String(fd.get("mobile") ?? ""),
-      password: String(fd.get("password") ?? ""),
+      mobile: normalizeMobile(String(fd.get("mobile") ?? "")),
+      password: String(fd.get("password") ?? "").trim(),
       redirect: false,
     });
     setLoading(false);
@@ -70,14 +72,12 @@ function LoginForm() {
             <label className="label-field" htmlFor="password">
               كلمة المرور
             </label>
-            <input
+            <PasswordField
               id="password"
               name="password"
-              type="password"
-              className="input-field"
-              dir="ltr"
               required
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
           {error ? <p className="msg msg-error" role="alert">{error}</p> : null}
