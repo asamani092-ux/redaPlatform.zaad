@@ -31,6 +31,8 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/assets ./assets
+# مطلوب لـ npm run init / reset-admin في الحاوية
+COPY --from=builder /app/src/generated ./src/generated
 # standalone أولاً ثم node_modules الكامل (وإلا يُستبدل ويختفي prisma CLI)
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static

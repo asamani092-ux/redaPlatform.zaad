@@ -48,8 +48,10 @@ UPLOADS_DIR=/data/uploads
 8. One-off مرة واحدة على القاعدة الفارغة:
 
 ```bash
-# من Coolify Exec أو حاوية one-shot
+# من Coolify Terminal على حاوية التطبيق
 npm run init
+# إن رُفض الدخول لاحقاً:
+npm run db:reset-admin
 ```
 
 9. احذف/أخفِ `ADMIN_PASSWORD` من بيئة التشغيل بعد init إن أمكن؛ غيّر كلمة المدير من الواجهة.
