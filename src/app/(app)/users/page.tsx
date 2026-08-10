@@ -8,6 +8,7 @@ import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { AvatarGroup } from "@/components/ui/AvatarGroup";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PasswordField } from "@/components/PasswordField";
 
 type UserRow = {
   id: string;
@@ -244,7 +245,7 @@ export default function UsersPage() {
             </div>
             <div>
               <label className="label-field">كلمة المرور</label>
-              <input name="password" type="password" className="input-field" dir="ltr" required />
+              <PasswordField name="password" required autoComplete="new-password" />
             </div>
             <div>
               <label className="label-field">الدور</label>
@@ -324,25 +325,11 @@ export default function UsersPage() {
           <div className="form-grid">
             <div>
               <label className="label-field">كلمة المرور الجديدة</label>
-              <input
-                name="password"
-                type="password"
-                className="input-field"
-                dir="ltr"
-                minLength={8}
-                required
-              />
+              <PasswordField name="password" minLength={8} required autoComplete="new-password" />
             </div>
             <div>
               <label className="label-field">تأكيد كلمة المرور</label>
-              <input
-                name="confirm"
-                type="password"
-                className="input-field"
-                dir="ltr"
-                minLength={8}
-                required
-              />
+              <PasswordField name="confirm" minLength={8} required autoComplete="new-password" />
             </div>
           </div>
           <div className="form-actions">

@@ -5,11 +5,12 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
 import { sanitizeAuthEnv } from "@/lib/auth-env";
+import { normalizeMobile } from "@/lib/mobile";
 
 sanitizeAuthEnv();
 
 const credentialsSchema = z.object({
-  mobile: z.string().min(9).max(15),
+  mobile: z.string().min(9).max(20),
   password: z.string().min(4),
 });
 
@@ -26,12 +27,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = credentialsSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
+        const mobile = normalizeMobile(parsed.data.mobile);
+        const password = parsed.data.password.trim();
+
         const user = await prisma.user.findUnique({
-          where: { mobile: parsed.data.mobile.trim() },
+          where: { mobile },
         });
         if (!user || !user.active) return null;
 
-        const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
+        const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
 
         await prisma.user.update({

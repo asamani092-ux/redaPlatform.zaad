@@ -13,6 +13,7 @@ import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 import { Accordion } from "@/components/ui/Accordion";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PasswordField } from "@/components/PasswordField";
 
 type Association = { id?: string; name: string; active?: boolean };
 type Section = "exhibition" | "schema" | "associations" | "templates" | "whatsapp" | null;
@@ -599,10 +600,7 @@ export default function SettingsPage() {
             <label className="label-field">
               التوكن {wa.hasToken ? `— المحفوظ: ${wa.tokenMask}` : ""}
             </label>
-            <input
-              className="input-field"
-              dir="ltr"
-              type="password"
+            <PasswordField
               autoComplete="off"
               placeholder={wa.hasToken ? "اتركه فارغاً للإبقاء" : "توكن المزوّد"}
               value={wa.token}

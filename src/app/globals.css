@@ -443,6 +443,45 @@ button {
   box-sizing: border-box;
 }
 
+.password-field {
+  position: relative;
+  width: 100%;
+}
+
+.password-field__input {
+  padding-inline-end: 4.75rem;
+}
+
+.password-field__toggle {
+  position: absolute;
+  inset-inline-end: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--text-link, #0b5fff);
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: var(--weight-bold, 700);
+  min-height: var(--touch-min);
+  padding: 0 0.65rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 0.4rem);
+}
+
+.password-field__toggle:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.password-field__toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.password-field__toggle:focus-visible {
+  outline: 2px solid var(--border-focus, var(--tmkeen-primary));
+  outline-offset: 2px;
+}
+
 .input-field:focus {
   outline: none;
   border-color: var(--border-focus, var(--tmkeen-primary));
