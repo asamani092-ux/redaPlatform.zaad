@@ -4,6 +4,7 @@ import { FormEvent, useState, Suspense } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { normalizeMobile } from "@/lib/mobile";
 
 function LoginForm() {
   const router = useRouter();
@@ -16,14 +17,20 @@ function LoginForm() {
     setLoading(true);
     setError("");
     const fd = new FormData(e.currentTarget);
+    const mobile = normalizeMobile(String(fd.get("mobile") ?? ""));
+    const password = String(fd.get("password") ?? "").trim();
     const res = await signIn("credentials", {
-      mobile: String(fd.get("mobile") ?? ""),
-      password: String(fd.get("password") ?? ""),
+      mobile,
+      password,
       redirect: false,
     });
     setLoading(false);
     if (res?.error) {
-      setError("بيانات الدخول غير صحيحة");
+      setError(
+        res.error === "CredentialsSignin"
+          ? "بيانات الدخول غير صحيحة — تأكد من الجوال 05xxxxxxxx وكلمة المرور"
+          : `تعذّر الدخول (${res.error})`,
+      );
       return;
     }
     router.replace(search.get("callbackUrl") || "/");
