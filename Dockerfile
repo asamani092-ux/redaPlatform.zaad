@@ -33,6 +33,7 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/assets ./assets
 # مطلوب لـ npm run init / reset-admin في الحاوية
 COPY --from=builder /app/src/generated ./src/generated
+COPY --from=builder /app/src/lib ./src/lib
 # standalone أولاً ثم node_modules الكامل (وإلا يُستبدل ويختفي prisma CLI)
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
