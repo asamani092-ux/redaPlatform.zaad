@@ -261,24 +261,50 @@ export default function InventoryPage() {
             <tbody>
               {items.map((i) => (
                 <tr key={i.id}>
-                  <td data-label="الرمز" dir="ltr">
-                    <div className="row-actions">
-                      <span>{i.skuCode ?? "—"}</span>
+                  <td data-label="الرمز">
+                    <div className="sku-code-cell">
                       {i.skuCode ? (
-                        <button
-                          type="button"
-                          className="btn-secondary btn-sm"
-                          onClick={() => void navigator.clipboard.writeText(i.skuCode!)}
-                        >
-                          نسخ
-                        </button>
-                      ) : null}
+                        <>
+                          <span dir="ltr">
+                            <Chip tone="neutral" label={i.skuCode} />
+                          </span>
+                          <button
+                            type="button"
+                            className="sku-code-cell__copy"
+                            aria-label={`نسخ الرمز ${i.skuCode}`}
+                            title="نسخ الرمز"
+                            onClick={() => void navigator.clipboard.writeText(i.skuCode!)}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <rect
+                                x="9"
+                                y="9"
+                                width="11"
+                                height="11"
+                                rx="2"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                              />
+                              <path
+                                d="M5 15V7a2 2 0 012-2h8"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                          </button>
+                        </>
+                      ) : (
+                        <Chip tone="neutral" label="—" />
+                      )}
                     </div>
                   </td>
                   <td data-label="السمات">
                     <AttrChips attributes={i.attributes} schema={schema} />
                   </td>
-                  <td data-label="الكمية">{i.quantity}</td>
+                  <td data-label="الكمية">
+                    <Chip tone="brand" label={String(i.quantity)} />
+                  </td>
                   <td data-label="تنبيه">
                     <Chip
                       tone={i.lowStock ? "warning" : "success"}
