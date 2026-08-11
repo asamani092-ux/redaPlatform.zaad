@@ -264,36 +264,16 @@ export default function InventoryPage() {
                   <td data-label="الرمز">
                     <div className="sku-code-cell">
                       {i.skuCode ? (
-                        <>
-                          <span dir="ltr">
-                            <Chip tone="neutral" label={i.skuCode} />
-                          </span>
-                          <button
-                            type="button"
-                            className="sku-code-cell__copy"
-                            aria-label={`نسخ الرمز ${i.skuCode}`}
-                            title="نسخ الرمز"
-                            onClick={() => void navigator.clipboard.writeText(i.skuCode!)}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                              <rect
-                                x="9"
-                                y="9"
-                                width="11"
-                                height="11"
-                                rx="2"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                              />
-                              <path
-                                d="M5 15V7a2 2 0 012-2h8"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          className="sku-code-cell__btn"
+                          dir="ltr"
+                          aria-label={`نسخ الرمز ${i.skuCode}`}
+                          title="اضغط لنسخ الرمز"
+                          onClick={() => void navigator.clipboard.writeText(i.skuCode!)}
+                        >
+                          <Chip tone="neutral" label={i.skuCode} />
+                        </button>
                       ) : (
                         <Chip tone="neutral" label="—" />
                       )}
