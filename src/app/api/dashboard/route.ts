@@ -6,7 +6,7 @@ import { DEFAULT_INVENTORY_SCHEMA, parseInventorySchema } from "@/lib/inventory-
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 import { countDistinctReceived } from "@/lib/report-counts";
 import { buildHouseholdMetrics } from "@/lib/report-metrics";
-import { summarizeStoreStock } from "@/lib/store-ledger";
+import { summarizePlatformStock, summarizeStoreStock } from "@/lib/store-ledger";
 
 export async function GET() {
   const authz = await requirePermission("dashboard:view");
@@ -34,6 +34,7 @@ export async function GET() {
     inventory,
     topDetailed,
     storeSummary,
+    platformStock,
   ] = await Promise.all([
     prisma.beneficiary.findMany({ select: { dependentsCount: true } }),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
@@ -53,6 +54,7 @@ export async function GET() {
     }),
     fetchTopDispensedItems(exhibitionId, 5),
     summarizeStoreStock(prisma, exhibitionId),
+    summarizePlatformStock(prisma, exhibitionId),
   ]);
 
   const households = buildHouseholdMetrics(
@@ -74,6 +76,7 @@ export async function GET() {
   const storeContributed = storeSummary.reduce((s, r) => s + r.added, 0);
   const storeDispensed = storeSummary.reduce((s, r) => s + r.dispensed, 0);
   const storeRemaining = storeSummary.reduce((s, r) => s + r.remaining, 0);
+  const inventoryRemaining = inventory.reduce((s, i) => s + Number(i.quantity), 0);
 
   return NextResponse.json({
     exhibition: {
@@ -94,6 +97,10 @@ export async function GET() {
       exceptions,
       overrideDispenses,
       completionRate,
+      inventoryRemaining,
+      platformContributed: platformStock.added,
+      platformDispensed: platformStock.dispensed,
+      platformRemaining: platformStock.remaining,
       storeContributed,
       storeDispensed,
       storeRemaining,

@@ -377,9 +377,47 @@ button {
   align-items: end;
 }
 
+.toolbar--dense {
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.toolbar--dense .btn-primary,
+.toolbar--dense .btn-secondary,
+.toolbar--dense .btn-recommend,
+.toolbar--dense .btn-danger {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .toolbar .input-field {
   min-width: min(100%, 240px);
   flex: 1;
+}
+
+.page-header__actions .btn-sm {
+  min-height: 2.25rem;
+}
+
+.stores-table__row {
+  cursor: pointer;
+}
+
+.stores-table__row:hover td {
+  background: color-mix(in srgb, var(--tmkeen-primary) 6%, transparent);
+}
+
+.stores-table__row:focus-visible {
+  outline: 2px solid var(--border-focus, var(--tmkeen-primary));
+  outline-offset: -2px;
+}
+
+.zad-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  justify-content: flex-start;
 }
 
 .form-grid {

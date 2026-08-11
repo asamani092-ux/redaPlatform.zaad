@@ -39,9 +39,17 @@ type InvItem = {
   quantity: number;
 };
 
+type StoreTotals = {
+  added: number;
+  dispensed: number;
+  returned: number;
+  remaining: number;
+  itemCount: number;
+};
+
 /**
- * تبويب المتاجر: تسجيل متاجر + مساهمات تدخل المخزون الموحّد + حصر.
- * Time: O(n) للعرض.
+ * تبويب المتاجر: جدول متاجر → تفاصيل بنافذة عند الضغط.
+ * Time: O(n) للتجميع والعرض.
  */
 export default function StoresPage() {
   const { data: session } = useSession();
@@ -53,11 +61,11 @@ export default function StoresPage() {
   const [summary, setSummary] = useState<SummaryRow[]>([]);
   const [schema, setSchema] = useState<InventorySchemaField[]>([]);
   const [inventory, setInventory] = useState<InvItem[]>([]);
-  const [day, setDay] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [contribOpen, setContribOpen] = useState(false);
+  const [detailStoreId, setDetailStoreId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [storeId, setStoreId] = useState("");
@@ -67,9 +75,8 @@ export default function StoresPage() {
   const [attrs, setAttrs] = useState<Record<string, string>>({});
 
   async function load() {
-    const qs = day ? `?day=${encodeURIComponent(day)}` : "";
     const [storesRes, invRes] = await Promise.all([
-      fetch(`/api/stores${qs}`),
+      fetch("/api/stores"),
       fetch("/api/inventory?page=1&pageSize=200"),
     ]);
     const sj = await storesRes.json();
@@ -93,7 +100,6 @@ export default function StoresPage() {
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const defaultAttrs = useMemo(() => {
@@ -101,6 +107,32 @@ export default function StoresPage() {
     for (const f of schema) next[f.key] = f.options[0] ?? "";
     return next;
   }, [schema]);
+
+  const totalsByStore = useMemo(() => {
+    const map = new Map<string, StoreTotals>();
+    for (const r of summary) {
+      const cur = map.get(r.storeId) ?? {
+        added: 0,
+        dispensed: 0,
+        returned: 0,
+        remaining: 0,
+        itemCount: 0,
+      };
+      cur.added += r.added;
+      cur.dispensed += r.dispensed;
+      cur.returned += r.returned;
+      cur.remaining += r.remaining;
+      cur.itemCount += 1;
+      map.set(r.storeId, cur);
+    }
+    return map;
+  }, [summary]);
+
+  const detailStore = stores.find((s) => s.id === detailStoreId) ?? null;
+  const detailRows = useMemo(
+    () => (detailStoreId ? summary.filter((r) => r.storeId === detailStoreId) : []),
+    [summary, detailStoreId],
+  );
 
   async function onCreateStore(e: FormEvent) {
     e.preventDefault();
@@ -154,28 +186,30 @@ export default function StoresPage() {
     void load();
   }
 
+  function openContribute(forStoreId?: string) {
+    setStoreId(forStoreId || stores[0]?.id || "");
+    setMode("existing");
+    setInventoryItemId(inventory[0]?.id ?? "");
+    setAttrs({ ...defaultAttrs });
+    setContribOpen(true);
+  }
+
   return (
     <div className="page-stack">
       <PageHeader
         title="المتاجر"
-        description="متاجر مشاركة تساهم بمنتجات تدخل المخزون الموحّد — حصر المضاف والمصروف والمتبقي"
+        description="متاجر مشاركة تساهم بمنتجات تدخل المخزون الموحّد — اضغط المتجر لعرض التفاصيل"
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "المتاجر" }]}
         actions={
           canManage ? (
             <>
-              <button type="button" className="btn-primary" onClick={() => setAddOpen(true)}>
+              <button type="button" className="btn-primary btn-sm" onClick={() => setAddOpen(true)}>
                 إضافة متجر
               </button>
               <button
                 type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  setStoreId(stores[0]?.id ?? "");
-                  setMode("existing");
-                  setInventoryItemId(inventory[0]?.id ?? "");
-                  setAttrs({ ...defaultAttrs });
-                  setContribOpen(true);
-                }}
+                className="btn-secondary btn-sm"
+                onClick={() => openContribute()}
                 disabled={!stores.length}
               >
                 تسجيل مساهمة
@@ -187,86 +221,119 @@ export default function StoresPage() {
       {msg ? <p className="msg">{msg}</p> : null}
 
       <section className="panel">
-        <div className="toolbar">
-          <label className="label-field" htmlFor="store-day">
-            تصفية يوم الحركات (اختياري)
-          </label>
-          <input
-            id="store-day"
-            type="date"
-            className="input-field"
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-          />
-          <button type="button" className="btn-secondary" onClick={() => void load()}>
-            تطبيق
-          </button>
-        </div>
-      </section>
-
-      <section className="panel">
         <h2 className="panel-title">المتاجر ({stores.length})</h2>
         <DataTable empty={!stores.length} emptyTitle="لا متاجر بعد" emptyBody="أضف متجراً مشاركاً.">
           <table>
             <thead>
               <tr>
-                <th>الاسم</th>
+                <th>المتجر</th>
                 <th>الحالة</th>
-                <th>ملاحظات</th>
+                <th>أصناف</th>
+                <th>مضاف</th>
+                <th>مصروف</th>
+                <th>متبقي</th>
               </tr>
             </thead>
             <tbody>
-              {stores.map((s) => (
-                <tr key={s.id}>
-                  <td data-label="الاسم">{s.name}</td>
-                  <td data-label="الحالة">{s.active ? "نشط" : "متوقف"}</td>
-                  <td data-label="ملاحظات">{s.notes || "—"}</td>
-                </tr>
-              ))}
+              {stores.map((s) => {
+                const t = totalsByStore.get(s.id);
+                return (
+                  <tr
+                    key={s.id}
+                    className="stores-table__row"
+                    tabIndex={0}
+                    role="button"
+                    onClick={() => setDetailStoreId(s.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setDetailStoreId(s.id);
+                      }
+                    }}
+                  >
+                    <td data-label="المتجر">{s.name}</td>
+                    <td data-label="الحالة">{s.active ? "نشط" : "متوقف"}</td>
+                    <td data-label="أصناف">{t?.itemCount ?? 0}</td>
+                    <td data-label="مضاف">{t?.added ?? 0}</td>
+                    <td data-label="مصروف">{t?.dispensed ?? 0}</td>
+                    <td data-label="متبقي">{t?.remaining ?? 0}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </DataTable>
       </section>
 
-      <section className="panel">
-        <h2 className="panel-title">حصر المساهمات</h2>
-        <DataTable
-          empty={!summary.length}
-          emptyTitle="لا حركات متاجر بعد"
-          emptyBody="سجّل مساهمة لتظهر في الحصر والتقارير."
-        >
-          <table>
-            <thead>
-              <tr>
-                <th>المتجر</th>
-                <th>الرمز</th>
-                <th>الصنف</th>
-                <th>مضاف</th>
-                <th>مصروف</th>
-                <th>مرتجع</th>
-                <th>متبقي</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.map((r) => (
-                <tr key={`${r.storeId}:${r.inventoryItemId}`}>
-                  <td data-label="المتجر">{r.storeName}</td>
-                  <td data-label="الرمز" dir="ltr">
-                    {r.skuCode}
-                  </td>
-                  <td data-label="الصنف">
-                    <AttrChips attributes={r.attributes} schema={schema} />
-                  </td>
-                  <td data-label="مضاف">{r.added}</td>
-                  <td data-label="مصروف">{r.dispensed}</td>
-                  <td data-label="مرتجع">{r.returned}</td>
-                  <td data-label="متبقي">{r.remaining}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </DataTable>
-      </section>
+      <Modal
+        open={Boolean(detailStore)}
+        title={detailStore ? `تفاصيل: ${detailStore.name}` : "تفاصيل المتجر"}
+        onClose={() => setDetailStoreId(null)}
+        wide
+      >
+        {detailStore ? (
+          <>
+            <p className="page-header__desc">
+              {detailStore.notes || "بدون ملاحظات"} — {detailStore.active ? "نشط" : "متوقف"}
+            </p>
+            {canManage ? (
+              <div className="form-actions" style={{ marginTop: "0.5rem" }}>
+                <button
+                  type="button"
+                  className="btn-primary btn-sm"
+                  onClick={() => {
+                    openContribute(detailStore.id);
+                  }}
+                >
+                  تسجيل مساهمة لهذا المتجر
+                </button>
+              </div>
+            ) : null}
+            <div className="table-wrap table-wrap--stack" style={{ marginTop: "0.75rem" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>الرمز</th>
+                    <th>الصنف</th>
+                    <th>مضاف</th>
+                    <th>مصروف</th>
+                    <th>مرتجع</th>
+                    <th>متبقي</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detailRows.map((r) => (
+                    <tr key={`${r.storeId}:${r.inventoryItemId}`}>
+                      <td data-label="الرمز" dir="ltr">
+                        {r.skuCode}
+                      </td>
+                      <td data-label="الصنف">
+                        <AttrChips attributes={r.attributes} schema={schema} />
+                      </td>
+                      <td data-label="مضاف">{r.added}</td>
+                      <td data-label="مصروف">{r.dispensed}</td>
+                      <td data-label="مرتجع">{r.returned}</td>
+                      <td data-label="متبقي">{r.remaining}</td>
+                    </tr>
+                  ))}
+                  {!detailRows.length ? (
+                    <tr>
+                      <td colSpan={6} className="empty">
+                        لا مساهمات لهذا المتجر بعد
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <div className="form-actions" style={{ marginTop: "0.75rem" }}>
+              <button type="button" className="btn-secondary" onClick={() => setDetailStoreId(null)}>
+                إغلاق
+              </button>
+            </div>
+          </>
+        ) : null}
+      </Modal>
 
       <Modal open={addOpen} title="إضافة متجر" onClose={() => !busy && setAddOpen(false)}>
         <form onSubmit={onCreateStore}>
@@ -283,6 +350,14 @@ export default function StoresPage() {
           <div className="form-actions">
             <button className="btn-primary" type="submit" disabled={busy}>
               حفظ
+            </button>
+            <button
+              className="btn-secondary"
+              type="button"
+              disabled={busy}
+              onClick={() => setAddOpen(false)}
+            >
+              إلغاء
             </button>
           </div>
         </form>
@@ -362,6 +437,14 @@ export default function StoresPage() {
           <div className="form-actions">
             <button className="btn-primary" type="submit" disabled={busy}>
               حفظ المساهمة
+            </button>
+            <button
+              className="btn-secondary"
+              type="button"
+              disabled={busy}
+              onClick={() => setContribOpen(false)}
+            >
+              إلغاء
             </button>
           </div>
         </form>

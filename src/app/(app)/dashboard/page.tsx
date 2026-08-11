@@ -22,6 +22,10 @@ type DashboardData = {
     exceptions: number;
     overrideDispenses?: number;
     completionRate: number;
+    inventoryRemaining?: number;
+    platformContributed?: number;
+    platformDispensed?: number;
+    platformRemaining?: number;
     storeContributed?: number;
     storeDispensed?: number;
     storeRemaining?: number;
@@ -102,7 +106,11 @@ export default function DashboardPage() {
     { label: "الحاضرون", value: data.stats.attended },
     { label: "استلموا", value: data.stats.received },
     { label: "متبقون للاستلام", value: data.stats.remainingToReceive },
-    { label: "القطع المصروفة", value: data.stats.piecesDispensed },
+    { label: "القطع المصروفة (إجمالي)", value: data.stats.piecesDispensed },
+    { label: "متبقي المخزون (إجمالي)", value: data.stats.inventoryRemaining ?? 0 },
+    { label: "مضاف من المنصة", value: data.stats.platformContributed ?? 0 },
+    { label: "مصروف من المنصة", value: data.stats.platformDispensed ?? 0 },
+    { label: "متبقي للمنصة", value: data.stats.platformRemaining ?? 0 },
     { label: "مساهمات المتاجر", value: data.stats.storeContributed ?? 0 },
     { label: "مصروف من المتاجر", value: data.stats.storeDispensed ?? 0 },
     { label: "متبقي للمتاجر", value: data.stats.storeRemaining ?? 0 },

@@ -23,6 +23,7 @@ export const PRESENTATION_KPI_OPTIONS = [
   "الحضور",
   "المستلمون",
   "القطع المصروفة",
+  "مخزون المنصة",
   "مساهمات المتاجر",
 ] as const;
 
@@ -123,6 +124,9 @@ export type PresentationSummaryInput = {
   byFamilySize?: Record<string, number>;
   topItems?: TopDispensedItem[];
   attributeLabels?: Record<string, string>;
+  platformContributed?: number;
+  platformDispensed?: number;
+  platformRemaining?: number;
   storeContributed?: number;
   storeDispensed?: number;
   storeRemaining?: number;
@@ -266,6 +270,19 @@ export function buildZadPresentationReport(
         ],
         note: "يشمل الصرف العادي والاستثناءات المعتمدة.",
       },
+      ...((s.platformContributed || s.platformDispensed)
+        ? ([
+            {
+              text: `مخزون المنصة: أُضيف ${ar(s.platformContributed ?? 0)} وصُرف ${ar(s.platformDispensed ?? 0)} وتبقّى ${ar(s.platformRemaining ?? 0)}.`,
+              rows: [
+                ["مضاف من المنصة", ar(s.platformContributed ?? 0)],
+                ["مصروف من المنصة", ar(s.platformDispensed ?? 0)],
+                ["متبقي للمنصة", ar(s.platformRemaining ?? 0)],
+              ] as [string, string][],
+              note: "حركات المخزون غير المنسوبة لمتجر.",
+            },
+          ] as ZadPresentationReport["summary"])
+        : []),
       ...(s.storeContributed
         ? ([
             {
@@ -367,6 +384,17 @@ export function buildZadPresentationReport(
             ],
           ),
         note: top.length ? "أعلى الأصناف المصروفة." : "لا أصناف بعد.",
+      },
+      {
+        label: "مخزون المنصة",
+        value: ar(s.platformRemaining ?? 0),
+        delta: `مصروف ${ar(s.platformDispensed ?? 0)}`,
+        rows: [
+          ["المضاف من المنصة", ar(s.platformContributed ?? 0)],
+          ["المصروف من المنصة", ar(s.platformDispensed ?? 0)],
+          ["المتبقي للمنصة", ar(s.platformRemaining ?? 0)],
+        ] as [string, string][],
+        note: "منتجات وإضافات المنصة خارج مساهمات المتاجر.",
       },
       {
         label: "مساهمات المتاجر",

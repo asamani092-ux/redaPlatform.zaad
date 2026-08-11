@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { Modal } from "@/components/Modal";
 import { AttrChips } from "@/components/AttrChips";
 import type { InventorySchemaField } from "@/lib/inventory-schema";
+import { buildPrintDocument, escapeHtml } from "@/lib/print-html";
+import { useToast } from "@/components/ui/Toast";
 
 export type SkuCatalogItem = {
   id: string;
@@ -25,6 +27,7 @@ type Props = {
 export function SkuCatalogModal({ open, onClose, items, schema, onCopied }: Props) {
   const [q, setQ] = useState("");
   const [copied, setCopied] = useState("");
+  const toast = useToast();
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -44,6 +47,7 @@ export function SkuCatalogModal({ open, onClose, items, schema, onCopied }: Prop
       setTimeout(() => setCopied(""), 1500);
     } catch {
       setCopied("");
+      toast.push({ title: "تعذّر النسخ", tone: "warning" });
     }
   }
 
@@ -55,31 +59,34 @@ export function SkuCatalogModal({ open, onClose, items, schema, onCopied }: Prop
           .map((f) => String(attrs[f.key] ?? ""))
           .filter(Boolean)
           .join(" / ");
-        return `<tr><td>${i.skuCode}</td><td>${label || i.id}</td><td>${i.quantity}</td></tr>`;
+        return `<tr><td class="ltr">${escapeHtml(i.skuCode)}</td><td>${escapeHtml(label || "صنف")}</td><td>${escapeHtml(String(i.quantity))}</td></tr>`;
       })
       .join("");
-    const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/><title>قائمة أصناف الصرف</title>
-      <style>body{font-family:sans-serif;padding:1rem}table{width:100%;border-collapse:collapse}
-      th,td{border:1px solid #ccc;padding:.5rem;text-align:right}th{background:#f3f3f3}</style></head>
-      <body><h1>قائمة الأصناف والرموز</h1>
-      <table><thead><tr><th>الرمز</th><th>الصنف</th><th>المتاح</th></tr></thead>
-      <tbody>${rows}</tbody></table></body></html>`;
-    const w = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
-    if (!w) return;
+    const html = buildPrintDocument({
+      title: "قائمة الأصناف والرموز",
+      subtitle: `${filtered.length} صنف`,
+      sectionsHtml: `<h2>جدول الرموز</h2>
+        <table><thead><tr><th>الرمز</th><th>الصنف</th><th>المتاح</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="3">لا أصناف</td></tr>`}</tbody></table>`,
+    });
+    // بدون noopener — وإلا يعيد Chromium null ويُفشل الطباعة بصمت
+    const w = window.open("about:blank", "_blank", "width=900,height=700");
+    if (!w) {
+      toast.push({
+        title: "تعذّرت الطباعة",
+        body: "اسمح بالنوافذ المنبثقة ثم أعد المحاولة",
+        tone: "warning",
+      });
+      return;
+    }
+    w.document.open();
     w.document.write(html);
     w.document.close();
-    w.focus();
-    w.print();
   }
 
   return (
-    <Modal
-      open={open}
-      title="قائمة الأصناف والرموز"
-      onClose={onClose}
-      wide
-    >
-      <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
+    <Modal open={open} title="قائمة الأصناف والرموز" onClose={onClose} wide>
+      <div className="toolbar toolbar--dense" style={{ marginBottom: "0.75rem" }}>
         <input
           className="input-field"
           value={q}
@@ -87,7 +94,7 @@ export function SkuCatalogModal({ open, onClose, items, schema, onCopied }: Prop
           placeholder="بحث بالرمز أو اسم الصنف"
           dir="rtl"
         />
-        <button type="button" className="btn-secondary" onClick={printTable}>
+        <button type="button" className="btn-secondary btn-sm" onClick={printTable}>
           طباعة الجدول
         </button>
       </div>
@@ -117,7 +124,7 @@ export function SkuCatalogModal({ open, onClose, items, schema, onCopied }: Prop
                     className="btn-secondary btn-sm"
                     onClick={() => void copyCode(i.skuCode)}
                   >
-                    {copied === i.skuCode ? "تم النسخ" : "نسخ"}
+                    {copied === i.skuCode ? "تم" : "نسخ"}
                   </button>
                 </td>
               </tr>
@@ -127,7 +134,7 @@ export function SkuCatalogModal({ open, onClose, items, schema, onCopied }: Prop
       </div>
       {!filtered.length ? <p className="msg">لا نتائج</p> : null}
       <div className="form-actions" style={{ marginTop: "0.75rem" }}>
-        <button type="button" className="btn-primary" onClick={onClose}>
+        <button type="button" className="btn-secondary" onClick={onClose}>
           العودة للصرف
         </button>
       </div>
