@@ -25,7 +25,7 @@ import {
   attributeLabelsFromSchema,
   parseInventorySchema,
 } from "@/lib/inventory-schema";
-import { summarizeStoreStock } from "@/lib/store-ledger";
+import { summarizePlatformStock, summarizeStoreStock } from "@/lib/store-ledger";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -86,6 +86,7 @@ export async function GET(req: NextRequest) {
       topItems,
       totalBeneficiaries,
       storeSummary,
+      platformStock,
     ] = await Promise.all([
       prisma.beneficiary.findMany({
         select: {
@@ -113,6 +114,7 @@ export async function GET(req: NextRequest) {
       fetchTopDispensedItems(exhibitionId, 5),
       prisma.beneficiary.count(),
       summarizeStoreStock(prisma, exhibitionId),
+      summarizePlatformStock(prisma, exhibitionId),
     ]);
 
     const breakdowns = buildBreakdownShares({
@@ -142,6 +144,9 @@ export async function GET(req: NextRequest) {
       storeContributed: storeSummary.reduce((s, r) => s + r.added, 0),
       storeDispensed: storeSummary.reduce((s, r) => s + r.dispensed, 0),
       storeRemaining: storeSummary.reduce((s, r) => s + r.remaining, 0),
+      platformContributed: platformStock.added,
+      platformDispensed: platformStock.dispensed,
+      platformRemaining: platformStock.remaining,
       beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
       totalIndividuals: breakdowns.households.totalIndividuals,
       byGender: sharesToRecord(breakdowns.byGender),
@@ -276,6 +281,7 @@ export async function GET(req: NextRequest) {
     inventoryRemaining,
     topItems,
     storeSummary,
+    platformStock,
   ] = await Promise.all([
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
@@ -296,6 +302,7 @@ export async function GET(req: NextRequest) {
     }),
     fetchTopDispensedItems(exhibitionId, 5),
     summarizeStoreStock(prisma, exhibitionId),
+    summarizePlatformStock(prisma, exhibitionId),
   ]);
 
   const summary = {
@@ -314,10 +321,14 @@ export async function GET(req: NextRequest) {
       attributes: i.attributesJson,
       quantity: Number(i.quantity),
     })),
+    inventoryRemainingTotal: inventoryRemaining.reduce((s, i) => s + Number(i.quantity), 0),
     storeSummary,
     storeContributed: storeSummary.reduce((s, r) => s + r.added, 0),
     storeDispensed: storeSummary.reduce((s, r) => s + r.dispensed, 0),
     storeRemaining: storeSummary.reduce((s, r) => s + r.remaining, 0),
+    platformContributed: platformStock.added,
+    platformDispensed: platformStock.dispensed,
+    platformRemaining: platformStock.remaining,
     beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
     totalIndividuals: breakdowns.households.totalIndividuals,
     byGender,
@@ -355,10 +366,14 @@ export async function GET(req: NextRequest) {
       ["المدعوون", summary.invited],
       ["الحضور", summary.attended],
       ["المستلمون", summary.received],
-      ["القطع المصروفة", summary.piecesDispensed],
+      ["القطع المصروفة (إجمالي)", summary.piecesDispensed],
+      ["مضاف من المنصة", summary.platformContributed],
+      ["مصروف من المنصة", summary.platformDispensed],
+      ["متبقي للمنصة", summary.platformRemaining],
       ["مساهمات المتاجر (مضاف)", summary.storeContributed],
       ["مصروف من المتاجر", summary.storeDispensed],
       ["متبقي للمتاجر", summary.storeRemaining],
+      ["متبقي المخزون (إجمالي)", summary.inventoryRemainingTotal],
     ]);
 
     const storesSheet = wb.addWorksheet("المتاجر");

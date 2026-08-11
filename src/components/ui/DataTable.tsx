@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-/** غلاف جدول وفق عقد DataTable — يكدّس الصفوف على الشاشات الضيقة */
+/** غلاف جدول وفق عقد DataTable — يكدّس الصفوف على الشاشات الضيقة ما لم يُعطَل */
 export function DataTable({
   children,
   loading,
@@ -10,6 +10,7 @@ export function DataTable({
   emptyTitle = "لا بيانات",
   emptyBody,
   className = "",
+  stack = true,
 }: {
   children: ReactNode;
   loading?: boolean;
@@ -17,9 +18,11 @@ export function DataTable({
   emptyTitle?: string;
   emptyBody?: string;
   className?: string;
+  /** false = جدول أفقي حقيقي بدون تكديس بطاقات */
+  stack?: boolean;
 }) {
   const wrap =
-    `table-wrap table-wrap--stack zad-table-wrap zad-data-table ${className}`.trim();
+    `table-wrap${stack ? " table-wrap--stack" : ""} zad-table-wrap zad-data-table ${className}`.trim();
   if (loading) {
     return (
       <div

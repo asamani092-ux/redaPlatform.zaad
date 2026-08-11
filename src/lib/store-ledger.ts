@@ -179,3 +179,41 @@ export async function summarizeStoreStock(
   }
   return [...map.values()];
 }
+
+export type PlatformStockTotals = {
+  added: number;
+  dispensed: number;
+  returned: number;
+  removed: number;
+  remaining: number;
+};
+
+/**
+ * حصر حركات المنصة (بدون storeId) — مقابل حصر المتاجر.
+ * Time: O(m) — Space: O(1).
+ */
+export async function summarizePlatformStock(
+  tx: Db,
+  exhibitionId: string,
+): Promise<PlatformStockTotals> {
+  const movements = await tx.stockMovement.findMany({
+    where: { exhibitionId, storeId: null },
+    select: { type: true, quantity: true },
+  });
+  const totals: PlatformStockTotals = {
+    added: 0,
+    dispensed: 0,
+    returned: 0,
+    removed: 0,
+    remaining: 0,
+  };
+  for (const m of movements) {
+    const q = Number(m.quantity);
+    if (m.type === StockMovementType.ADD) totals.added += q;
+    else if (m.type === StockMovementType.DISPENSE) totals.dispensed += q;
+    else if (m.type === StockMovementType.RETURN) totals.returned += q;
+    else if (m.type === StockMovementType.REMOVE) totals.removed += q;
+  }
+  totals.remaining = totals.added + totals.returned - totals.dispensed - totals.removed;
+  return totals;
+}

@@ -50,6 +50,10 @@ type Summary = {
   byHouseholdSizeShares?: ShareRow[];
   topItems?: TopItem[];
   attributeLabels?: Record<string, string>;
+  inventoryRemainingTotal?: number;
+  platformContributed?: number;
+  platformDispensed?: number;
+  platformRemaining?: number;
   storeContributed?: number;
   storeDispensed?: number;
   storeRemaining?: number;
@@ -221,24 +225,24 @@ export default function ReportsPage() {
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "التقارير" }]}
         actions={
           <>
-            <a className="btn-primary" href={`/api/reports?format=xlsx${exportQs}`}>
+            <a className="btn-secondary btn-sm" href={`/api/reports?format=xlsx${exportQs}`}>
               تصدير Excel
             </a>
-            <button
-              type="button"
-              className="btn-recommend"
-              onClick={() => setPresOpen(true)}
-            >
-              منشئ العرض التقديمي
-            </button>
             <a
-              className="btn-secondary"
+              className="btn-secondary btn-sm"
               href={`/api/reports?format=pdf${exportQs}`}
               target="_blank"
               rel="noreferrer"
             >
               تصدير PDF
             </a>
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              onClick={() => setPresOpen(true)}
+            >
+              منشئ العرض التقديمي
+            </button>
           </>
         }
       />
@@ -288,7 +292,11 @@ export default function ReportsPage() {
               ["المدعوون", summary.invited],
               ["الحاضرون", summary.attended],
               ["استلموا", summary.received],
-              ["القطع المصروفة", summary.piecesDispensed],
+              ["القطع المصروفة (إجمالي)", summary.piecesDispensed],
+              ["متبقي المخزون (إجمالي)", summary.inventoryRemainingTotal ?? 0],
+              ["مضاف من المنصة", summary.platformContributed ?? 0],
+              ["مصروف من المنصة", summary.platformDispensed ?? 0],
+              ["متبقي للمنصة", summary.platformRemaining ?? 0],
               ["مساهمات المتاجر", summary.storeContributed ?? 0],
               ["مصروف من المتاجر", summary.storeDispensed ?? 0],
               ["متبقي للمتاجر", summary.storeRemaining ?? 0],

@@ -42,7 +42,27 @@ export default function InventoryPage() {
   const [attrs, setAttrs] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState("0");
   const [move, setMove] = useState({ inventoryItemId: "", type: "ADD", quantity: "1", note: "" });
+  const [copiedSku, setCopiedSku] = useState("");
+  const [detailItem, setDetailItem] = useState<Item | null>(null);
   const toast = useToast();
+
+  async function copySku(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedSku(code);
+      toast.push({ title: `تم نسخ الرمز ${code}`, tone: "success" });
+      window.setTimeout(() => setCopiedSku((c) => (c === code ? "" : c)), 1400);
+    } catch {
+      toast.push({ title: "تعذّر النسخ", tone: "warning" });
+    }
+  }
+
+  function itemSummary(item: Item): string {
+    const parts = schema
+      .map((f) => String(item.attributes[f.key] ?? "").trim())
+      .filter(Boolean);
+    return parts.length ? parts.join(" · ") : "صنف";
+  }
 
   async function load(p = page) {
     const res = await fetch(`/api/inventory?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
@@ -225,12 +245,12 @@ export default function InventoryPage() {
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "المخزون" }]}
         actions={
           <>
-            <button type="button" className="btn-primary" onClick={openAdd}>
+            <button type="button" className="btn-primary btn-sm" onClick={openAdd}>
               إضافة صنف
             </button>
             <button
               type="button"
-              className="btn-secondary"
+              className="btn-secondary btn-sm"
               onClick={() => openMove()}
               disabled={!items.length}
             >
@@ -243,7 +263,9 @@ export default function InventoryPage() {
 
       <section className="panel">
         <h2 className="panel-title">الأصناف الحالية ({total})</h2>
+        <p className="page-header__desc">اضغط الصف لعرض التفاصيل</p>
         <DataTable
+          stack={false}
           empty={!items.length}
           emptyTitle="لا أصناف بعد"
           emptyBody="أضف صنفاً جديداً لبدء تتبع المخزون."
@@ -252,48 +274,61 @@ export default function InventoryPage() {
             <thead>
               <tr>
                 <th scope="col">الرمز</th>
-                <th scope="col">السمات</th>
+                <th scope="col">الصنف</th>
                 <th scope="col">الكمية</th>
                 <th scope="col">تنبيه</th>
-                <th scope="col">إجراءات</th>
               </tr>
             </thead>
             <tbody>
               {items.map((i) => (
-                <tr key={i.id}>
-                  <td data-label="الرمز" dir="ltr">
-                    <div className="row-actions">
-                      <span>{i.skuCode ?? "—"}</span>
+                <tr
+                  key={i.id}
+                  className="inventory-table__row"
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => setDetailItem(i)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setDetailItem(i);
+                    }
+                  }}
+                >
+                  <td data-label="الرمز">
+                    <div className="sku-code-cell">
                       {i.skuCode ? (
                         <button
                           type="button"
-                          className="btn-secondary btn-sm"
-                          onClick={() => void navigator.clipboard.writeText(i.skuCode!)}
+                          className={`sku-code-cell__btn${copiedSku === i.skuCode ? " is-copied" : ""}`}
+                          dir="ltr"
+                          aria-label={`نسخ الرمز ${i.skuCode}`}
+                          title="اضغط لنسخ الرمز"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void copySku(i.skuCode!);
+                          }}
                         >
-                          نسخ
+                          <Chip
+                            tone={copiedSku === i.skuCode ? "success" : "neutral"}
+                            label={copiedSku === i.skuCode ? "تم النسخ" : i.skuCode}
+                          />
                         </button>
-                      ) : null}
+                      ) : (
+                        <Chip tone="neutral" label="—" />
+                      )}
                     </div>
                   </td>
-                  <td data-label="السمات">
-                    <AttrChips attributes={i.attributes} schema={schema} />
+                  <td data-label="الصنف">
+                    <span className="inventory-table__summary">{itemSummary(i)}</span>
                   </td>
-                  <td data-label="الكمية">{i.quantity}</td>
+                  <td data-label="الكمية">
+                    <Chip tone="brand" label={String(i.quantity)} />
+                  </td>
                   <td data-label="تنبيه">
                     <Chip
                       tone={i.lowStock ? "warning" : "success"}
                       label={i.lowStock ? "قرب النفاد" : "متوفر"}
                     />
-                  </td>
-                  <td data-label="إجراءات">
-                    <div className="row-actions">
-                      <button type="button" className="btn-secondary btn-sm" onClick={() => openEdit(i)}>
-                        تعديل
-                      </button>
-                      <button type="button" className="btn-secondary btn-sm" onClick={() => openMove(i.id)}>
-                        حركة
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))}
@@ -309,6 +344,69 @@ export default function InventoryPage() {
           onPageChange={(p) => void load(p)}
         />
       </section>
+
+      <Modal
+        open={Boolean(detailItem)}
+        title={detailItem ? `تفاصيل الصنف ${detailItem.skuCode ?? ""}` : "تفاصيل الصنف"}
+        onClose={() => setDetailItem(null)}
+        wide
+      >
+        {detailItem ? (
+          <>
+            <div className="sku-code-cell" style={{ marginBottom: "0.75rem" }}>
+              {detailItem.skuCode ? (
+                <button
+                  type="button"
+                  className={`sku-code-cell__btn${copiedSku === detailItem.skuCode ? " is-copied" : ""}`}
+                  dir="ltr"
+                  aria-label={`نسخ الرمز ${detailItem.skuCode}`}
+                  title="اضغط لنسخ الرمز"
+                  onClick={() => void copySku(detailItem.skuCode!)}
+                >
+                  <Chip
+                    tone={copiedSku === detailItem.skuCode ? "success" : "neutral"}
+                    label={copiedSku === detailItem.skuCode ? "تم النسخ" : detailItem.skuCode}
+                  />
+                </button>
+              ) : null}
+              <Chip tone="brand" label={`الكمية ${detailItem.quantity}`} />
+              <Chip
+                tone={detailItem.lowStock ? "warning" : "success"}
+                label={detailItem.lowStock ? "قرب النفاد" : "متوفر"}
+              />
+            </div>
+            <h3 className="panel-title">السمات</h3>
+            <AttrChips attributes={detailItem.attributes} schema={schema} />
+            <div className="form-actions" style={{ marginTop: "1rem" }}>
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                onClick={() => {
+                  const item = detailItem;
+                  setDetailItem(null);
+                  openEdit(item);
+                }}
+              >
+                تعديل
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => {
+                  const id = detailItem.id;
+                  setDetailItem(null);
+                  openMove(id);
+                }}
+              >
+                حركة كمية
+              </button>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => setDetailItem(null)}>
+                إغلاق
+              </button>
+            </div>
+          </>
+        ) : null}
+      </Modal>
 
       <Modal open={addOpen} title="إضافة صنف" onClose={() => !busy && setAddOpen(false)} wide>
         <form onSubmit={onCreate}>

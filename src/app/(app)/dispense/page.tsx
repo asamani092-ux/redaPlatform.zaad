@@ -174,6 +174,27 @@ export default function DispensePage() {
   const totalSelected = selectedLines.reduce((s, l) => s + l.quantity, 0);
   const entitledNow = computed + extraN;
 
+  function addBySku() {
+    const code = skuInput.trim();
+    const item = items.find((i) => i.skuCode === code);
+    if (!item) {
+      setMsg("رمز الصنف غير موجود");
+      setMsgError(true);
+      return;
+    }
+    if (item.quantity <= 0) {
+      setMsg("لا كمية متاحة لهذا الصنف");
+      setMsgError(true);
+      return;
+    }
+    const n = toIntOrNull(skuQty) ?? 1;
+    const next = Math.min(Math.max(1, n), item.quantity);
+    setLines((prev) => ({ ...prev, [item.id]: String(next) }));
+    setMsg(`أُضيف ${item.skuCode}`);
+    setMsgError(false);
+    setSkuInput("");
+  }
+
   const blockReason = !lookup
     ? null
     : !lookup.attendance
@@ -269,10 +290,18 @@ export default function DispensePage() {
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الصرف" }]}
         actions={
           <>
-            <button type="button" className="btn-secondary" onClick={() => setCatalogOpen(true)}>
-              قائمة الأصناف والرموز
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => setCatalogOpen(true)}
+            >
+              قائمة الرموز
             </button>
-            <button type="button" className="btn-recommend" onClick={() => setScanOn((v) => !v)}>
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              onClick={() => setScanOn((v) => !v)}
+            >
               {scanOn ? "إيقاف الكاميرا" : "مسح بالكاميرا"}
             </button>
           </>
@@ -284,7 +313,7 @@ export default function DispensePage() {
           { id: "select", label: "اختيار الكميات" },
           { id: "confirm", label: "تأكيد" },
         ]}
-        currentId={lookup ? "select" : "search"}
+        currentId={confirmOpen ? "confirm" : lookup ? "select" : "search"}
       />
       {msg ? <p className={`msg ${msgError ? "msg-error" : ""}`}>{msg}</p> : null}
 
@@ -444,7 +473,7 @@ export default function DispensePage() {
 
           <div className="panel" style={{ marginTop: "1rem" }}>
             <h3 className="panel-title">إضافة بالرمز</h3>
-            <div className="toolbar">
+            <div className="toolbar toolbar--dense">
               <input
                 className="input-field"
                 dir="ltr"
@@ -452,6 +481,12 @@ export default function DispensePage() {
                 placeholder="رقم الصنف 4–5 أرقام"
                 value={skuInput}
                 onChange={(e) => setSkuInput(sanitizeNumericInput(e.target.value, false))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addBySku();
+                  }
+                }}
               />
               <input
                 className="input-field"
@@ -462,34 +497,15 @@ export default function DispensePage() {
                 value={skuQty}
                 onChange={(e) => setSkuQty(sanitizeNumericInput(e.target.value, false))}
               />
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  const code = skuInput.trim();
-                  const item = items.find((i) => i.skuCode === code);
-                  if (!item) {
-                    setMsg("رمز الصنف غير موجود");
-                    setMsgError(true);
-                    return;
-                  }
-                  if (item.quantity <= 0) {
-                    setMsg("لا كمية متاحة لهذا الصنف");
-                    setMsgError(true);
-                    return;
-                  }
-                  const n = toIntOrNull(skuQty) ?? 1;
-                  const next = Math.min(Math.max(1, n), item.quantity);
-                  setLines((prev) => ({ ...prev, [item.id]: String(next) }));
-                  setMsg(`أُضيف ${item.skuCode}`);
-                  setMsgError(false);
-                  setSkuInput("");
-                }}
-              >
+              <button type="button" className="btn-primary btn-sm" onClick={addBySku}>
                 إضافة
               </button>
-              <button type="button" className="btn-secondary" onClick={() => setCatalogOpen(true)}>
-                فتح القائمة
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => setCatalogOpen(true)}
+              >
+                قائمة الرموز
               </button>
             </div>
           </div>
@@ -502,12 +518,14 @@ export default function DispensePage() {
                   <th>الصنف</th>
                   <th>المتاح</th>
                   <th>الكمية</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                {items
-                  .filter((item) => item.quantity > 0 || (toIntOrNull(lines[item.id]) ?? 0) > 0)
-                  .map((item) => (
+                {selectedLines.map((line) => {
+                  const item = items.find((i) => i.id === line.inventoryItemId);
+                  if (!item) return null;
+                  return (
                     <tr key={item.id}>
                       <td data-label="الرمز" dir="ltr">
                         {item.skuCode ?? "—"}
@@ -535,12 +553,31 @@ export default function DispensePage() {
                           }
                         />
                       </td>
+                      <td data-label="">
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          onClick={() =>
+                            setLines((prev) => {
+                              const next = { ...prev };
+                              delete next[item.id];
+                              return next;
+                            })
+                          }
+                        >
+                          إزالة
+                        </button>
+                      </td>
                     </tr>
-                  ))}
-                {!items.length ? (
+                  );
+                })}
+                {!selectedLines.length ? (
                   <tr>
-                    <td colSpan={4}>
-                      <EmptyState title="لا أصناف متاحة" body="أضف أصنافاً من شاشة المخزون أولاً." />
+                    <td colSpan={5}>
+                      <EmptyState
+                        title="لا قطع مختارة بعد"
+                        body="الصق رمز الصنف أو افتح قائمة الرموز ثم أضف الكمية."
+                      />
                     </td>
                   </tr>
                 ) : null}
@@ -581,17 +618,55 @@ export default function DispensePage() {
 
       <ConfirmDialog
         open={confirmOpen}
-        title={lookup?.dispensed ? "تأكيد الصرف الاستثنائي" : "تأكيد الصرف"}
-        body="سيتم تسجيل الصرف تراكمياً. هل تريد المتابعة؟"
-        confirmLabel="نعم، تأكيد"
+        title="مراجعة نهائية قبل الصرف"
+        body={
+          lookup
+            ? `${lookup.beneficiary.name} — المجموع ${totalSelected} من المسموح ${entitledNow}${
+                lookup.dispensed ? " (صرف استثنائي تراكمي)" : ""
+              }`
+            : undefined
+        }
+        confirmLabel="تأكيد الصرف"
         busy={busy}
+        wide
         destructive={Boolean(lookup?.dispensed)}
         onClose={() => setConfirmOpen(false)}
         onConfirm={() => {
-          setConfirmOpen(false);
-          void submit();
+          void submit().finally(() => setConfirmOpen(false));
         }}
-      />
+      >
+        <div className="table-wrap table-wrap--stack" style={{ marginTop: "0.75rem" }}>
+          <table>
+            <thead>
+              <tr>
+                <th>الرمز</th>
+                <th>الصنف</th>
+                <th>الكمية</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedLines.map((line) => {
+                const item = items.find((i) => i.id === line.inventoryItemId);
+                if (!item) return null;
+                return (
+                  <tr key={item.id}>
+                    <td data-label="الرمز" dir="ltr">
+                      {item.skuCode ?? "—"}
+                    </td>
+                    <td data-label="الصنف">
+                      <AttrChips
+                        attributes={item.attributes ?? item.attributesJson}
+                        schema={schema}
+                      />
+                    </td>
+                    <td data-label="الكمية">{line.quantity}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </ConfirmDialog>
       <SkuCatalogModal
         open={catalogOpen}
         onClose={() => setCatalogOpen(false)}
