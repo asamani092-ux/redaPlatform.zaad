@@ -541,10 +541,12 @@ button {
   box-sizing: border-box;
 }
 
-/* أعلى من .zad-root .input-field { width:100% } حتى لا يُدفع زر العين لسطر جديد */
-.zad-root .password-field {
+/* عين كلمة المرور داخل الحقل على اليمين الفيزيائي دائماً (حتى داخل صفحة RTL) */
+.zad-root .password-field,
+.password-field {
   position: relative;
   display: block;
+  direction: ltr;
   width: 100%;
   max-width: 100%;
   min-height: var(--touch-min);
@@ -554,36 +556,48 @@ button {
   box-sizing: border-box;
 }
 
-.zad-root .password-field:focus-within {
+.zad-root .password-field:focus-within,
+.password-field:focus-within {
   border-color: var(--border-focus, var(--tmkeen-primary));
   box-shadow: var(--shadow-focus);
 }
 
-.zad-root .password-field > .input-field.password-field__input {
+.zad-root .password-field > .input-field.password-field__input,
+.password-field > .input-field.password-field__input {
   display: block;
   width: 100%;
   max-width: 100%;
   border: 0;
   box-shadow: none;
   background: transparent;
-  padding-right: 2.75rem;
+  /* مساحة العين على يمين الحقل */
+  padding-block: var(--space-2, 0.5rem);
   padding-left: var(--space-3, 0.75rem);
+  padding-right: 2.75rem;
+  padding-inline-start: var(--space-3, 0.75rem);
+  padding-inline-end: 2.75rem;
 }
 
 .zad-root .password-field > .input-field.password-field__input:focus,
-.zad-root .password-field > .input-field.password-field__input:focus-visible {
+.zad-root .password-field > .input-field.password-field__input:focus-visible,
+.password-field > .input-field.password-field__input:focus,
+.password-field > .input-field.password-field__input:focus-visible {
   border: 0;
   box-shadow: none;
   outline: none;
 }
 
-.zad-root .password-field > .password-field__toggle {
+.zad-root .password-field > .password-field__toggle,
+.password-field > .password-field__toggle {
   position: absolute;
-  right: 0.35rem;
-  left: auto;
   top: 0;
   bottom: 0;
   margin-block: auto;
+  /* تثبيت فيزيائي على اليمين — لا يعتمد على منطق RTL */
+  left: auto !important;
+  right: 0.35rem !important;
+  inset-inline-start: auto !important;
+  inset-inline-end: 0.35rem !important;
   border: 0;
   background: transparent;
   color: var(--text-muted, #667);
