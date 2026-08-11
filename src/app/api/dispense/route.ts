@@ -19,6 +19,7 @@ import {
 } from "@/lib/survey-questions";
 import { buildSurveyMessage } from "@/lib/survey-message";
 import { priorDispenseStats } from "@/lib/report-counts";
+import { createDispenseMovementsFifo } from "@/lib/store-ledger";
 
 const lineSchema = z.object({
   inventoryItemId: z.string(),
@@ -94,10 +95,9 @@ export async function GET(req: NextRequest) {
       skip,
       take,
     }),
-    // أصناف الصرف تبقى كاملة لاختيار الكمية أثناء العملية (عادة قليلة)
     prisma.inventoryItem.findMany({
-      where: { exhibitionId: exhibition.id, quantity: { gt: 0 } },
-      orderBy: { updatedAt: "desc" },
+      where: { exhibitionId: exhibition.id },
+      orderBy: [{ skuCode: "asc" }],
     }),
   ]);
   const surveyCatalog = parseSurveyCatalog(exhibition.settings?.surveyQuestionsJson);
@@ -110,6 +110,7 @@ export async function GET(req: NextRequest) {
     surveyAutoSendOnDispense: autoSendSurveysOnDispense(surveyCatalog).length > 0,
     items: items.map((i) => ({
       id: i.id,
+      skuCode: i.skuCode,
       attributes: i.attributesJson,
       attributesJson: i.attributesJson,
       quantity: Number(i.quantity),
@@ -256,15 +257,13 @@ export async function POST(req: NextRequest) {
         if (updated.count !== 1) {
           throw new Error(`كمية غير كافية للصنف ${line.inventoryItemId}`);
         }
-        await tx.stockMovement.create({
-          data: {
-            exhibitionId: exhibition.id,
-            inventoryItemId: line.inventoryItemId,
-            type: StockMovementType.DISPENSE,
-            quantity: new Prisma.Decimal(line.quantity),
-            createdById: authz.userId,
-            note: `صرف للمستفيد ${body.data.beneficiaryId}`,
-          },
+        await createDispenseMovementsFifo({
+          tx,
+          exhibitionId: exhibition.id,
+          inventoryItemId: line.inventoryItemId,
+          quantity: line.quantity,
+          createdById: authz.userId,
+          note: `صرف للمستفيد ${body.data.beneficiaryId}`,
         });
       }
 

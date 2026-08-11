@@ -136,6 +136,7 @@ model Exhibition {
   surveyResponses  SurveyResponse[]
   outboundMessages OutboundMessage[]
   liveDisplayLinks LiveDisplayLink[]
+  stores           Store[]
 
   @@index([active])
 }
@@ -218,6 +219,8 @@ model Attendance {
 model InventoryItem {
   id           String   @id @default(cuid())
   exhibitionId String
+  /// رمز صرف بسيط 4–5 أرقام — فريد داخل المعرض
+  skuCode      String
   /// قيم السمات حسب مخطط الإعدادات
   attributesJson Json
   quantity     Decimal  @db.Decimal(12, 3)
@@ -228,7 +231,25 @@ model InventoryItem {
   dispenseLines  DispenseLine[]
   stockMovements StockMovement[]
 
+  @@unique([exhibitionId, skuCode])
   @@index([exhibitionId])
+}
+
+/// متجر مشارك يساهم بمنتجات في المخزون الموحّد للمعرض
+model Store {
+  id           String   @id @default(cuid())
+  exhibitionId String
+  name         String
+  active       Boolean  @default(true)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  exhibition     Exhibition      @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
+
+  @@unique([exhibitionId, name])
+  @@index([exhibitionId, active])
 }
 
 model StockMovement {
@@ -238,15 +259,19 @@ model StockMovement {
   type           StockMovementType
   quantity       Decimal           @db.Decimal(12, 3)
   note           String?
+  /// إسناد المساهمة/الصرف لمتجر (اختياري — إضافات المنصة بلا متجر)
+  storeId        String?
   createdById    String?
   createdAt      DateTime          @default(now())
 
   exhibition    Exhibition    @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  store         Store?        @relation(fields: [storeId], references: [id], onDelete: SetNull)
   createdBy     User?         @relation("StockBy", fields: [createdById], references: [id])
 
   @@index([exhibitionId, createdAt])
   @@index([inventoryItemId])
+  @@index([storeId])
 }
 
 model DispenseOrder {

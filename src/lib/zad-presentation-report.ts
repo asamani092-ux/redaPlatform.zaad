@@ -8,9 +8,9 @@ export const PRESENTATION_SLIDE_OPTIONS = [
   { id: "funnel", label: "قمع المراحل" },
   { id: "progress", label: "نسب الإنجاز" },
   { id: "table", label: "أداء الأصناف" },
-  { id: "timeline", label: "الخط الزمني" },
+  { id: "timeline", label: "مساهمات المتاجر" },
   { id: "evidence", label: "معرض الشواهد" },
-  { id: "disb", label: "الصرف المالي" },
+  { id: "disb", label: "تفصيل متبقي المتاجر" },
 ] as const;
 
 export type PresentationSlideId = (typeof PRESENTATION_SLIDE_OPTIONS)[number]["id"];
@@ -23,6 +23,7 @@ export const PRESENTATION_KPI_OPTIONS = [
   "الحضور",
   "المستلمون",
   "القطع المصروفة",
+  "مساهمات المتاجر",
 ] as const;
 
 /** عقد بيانات منشئ العرض التقديمي (نظام التصميم v1.2.11 — window.ZAD_REPORT) */
@@ -122,6 +123,17 @@ export type PresentationSummaryInput = {
   byFamilySize?: Record<string, number>;
   topItems?: TopDispensedItem[];
   attributeLabels?: Record<string, string>;
+  storeContributed?: number;
+  storeDispensed?: number;
+  storeRemaining?: number;
+  storeSummary?: Array<{
+    storeName: string;
+    skuCode: string;
+    attributes: Record<string, unknown>;
+    added: number;
+    dispensed: number;
+    remaining: number;
+  }>;
 };
 
 const DIST_COLORS = ["#951740", "#e9b221", "#3f8f5f", "#c0563a", "#4a6fa5"];
@@ -254,8 +266,21 @@ export function buildZadPresentationReport(
         ],
         note: "يشمل الصرف العادي والاستثناءات المعتمدة.",
       },
+      ...(s.storeContributed
+        ? ([
+            {
+              text: `ساهمت المتاجر بـ ${ar(s.storeContributed)} قطعة؛ صُرف منها ${ar(s.storeDispensed ?? 0)} وتبقّى ${ar(s.storeRemaining ?? 0)}.`,
+              rows: [
+                ["مساهمات المتاجر", ar(s.storeContributed)],
+                ["مصروف من المتاجر", ar(s.storeDispensed ?? 0)],
+                ["متبقي للمتاجر", ar(s.storeRemaining ?? 0)],
+              ] as [string, string][],
+              note: "يُحدَّث مع كل حركة مخزون منسوبة لمتجر.",
+            },
+          ] as ZadPresentationReport["summary"])
+        : []),
       ...(city[0]
-        ? [
+        ? ([
             {
               text: `أعلى مدينة من حيث المستفيدين: ${city[0].key} بنسبة ${ar(city[0].percent)}٪.`,
               rows: city
@@ -263,10 +288,10 @@ export function buildZadPresentationReport(
                 .map((r): [string, string] => [r.key, `${ar(r.count)} (${ar(r.percent)}٪)`]),
               note: "توزيع المستفيدين حسب المدينة.",
             },
-          ]
+          ] as ZadPresentationReport["summary"])
         : []),
       ...(household[0]
-        ? [
+        ? ([
             {
               text: `أكثر تكرار لعدد الأفراد في السجل: ${household[0].key} (${ar(household[0].percent)}٪).`,
               rows: household
@@ -277,7 +302,7 @@ export function buildZadPresentationReport(
                 ]),
               note: "عدد الأفراد = المستفيد + التابعون لكل سجل.",
             },
-          ]
+          ] as ZadPresentationReport["summary"])
         : []),
     ],
     kpis: [
@@ -335,8 +360,24 @@ export function buildZadPresentationReport(
         value: ar(s.piecesDispensed),
         rows: top
           .slice(0, 5)
-          .map((t) => [itemLabel(t.attributes, attrLabels), ar(t.quantity)]),
+          .map(
+            (t): [string, string] => [
+              itemLabel(t.attributes, attrLabels),
+              ar(t.quantity),
+            ],
+          ),
         note: top.length ? "أعلى الأصناف المصروفة." : "لا أصناف بعد.",
+      },
+      {
+        label: "مساهمات المتاجر",
+        value: ar(s.storeContributed ?? 0),
+        delta: `متبقي ${ar(s.storeRemaining ?? 0)}`,
+        rows: [
+          ["المضاف من المتاجر", ar(s.storeContributed ?? 0)],
+          ["المصروف من المتاجر", ar(s.storeDispensed ?? 0)],
+          ["المتبقي للمتاجر", ar(s.storeRemaining ?? 0)],
+        ] as [string, string][],
+        note: "حصر مساهمات المتاجر المشاركة في المخزون الموحّد.",
       },
     ],
     dist: (assoc.length ? assoc : gender).slice(0, 6).map((row, i) => ({
@@ -432,8 +473,27 @@ export function buildZadPresentationReport(
         note: "من أعلى الأصناف المصروفة في المعرض.",
       };
     }),
-    timeline: [],
+    timeline: (s.storeSummary ?? []).slice(0, 12).map((r) => ({
+      title: r.storeName,
+      time: r.skuCode,
+      rows: [
+        ["الصنف", itemLabel(r.attributes, attrLabels)],
+        ["مضاف", ar(r.added)],
+        ["مصروف", ar(r.dispensed)],
+        ["متبقي", ar(r.remaining)],
+      ] as [string, string][],
+      note: "مساهمة متجر مشارك.",
+    })),
     evidence: [],
-    disb: [],
+    disb: (s.storeSummary ?? []).slice(0, 8).map((r) => ({
+      label: `${r.storeName} — ${itemLabel(r.attributes, attrLabels)}`,
+      amount: ar(r.remaining),
+      rows: [
+        ["مضاف", ar(r.added)],
+        ["مصروف", ar(r.dispensed)],
+        ["متبقي", ar(r.remaining)],
+      ] as [string, string][],
+      note: `رمز ${r.skuCode}`,
+    })),
   };
 }

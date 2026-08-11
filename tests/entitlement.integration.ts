@@ -94,6 +94,7 @@ async function main() {
       exhibitionId: exhibition.id,
       attributesJson: { type: "اختبار", sku: "T1" },
       quantity: 100,
+      skuCode: "1100",
     },
   });
 
@@ -234,6 +235,7 @@ async function main() {
       exhibitionId: raceEx.id,
       attributesJson: { type: "race" },
       quantity: 5,
+      skuCode: "1101",
     },
   });
 

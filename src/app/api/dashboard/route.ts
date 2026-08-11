@@ -6,6 +6,7 @@ import { DEFAULT_INVENTORY_SCHEMA, parseInventorySchema } from "@/lib/inventory-
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 import { countDistinctReceived } from "@/lib/report-counts";
 import { buildHouseholdMetrics } from "@/lib/report-metrics";
+import { summarizeStoreStock } from "@/lib/store-ledger";
 
 export async function GET() {
   const authz = await requirePermission("dashboard:view");
@@ -32,6 +33,7 @@ export async function GET() {
     piecesAgg,
     inventory,
     topDetailed,
+    storeSummary,
   ] = await Promise.all([
     prisma.beneficiary.findMany({ select: { dependentsCount: true } }),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
@@ -47,9 +49,10 @@ export async function GET() {
     }),
     prisma.inventoryItem.findMany({
       where: { exhibitionId },
-      select: { id: true, attributesJson: true, quantity: true },
+      select: { id: true, skuCode: true, attributesJson: true, quantity: true },
     }),
     fetchTopDispensedItems(exhibitionId, 5),
+    summarizeStoreStock(prisma, exhibitionId),
   ]);
 
   const households = buildHouseholdMetrics(
@@ -67,6 +70,10 @@ export async function GET() {
   const attributeLabels = Object.fromEntries(
     (schema.length ? schema : DEFAULT_INVENTORY_SCHEMA).map((f) => [f.key, f.label]),
   );
+
+  const storeContributed = storeSummary.reduce((s, r) => s + r.added, 0);
+  const storeDispensed = storeSummary.reduce((s, r) => s + r.dispensed, 0);
+  const storeRemaining = storeSummary.reduce((s, r) => s + r.remaining, 0);
 
   return NextResponse.json({
     exhibition: {
@@ -87,15 +94,20 @@ export async function GET() {
       exceptions,
       overrideDispenses,
       completionRate,
+      storeContributed,
+      storeDispensed,
+      storeRemaining,
     },
     attributeLabels,
     inventorySchema: schema,
     inventory: inventory.map((i) => ({
       id: i.id,
+      skuCode: i.skuCode,
       attributes: i.attributesJson,
       quantity: Number(i.quantity),
       lowStock: Number(i.quantity) <= threshold,
     })),
     topItems: topDetailed,
+    storeSummary,
   });
 }

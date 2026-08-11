@@ -45,6 +45,7 @@ async function main() {
       exhibitionId: exhibition.id,
       attributesJson: { t: "x" },
       quantity: 10,
+      skuCode: "1100",
     },
   });
 
@@ -94,7 +95,12 @@ async function main() {
     },
   });
   const raceItem = await prisma.inventoryItem.create({
-    data: { exhibitionId: raceEx.id, attributesJson: { t: "r" }, quantity: 5 },
+    data: {
+      exhibitionId: raceEx.id,
+      attributesJson: { t: "r" },
+      quantity: 5,
+      skuCode: "1101",
+    },
   });
   const people = await Promise.all(
     Array.from({ length: 10 }, (_, i) =>

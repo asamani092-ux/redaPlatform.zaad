@@ -14,9 +14,11 @@ import { Stepper } from "@/components/ui/Stepper";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { SkuCatalogModal } from "@/components/SkuCatalogModal";
 
 type Item = {
   id: string;
+  skuCode?: string;
   attributes?: Record<string, unknown>;
   attributesJson?: Record<string, unknown>;
   quantity: number;
@@ -68,6 +70,9 @@ export default function DispensePage() {
   const [busy, setBusy] = useState(false);
   const [sendSurvey, setSendSurvey] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [skuInput, setSkuInput] = useState("");
+  const [skuQty, setSkuQty] = useState("1");
   const toast = useToast();
 
   function loadItems() {
@@ -263,9 +268,14 @@ export default function DispensePage() {
         description="يشترط الحضور — امسح أو ابحث ثم أكّد بعد المعاينة. يجوز الصرف بأقل من الاستحقاق"
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "الصرف" }]}
         actions={
-          <button type="button" className="btn-recommend" onClick={() => setScanOn((v) => !v)}>
-            {scanOn ? "إيقاف الكاميرا" : "مسح بالكاميرا"}
-          </button>
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setCatalogOpen(true)}>
+              قائمة الأصناف والرموز
+            </button>
+            <button type="button" className="btn-recommend" onClick={() => setScanOn((v) => !v)}>
+              {scanOn ? "إيقاف الكاميرا" : "مسح بالكاميرا"}
+            </button>
+          </>
         }
       />
       <Stepper
@@ -432,46 +442,104 @@ export default function DispensePage() {
             <p className="msg msg-error">أدخل سبب الصرف الاستثنائي قبل التأكيد</p>
           ) : null}
 
+          <div className="panel" style={{ marginTop: "1rem" }}>
+            <h3 className="panel-title">إضافة بالرمز</h3>
+            <div className="toolbar">
+              <input
+                className="input-field"
+                dir="ltr"
+                inputMode="numeric"
+                placeholder="رقم الصنف 4–5 أرقام"
+                value={skuInput}
+                onChange={(e) => setSkuInput(sanitizeNumericInput(e.target.value, false))}
+              />
+              <input
+                className="input-field"
+                dir="ltr"
+                inputMode="numeric"
+                placeholder="الكمية"
+                style={{ maxWidth: 120 }}
+                value={skuQty}
+                onChange={(e) => setSkuQty(sanitizeNumericInput(e.target.value, false))}
+              />
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => {
+                  const code = skuInput.trim();
+                  const item = items.find((i) => i.skuCode === code);
+                  if (!item) {
+                    setMsg("رمز الصنف غير موجود");
+                    setMsgError(true);
+                    return;
+                  }
+                  if (item.quantity <= 0) {
+                    setMsg("لا كمية متاحة لهذا الصنف");
+                    setMsgError(true);
+                    return;
+                  }
+                  const n = toIntOrNull(skuQty) ?? 1;
+                  const next = Math.min(Math.max(1, n), item.quantity);
+                  setLines((prev) => ({ ...prev, [item.id]: String(next) }));
+                  setMsg(`أُضيف ${item.skuCode}`);
+                  setMsgError(false);
+                  setSkuInput("");
+                }}
+              >
+                إضافة
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setCatalogOpen(true)}>
+                فتح القائمة
+              </button>
+            </div>
+          </div>
+
           <div className="table-wrap table-wrap--stack" style={{ marginTop: "1rem" }}>
             <table>
               <thead>
                 <tr>
+                  <th>الرمز</th>
                   <th>الصنف</th>
                   <th>المتاح</th>
                   <th>الكمية</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td data-label="الصنف">
-                      <AttrChips
-                        attributes={item.attributes ?? item.attributesJson}
-                        schema={schema}
-                      />
-                    </td>
-                    <td data-label="المتاح">{item.quantity}</td>
-                    <td data-label="الكمية" style={{ maxWidth: 140 }}>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        className="input-field"
-                        dir="ltr"
-                        placeholder="0"
-                        value={lines[item.id] ?? ""}
-                        onChange={(e) =>
-                          setLines((prev) => ({
-                            ...prev,
-                            [item.id]: sanitizeNumericInput(e.target.value, false),
-                          }))
-                        }
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {items
+                  .filter((item) => item.quantity > 0 || (toIntOrNull(lines[item.id]) ?? 0) > 0)
+                  .map((item) => (
+                    <tr key={item.id}>
+                      <td data-label="الرمز" dir="ltr">
+                        {item.skuCode ?? "—"}
+                      </td>
+                      <td data-label="الصنف">
+                        <AttrChips
+                          attributes={item.attributes ?? item.attributesJson}
+                          schema={schema}
+                        />
+                      </td>
+                      <td data-label="المتاح">{item.quantity}</td>
+                      <td data-label="الكمية" style={{ maxWidth: 140 }}>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          className="input-field"
+                          dir="ltr"
+                          placeholder="0"
+                          value={lines[item.id] ?? ""}
+                          onChange={(e) =>
+                            setLines((prev) => ({
+                              ...prev,
+                              [item.id]: sanitizeNumericInput(e.target.value, false),
+                            }))
+                          }
+                        />
+                      </td>
+                    </tr>
+                  ))}
                 {!items.length ? (
                   <tr>
-                    <td colSpan={3}>
+                    <td colSpan={4}>
                       <EmptyState title="لا أصناف متاحة" body="أضف أصنافاً من شاشة المخزون أولاً." />
                     </td>
                   </tr>
@@ -522,6 +590,22 @@ export default function DispensePage() {
         onConfirm={() => {
           setConfirmOpen(false);
           void submit();
+        }}
+      />
+      <SkuCatalogModal
+        open={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        items={items.map((i) => ({
+          id: i.id,
+          skuCode: i.skuCode ?? "",
+          attributes: i.attributes,
+          attributesJson: i.attributesJson,
+          quantity: i.quantity,
+        }))}
+        schema={schema}
+        onCopied={(code) => {
+          setSkuInput(code);
+          setCatalogOpen(false);
         }}
       />
     </div>

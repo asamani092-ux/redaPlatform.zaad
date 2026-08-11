@@ -19,6 +19,8 @@ export type AppPermission =
   | "dispense:manage"
   | "dispense:override"
   | "inventory:manage"
+  | "stores:view"
+  | "stores:manage"
   | "settings:manage"
   | "exhibitions:manage"
   | "reports:view"
@@ -39,6 +41,8 @@ const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
     "dispense:manage",
     "dispense:override",
     "inventory:manage",
+    "stores:view",
+    "stores:manage",
     "settings:manage",
     "exhibitions:manage",
     "reports:view",
@@ -55,14 +59,15 @@ const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
     "messages:view",
   ],
   RECEPTION: ["beneficiaries:view", "attendance:manage", "attendance:exception"],
-  DISTRIBUTION: ["dispense:manage", "dispense:override", "messages:view"],
-  INVENTORY: ["inventory:manage"],
+  DISTRIBUTION: ["dispense:manage", "dispense:override", "messages:view", "stores:view"],
+  INVENTORY: ["inventory:manage", "stores:view", "stores:manage"],
   REPORTS: [
     "dashboard:view",
     "reports:view",
     "reports:export",
     "survey:manage",
     "messages:view",
+    "stores:view",
   ],
 };
 
@@ -79,6 +84,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/attendance", label: "الحضور", permission: "attendance:manage" },
   { href: "/dispense", label: "صرف القطع", permission: "dispense:manage" },
   { href: "/inventory", label: "المخزون", permission: "inventory:manage" },
+  { href: "/stores", label: "المتاجر", permission: "stores:view" },
   { href: "/reports", label: "التقارير", permission: "reports:view" },
   { href: "/survey", label: "الاستبيان", permission: "survey:manage" },
   { href: "/exhibitions", label: "المعارض", permission: "exhibitions:manage" },
@@ -124,6 +130,7 @@ export function canAccessPath(role: Role, pathname: string): boolean {
     { prefix: "/attendance", permission: "attendance:manage" },
     { prefix: "/dispense", permission: "dispense:manage" },
     { prefix: "/inventory", permission: "inventory:manage" },
+    { prefix: "/stores", permission: "stores:view" },
     { prefix: "/exhibitions", permission: "exhibitions:manage" },
     { prefix: "/settings", permission: "settings:manage" },
     { prefix: "/reports", permission: "reports:view" },

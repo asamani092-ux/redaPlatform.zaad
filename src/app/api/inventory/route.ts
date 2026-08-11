@@ -8,10 +8,12 @@ import { requireActiveExhibition } from "@/lib/exhibition";
 import { parseInventorySchema } from "@/lib/inventory-schema";
 import { StockMovementType } from "@/generated/prisma/enums";
 import { parsePageParams, paginatedPayload } from "@/lib/pagination";
+import { isValidSkuCode, nextSkuCode } from "@/lib/sku-code";
 
 const createSchema = z.object({
   attributes: z.record(z.string(), z.union([z.string(), z.number()])),
   quantity: z.number().nonnegative(),
+  skuCode: z.string().optional(),
 });
 
 const updateItemSchema = z.object({
@@ -85,6 +87,7 @@ export async function GET(req: NextRequest) {
   const schema = parseInventorySchema(exhibition.settings?.inventorySchemaJson);
   const withFlags = items.map((item) => ({
     id: item.id,
+    skuCode: item.skuCode,
     attributes: item.attributesJson as Record<string, unknown>,
     attributesJson: item.attributesJson as Record<string, unknown>,
     quantity: Number(item.quantity),
@@ -122,10 +125,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: attrError }, { status: 400 });
   }
 
+  let skuCode = body.data.skuCode?.trim() ?? "";
+  if (skuCode) {
+    if (!isValidSkuCode(skuCode)) {
+      return NextResponse.json({ error: "رمز الصنف يجب أن يكون 4 أو 5 أرقام" }, { status: 400 });
+    }
+    const clash = await prisma.inventoryItem.findFirst({
+      where: { exhibitionId: exhibition.id, skuCode },
+    });
+    if (clash) {
+      return NextResponse.json({ error: "رمز الصنف مستخدم مسبقاً" }, { status: 409 });
+    }
+  } else {
+    const existing = await prisma.inventoryItem.findMany({
+      where: { exhibitionId: exhibition.id },
+      select: { skuCode: true },
+    });
+    skuCode = nextSkuCode(existing.map((e) => e.skuCode));
+  }
+
   const item = await prisma.$transaction(async (tx) => {
     const created = await tx.inventoryItem.create({
       data: {
         exhibitionId: exhibition.id,
+        skuCode,
         attributesJson: body.data.attributes as Prisma.InputJsonValue,
         quantity: new Prisma.Decimal(body.data.quantity),
       },
