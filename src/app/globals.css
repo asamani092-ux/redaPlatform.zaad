@@ -420,6 +420,40 @@ button {
   justify-content: flex-start;
 }
 
+.sku-code-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.sku-code-cell__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm, 0.4rem);
+  background: transparent;
+  color: var(--text-muted, #667);
+  cursor: pointer;
+}
+
+.sku-code-cell__copy:hover {
+  color: var(--text-link, var(--tmkeen-primary));
+  background: color-mix(in srgb, var(--tmkeen-primary) 8%, transparent);
+}
+
+.sku-code-cell__copy:focus-visible {
+  outline: 2px solid var(--border-focus, var(--tmkeen-primary));
+  outline-offset: 2px;
+}
+
 .form-grid {
   display: grid;
   gap: var(--space-4);
