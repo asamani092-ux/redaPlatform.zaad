@@ -50,6 +50,20 @@ type Summary = {
   byHouseholdSizeShares?: ShareRow[];
   topItems?: TopItem[];
   attributeLabels?: Record<string, string>;
+  storeContributed?: number;
+  storeDispensed?: number;
+  storeRemaining?: number;
+  storeSummary?: Array<{
+    storeId: string;
+    storeName: string;
+    inventoryItemId: string;
+    skuCode: string;
+    attributes: Record<string, unknown>;
+    added: number;
+    dispensed: number;
+    returned: number;
+    remaining: number;
+  }>;
 };
 
 type ExhibitionOpt = { id: string; name: string; active: boolean };
@@ -87,7 +101,7 @@ export default function ReportsPage() {
     Object.fromEntries(
       PRESENTATION_SLIDE_OPTIONS.map((s) => [
         s.id,
-        !["timeline", "evidence", "disb"].includes(s.id),
+        !["evidence"].includes(s.id),
       ]),
     ),
   );
@@ -275,12 +289,61 @@ export default function ReportsPage() {
               ["الحاضرون", summary.attended],
               ["استلموا", summary.received],
               ["القطع المصروفة", summary.piecesDispensed],
+              ["مساهمات المتاجر", summary.storeContributed ?? 0],
+              ["مصروف من المتاجر", summary.storeDispensed ?? 0],
+              ["متبقي للمتاجر", summary.storeRemaining ?? 0],
               ["حضور استثنائي", summary.exceptionAttendance ?? 0],
               ["صرف استثنائي", summary.overrideDispenses ?? 0],
             ].map(([label, value]) => (
               <KpiCard key={String(label)} label={String(label)} value={value as number | string} />
             ))}
           </div>
+
+          <section className="panel">
+            <h2 className="panel-title">حصر المتاجر المشاركة</h2>
+            <div className="table-wrap table-wrap--stack">
+              <table>
+                <thead>
+                  <tr>
+                    <th>المتجر</th>
+                    <th>الرمز</th>
+                    <th>الصنف</th>
+                    <th>مضاف</th>
+                    <th>مصروف</th>
+                    <th>مرتجع</th>
+                    <th>متبقي</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(summary.storeSummary ?? []).map((r) => (
+                    <tr key={`${r.storeId}-${r.inventoryItemId}`}>
+                      <td data-label="المتجر">{r.storeName}</td>
+                      <td data-label="الرمز" dir="ltr">
+                        {r.skuCode}
+                      </td>
+                      <td data-label="الصنف">
+                        <AttrChips
+                          attributes={r.attributes}
+                          labels={summary.attributeLabels}
+                        />
+                      </td>
+                      <td data-label="مضاف">{r.added}</td>
+                      <td data-label="مصروف">{r.dispensed}</td>
+                      <td data-label="مرتجع">{r.returned}</td>
+                      <td data-label="متبقي">{r.remaining}</td>
+                    </tr>
+                  ))}
+                  {!(summary.storeSummary ?? []).length ? (
+                    <tr>
+                      <td colSpan={7} className="empty">
+                        لا مساهمات متاجر بعد
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
           <div className="split-2">
             <ShareBreakdown

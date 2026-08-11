@@ -17,6 +17,7 @@ import { Chip } from "@/components/ui/Chip";
 
 type Item = {
   id: string;
+  skuCode?: string;
   attributes: Record<string, unknown>;
   quantity: number;
   lowStock: boolean;
@@ -250,6 +251,7 @@ export default function InventoryPage() {
           <table>
             <thead>
               <tr>
+                <th scope="col">الرمز</th>
                 <th scope="col">السمات</th>
                 <th scope="col">الكمية</th>
                 <th scope="col">تنبيه</th>
@@ -259,6 +261,20 @@ export default function InventoryPage() {
             <tbody>
               {items.map((i) => (
                 <tr key={i.id}>
+                  <td data-label="الرمز" dir="ltr">
+                    <div className="row-actions">
+                      <span>{i.skuCode ?? "—"}</span>
+                      {i.skuCode ? (
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          onClick={() => void navigator.clipboard.writeText(i.skuCode!)}
+                        >
+                          نسخ
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
                   <td data-label="السمات">
                     <AttrChips attributes={i.attributes} schema={schema} />
                   </td>

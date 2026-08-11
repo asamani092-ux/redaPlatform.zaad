@@ -22,10 +22,27 @@ type DashboardData = {
     exceptions: number;
     overrideDispenses?: number;
     completionRate: number;
+    storeContributed?: number;
+    storeDispensed?: number;
+    storeRemaining?: number;
   };
   attributeLabels?: Record<string, string>;
-  inventory: Array<{ id: string; attributes: Record<string, unknown>; quantity: number; lowStock: boolean }>;
+  inventory: Array<{
+    id: string;
+    skuCode?: string;
+    attributes: Record<string, unknown>;
+    quantity: number;
+    lowStock: boolean;
+  }>;
   topItems: Array<{ inventoryItemId: string; quantity: number; attributes: Record<string, unknown> }>;
+  storeSummary?: Array<{
+    storeName: string;
+    skuCode: string;
+    attributes: Record<string, unknown>;
+    added: number;
+    dispensed: number;
+    remaining: number;
+  }>;
 };
 
 export default function DashboardPage() {
@@ -86,6 +103,9 @@ export default function DashboardPage() {
     { label: "استلموا", value: data.stats.received },
     { label: "متبقون للاستلام", value: data.stats.remainingToReceive },
     { label: "القطع المصروفة", value: data.stats.piecesDispensed },
+    { label: "مساهمات المتاجر", value: data.stats.storeContributed ?? 0 },
+    { label: "مصروف من المتاجر", value: data.stats.storeDispensed ?? 0 },
+    { label: "متبقي للمتاجر", value: data.stats.storeRemaining ?? 0 },
     { label: "حضور استثنائي", value: data.stats.exceptions },
     { label: "صرف استثنائي", value: data.stats.overrideDispenses ?? 0 },
   ];
@@ -118,6 +138,7 @@ export default function DashboardPage() {
             <table>
               <thead>
                 <tr>
+                  <th>الرمز</th>
                   <th>الصنف</th>
                   <th>الكمية</th>
                   <th>الحالة</th>
@@ -126,6 +147,9 @@ export default function DashboardPage() {
               <tbody>
                 {data.inventory.map((i) => (
                   <tr key={i.id}>
+                    <td data-label="الرمز" dir="ltr">
+                      {i.skuCode ?? "—"}
+                    </td>
                     <td data-label="الصنف">
                       <AttrChips attributes={i.attributes} labels={data.attributeLabels} />
                     </td>
