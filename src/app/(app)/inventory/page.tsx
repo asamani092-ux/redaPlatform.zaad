@@ -261,16 +261,36 @@ export default function InventoryPage() {
             <tbody>
               {items.map((i) => (
                 <tr key={i.id}>
-                  <td data-label="الرمز" dir="ltr">
-                    <div className="row-actions">
-                      <span>{i.skuCode ?? "—"}</span>
+                  <td data-label="الرمز">
+                    <div className="sku-code-cell">
+                      <span className="sku-code-cell__value" dir="ltr">
+                        {i.skuCode ?? "—"}
+                      </span>
                       {i.skuCode ? (
                         <button
                           type="button"
-                          className="btn-secondary btn-sm"
+                          className="sku-code-cell__copy"
+                          aria-label={`نسخ الرمز ${i.skuCode}`}
+                          title="نسخ الرمز"
                           onClick={() => void navigator.clipboard.writeText(i.skuCode!)}
                         >
-                          نسخ
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect
+                              x="9"
+                              y="9"
+                              width="11"
+                              height="11"
+                              rx="2"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <path
+                              d="M5 15V7a2 2 0 012-2h8"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                            />
+                          </svg>
                         </button>
                       ) : null}
                     </div>
