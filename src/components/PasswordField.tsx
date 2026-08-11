@@ -36,12 +36,12 @@ export function PasswordField({ className = "", disabled, ...rest }: PasswordFie
   const [visible, setVisible] = useState(false);
 
   return (
-    <div className="password-field" dir="ltr">
+    <div className="password-field" dir="ltr" style={{ direction: "ltr" }}>
       <input
         {...rest}
         type={visible ? "text" : "password"}
         className={`input-field password-field__input${className ? ` ${className}` : ""}`}
-        dir={rest.dir ?? "ltr"}
+        dir="ltr"
         disabled={disabled}
       />
       <button
