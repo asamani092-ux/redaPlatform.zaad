@@ -436,6 +436,7 @@ button {
   background: transparent;
   cursor: pointer;
   border-radius: var(--radius-full, 999px);
+  transition: transform 0.15s ease;
 }
 
 .sku-code-cell__btn:hover .zad-chip {
@@ -443,9 +444,29 @@ button {
   color: var(--tmkeen-primary);
 }
 
+.sku-code-cell__btn:active {
+  transform: scale(0.96);
+}
+
+.sku-code-cell__btn.is-copied {
+  animation: sku-copy-pulse 0.45s ease;
+}
+
 .sku-code-cell__btn:focus-visible {
   outline: 2px solid var(--border-focus, var(--tmkeen-primary));
   outline-offset: 2px;
+}
+
+@keyframes sku-copy-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .form-grid {

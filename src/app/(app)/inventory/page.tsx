@@ -42,7 +42,19 @@ export default function InventoryPage() {
   const [attrs, setAttrs] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState("0");
   const [move, setMove] = useState({ inventoryItemId: "", type: "ADD", quantity: "1", note: "" });
+  const [copiedSku, setCopiedSku] = useState("");
   const toast = useToast();
+
+  async function copySku(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedSku(code);
+      toast.push({ title: `تم نسخ الرمز ${code}`, tone: "success" });
+      window.setTimeout(() => setCopiedSku((c) => (c === code ? "" : c)), 1400);
+    } catch {
+      toast.push({ title: "تعذّر النسخ", tone: "warning" });
+    }
+  }
 
   async function load(p = page) {
     const res = await fetch(`/api/inventory?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
