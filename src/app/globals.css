@@ -399,17 +399,28 @@ button {
   min-height: 2.25rem;
 }
 
-.stores-table__row {
+.stores-table__row,
+.inventory-table__row {
   cursor: pointer;
 }
 
-.stores-table__row:hover td {
+.stores-table__row:hover td,
+.inventory-table__row:hover td {
   background: color-mix(in srgb, var(--tmkeen-primary) 6%, transparent);
 }
 
-.stores-table__row:focus-visible {
+.stores-table__row:focus-visible,
+.inventory-table__row:focus-visible {
   outline: 2px solid var(--border-focus, var(--tmkeen-primary));
   outline-offset: -2px;
+}
+
+.inventory-table__summary {
+  display: block;
+  max-width: 28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .zad-confirm-actions {
