@@ -443,45 +443,49 @@ button {
   box-sizing: border-box;
 }
 
-.password-field {
+/* أعلى من .zad-root .input-field { width:100% } حتى لا يُدفع زر العين لسطر جديد */
+.zad-root .password-field {
   position: relative;
-  display: flex;
-  align-items: center;
+  display: block;
   width: 100%;
+  max-width: 100%;
   min-height: var(--touch-min);
-  border: 1px solid var(--border-subtle, var(--tmkeen-surface-border));
+  border: var(--border-thin, 1px) solid var(--border-default, var(--tmkeen-surface-border));
   border-radius: var(--radius-md, 0.65rem);
   background: var(--surface-raised, #fff);
   box-sizing: border-box;
 }
 
-.password-field:focus-within {
+.zad-root .password-field:focus-within {
   border-color: var(--border-focus, var(--tmkeen-primary));
   box-shadow: var(--shadow-focus);
 }
 
-.password-field__input.input-field {
-  flex: 1 1 auto;
-  min-width: 0;
-  width: auto;
+.zad-root .password-field > .input-field.password-field__input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   border: 0;
   box-shadow: none;
   background: transparent;
-  padding-inline-end: 0.35rem;
+  padding-right: 2.75rem;
+  padding-left: var(--space-3, 0.75rem);
 }
 
-.password-field__input.input-field:focus,
-.password-field__input.input-field:focus-visible {
+.zad-root .password-field > .input-field.password-field__input:focus,
+.zad-root .password-field > .input-field.password-field__input:focus-visible {
   border: 0;
   box-shadow: none;
   outline: none;
 }
 
-.password-field__toggle {
-  position: relative;
-  flex: 0 0 auto;
-  align-self: center;
-  margin-inline-end: 0.35rem;
+.zad-root .password-field > .password-field__toggle {
+  position: absolute;
+  right: 0.35rem;
+  left: auto;
+  top: 0;
+  bottom: 0;
+  margin-block: auto;
   border: 0;
   background: transparent;
   color: var(--text-muted, #667);
@@ -495,7 +499,7 @@ button {
   padding: 0;
   cursor: pointer;
   border-radius: var(--radius-sm, 0.4rem);
-  z-index: 1;
+  z-index: 2;
 }
 
 .password-field__toggle:hover:not(:disabled) {
