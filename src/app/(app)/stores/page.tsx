@@ -222,7 +222,13 @@ export default function StoresPage() {
 
       <section className="panel">
         <h2 className="panel-title">المتاجر ({stores.length})</h2>
-        <DataTable empty={!stores.length} emptyTitle="لا متاجر بعد" emptyBody="أضف متجراً مشاركاً.">
+        <p className="page-header__desc">اضغط الصف لعرض تفاصيل الأصناف والحصر</p>
+        <DataTable
+          stack={false}
+          empty={!stores.length}
+          emptyTitle="لا متاجر بعد"
+          emptyBody="أضف متجراً مشاركاً."
+        >
           <table>
             <thead>
               <tr>
