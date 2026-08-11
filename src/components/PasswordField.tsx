@@ -31,12 +31,12 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
-/** حقل كلمة مرور مع أيقونة عين يمين الحقل — يحافظ على name/id. */
+/** حقل كلمة مرور مع أيقونة عين داخل يمين الحقل — يحافظ على name/id. Time/Space: O(1) */
 export function PasswordField({ className = "", disabled, ...rest }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
 
   return (
-    <div className="password-field">
+    <div className="password-field" dir="ltr">
       <input
         {...rest}
         type={visible ? "text" : "password"}
