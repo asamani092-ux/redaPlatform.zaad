@@ -9,7 +9,7 @@ UPLOADS="${UPLOADS_DIR:-${DATA_ROOT}/uploads}"
 EVIDENCE="${UPLOADS}/evidence"
 
 echo "منصة رداء — فحص ثبات التخزين"
-echo "DATA_ROOT=$DATA_ROOT UPLOADS=$UPLOADS EVIDENCE=$EVIDENCE"
+echo "DATA_ROOT=$DATA_ROOT UPLOADS=$UPLOADS EVIDENCE=$EVIDENCE uid=$(id -u 2>/dev/null || echo '?')"
 echo
 
 is_persistent_mount() {
@@ -20,18 +20,14 @@ is_persistent_mount() {
   if mountpoint -q "$path" 2>/dev/null; then
     return 0
   fi
-  # بعض البيئات لا توفّر mountpoint — اعتمد findmnt
   FM="$(findmnt -no SOURCE,FSTYPE,TARGET -T "$path" 2>/dev/null || true)"
   [ -n "$FM" ] || return 1
-  # إن كان الهدف نفسه المسار وليس مجرد وراثة من / (overlay الجذر)
   TARGET="$(findmnt -no TARGET -T "$path" 2>/dev/null || true)"
   SOURCE="$(findmnt -no SOURCE -T "$path" 2>/dev/null || true)"
   FSTYPE="$(findmnt -no FSTYPE -T "$path" 2>/dev/null || true)"
-  # مسار مربوط إن كان TARGET يساوي المسار أو أحد آبائه غير /
   case "$TARGET" in
     "$path"|"$DATA_ROOT") ;;
     *)
-      # إن كان الـ SOURCE مختلف عن جذر الحاوية overlay فقط عند / 
       if [ "$TARGET" = "/" ] || echo "$FSTYPE" | grep -Eqi '^(overlay|tmpfs)$'; then
         return 1
       fi
@@ -45,7 +41,6 @@ is_persistent_mount() {
     || mountpoint -q "$DATA_ROOT" 2>/dev/null; then
     return 0
   fi
-  # Docker named volume غالباً: TARGET=/data و FSTYPE ليس overlay
   if [ "$TARGET" = "$DATA_ROOT" ] || [ "$TARGET" = "$path" ]; then
     if ! echo "$FSTYPE" | grep -Eqi '^(overlay|tmpfs)$'; then
       return 0
@@ -72,33 +67,42 @@ check_one() {
   return 2
 }
 
+WRITABLE=0
+if [ -d "$UPLOADS" ] && [ -w "$UPLOADS" ] && [ -d "$EVIDENCE" ] && [ -w "$EVIDENCE" ]; then
+  WRITABLE=1
+fi
+
 STATUS=0
 check_one "$DATA_ROOT" || STATUS=$?
 echo
 check_one "$UPLOADS" || true
 echo
 
+echo "=== الكتابة ==="
+if [ "$WRITABLE" -eq 1 ]; then
+  echo "uploads/evidence: قابلة للكتابة"
+else
+  echo "uploads/evidence: غير جاهزة (ناقصة أو بدون صلاحية كتابة)"
+  echo "الحل الفوري كـ root: mkdir -p /data/uploads/evidence /data/backups && chown -R nextjs:nodejs /data/uploads /data/backups"
+fi
+echo
+
 echo "=== ملخص نهائي ==="
-if [ "$STATUS" -eq 0 ]; then
-  echo "النتيجة النهائية: ثابت"
+if [ "$STATUS" -eq 0 ] && [ "$WRITABLE" -eq 1 ]; then
+  echo "النتيجة النهائية: ثابت وجاهز للكتابة"
   exit 0
+elif [ "$STATUS" -eq 0 ]; then
+  echo "النتيجة النهائية: ثابت لكن غير جاهز (صلاحيات/مجلدات)"
+  exit 3
 elif [ ! -d "$DATA_ROOT" ]; then
   echo "النتيجة النهائية: غير ثابت (المجلد غير موجود)"
   cat <<'EOF'
 Coolify — أضف Persistent Storage ثم احفظ وأعد النشر:
   مسار السيرفر: /data/reda/storage
   مسار الحاوية: /data
-ثم من Terminal الحاوية:
-  mkdir -p /data/uploads/evidence /data/backups
-  chmod 750 /data /data/uploads /data/uploads/evidence
-  ./scripts/check-storage-persist.sh
 EOF
   exit 1
 else
   echo "النتيجة النهائية: غير ثابت"
-  cat <<'EOF'
-Coolify — المسار موجود داخل الصورة فقط؛ اربط حجم دائم على /data ثم أعد النشر.
-لا تكتفِ بـ mkdir داخل الحاوية دون ربط من Coolify.
-EOF
   exit 2
 fi

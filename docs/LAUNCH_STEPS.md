@@ -31,10 +31,12 @@ npm run db:purge-launch
 4. بعد النشر من Terminal الحاوية:
 
 ```bash
+# إن ظهر Permission denied — نفّذ كـ root مرة واحدة (أو أعد النشر بعد إصلاح entrypoint):
 mkdir -p /data/uploads/evidence /data/backups
-chmod 750 /data /data/uploads /data/uploads/evidence
+chown -R nextjs:nodejs /data/uploads /data/backups
+chmod 750 /data/uploads /data/uploads/evidence /data/backups
 ./scripts/check-storage-persist.sh
-# المطلوب: النتيجة النهائية: ثابت
+# المطلوب: النتيجة النهائية: ثابت وجاهز للكتابة
 ```
 
 لا تكتفِ بـ `mkdir` دون ربط الحجم من Coolify — وإلا تُمسح الملفات عند إعادة النشر.
