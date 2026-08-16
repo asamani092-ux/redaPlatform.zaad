@@ -19,8 +19,8 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN (apk add --no-cache bash openssl libc6-compat postgresql16-client \
-      || apk add --no-cache bash openssl libc6-compat postgresql-client) \
+RUN (apk add --no-cache bash openssl libc6-compat su-exec postgresql16-client \
+      || apk add --no-cache bash openssl libc6-compat su-exec postgresql-client) \
   && addgroup -S nodejs && adduser -S nextjs -G nodejs \
   && mkdir -p /data/backups /data/uploads /data/uploads/evidence \
   && chown -R nextjs:nodejs /data
@@ -42,7 +42,8 @@ COPY --from=builder /app/node_modules ./node_modules
 RUN chmod +x ./scripts/entrypoint.sh ./scripts/apply-pending.sh ./scripts/backup.sh ./scripts/seed-once.sh ./scripts/boot.sh ./scripts/check-storage-persist.sh \
   && chown -R nextjs:nodejs /app
 
-USER nextjs
+# الإقلاع كـ root لضبط صلاحيات volume /data ثم su-exec → nextjs
+USER root
 EXPOSE 3100
 ENV PORT=3100
 ENV HOSTNAME=0.0.0.0
