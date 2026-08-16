@@ -25,8 +25,21 @@ npm run db:purge-launch
 
 1. أنشئ PostgreSQL مع Persistent Storage.
 2. أنشئ تطبيق Dockerfile من جذر المستودع؛ Port `3100`.
-3. Volume دائم على `/data`.
-4. متغيرات البيئة:
+3. Volume دائم على `/data` (Persistent Storage في Coolify):
+   - مسار السيرفر: `/data/reda/storage`
+   - مسار الحاوية: `/data`
+4. بعد النشر من Terminal الحاوية:
+
+```bash
+mkdir -p /data/uploads/evidence /data/backups
+chmod 750 /data /data/uploads /data/uploads/evidence
+./scripts/check-storage-persist.sh
+# المطلوب: النتيجة النهائية: ثابت
+```
+
+لا تكتفِ بـ `mkdir` دون ربط الحجم من Coolify — وإلا تُمسح الملفات عند إعادة النشر.
+
+5. متغيرات البيئة:
 
 ```env
 DATABASE_URL=postgresql://USER:PASS@HOST:5432/DB?schema=public
@@ -42,10 +55,10 @@ BACKUP_DIR=/data/backups
 UPLOADS_DIR=/data/uploads
 ```
 
-5. في Coolify: اجعل `DATABASE_URL` و`AUTH_SECRET` و`ADMIN_PASSWORD` **Available at Runtime فقط** (ليس Buildtime). صورة البناء تستخدم placeholder داخلي لـ `next build`.
-6. Domains: أضف `redaa.alzaad.org.sa` على **نفس** مورد التطبيق (Port Exposes `3100`) وفعّل SSL.
-7. Deploy — الإقلاع: ترحيل فقط ثم `node server.js` (**بلا بذرة**). عند فشل الإقلاع تبقى الحاوية ~120 ثانية لالتقاط السجلات.
-8. One-off مرة واحدة على القاعدة الفارغة:
+6. في Coolify: اجعل `DATABASE_URL` و`AUTH_SECRET` و`ADMIN_PASSWORD` **Available at Runtime فقط** (ليس Buildtime). صورة البناء تستخدم placeholder داخلي لـ `next build`.
+7. Domains: أضف `redaa.alzaad.org.sa` على **نفس** مورد التطبيق (Port Exposes `3100`) وفعّل SSL.
+8. Deploy — الإقلاع: ترحيل فقط ثم `node server.js` (**بلا بذرة**). عند فشل الإقلاع تبقى الحاوية ~120 ثانية لالتقاط السجلات.
+9. One-off مرة واحدة على القاعدة الفارغة:
 
 ```bash
 # من Coolify Terminal على حاوية التطبيق
@@ -54,7 +67,7 @@ npm run init
 npm run db:reset-admin
 ```
 
-9. احذف/أخفِ `ADMIN_PASSWORD` من بيئة التشغيل بعد init إن أمكن؛ غيّر كلمة المدير من الواجهة.
+10. احذف/أخفِ `ADMIN_PASSWORD` من بيئة التشغيل بعد init إن أمكن؛ غيّر كلمة المدير من الواجهة.
 
 ---
 

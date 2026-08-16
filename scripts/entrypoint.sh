@@ -21,6 +21,13 @@ echo "entrypoint: DATABASE_URL present (chars=${#DATABASE_URL})"
 node -e "try{const u=new URL(process.env.DATABASE_URL); console.log('entrypoint: db='+u.protocol+'//'+u.hostname+':'+ (u.port||'5432') + u.pathname)}catch(e){console.error('entrypoint: DATABASE_URL unparseable'); process.exit(2)}" \
   || hold_and_exit 2
 
+# مسارات الرفع/الشواهد — mkdir لا يكفي وحده؛ يلزم volume دائم على /data من Coolify
+UPLOADS_DIR="${UPLOADS_DIR:-/data/uploads}"
+mkdir -p "${UPLOADS_DIR}/evidence" "${BACKUP_DIR:-/data/backups}" 2>/dev/null || true
+if [ -x ./scripts/check-storage-persist.sh ]; then
+  ./scripts/check-storage-persist.sh || echo "entrypoint: تحذير — تخزين /data غير ثابت؛ اربط volume دائم في Coolify" >&2
+fi
+
 if ! command -v npx >/dev/null 2>&1; then
   echo "entrypoint: npx not found" >&2
   hold_and_exit 3
