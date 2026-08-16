@@ -20,6 +20,7 @@
     "backup": "./scripts/backup.sh",
     "restore-drill": "./scripts/restore-drill.sh",
     "boot": "./scripts/boot.sh",
+    "check:storage": "./scripts/check-storage-persist.sh",
     "postinstall": "prisma generate"
   },
   "dependencies": {
