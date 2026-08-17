@@ -55,3 +55,6 @@ web/
 /backups/*.pdf
 /backups/latest.sql
 !/backups/.gitkeep
+
+# local uploads / data
+.data/
