@@ -48,28 +48,33 @@ type LivePayload = {
 function SponsorsMarquee({ sponsors }: { sponsors: Sponsor[] }) {
   if (!sponsors.length) {
     return (
-      <section className="live-screen__sponsors dashboard-section">
+      <section className="live-screen__sponsors">
         <h2 className="live-screen__section-title">الداعمين</h2>
         <EmptyState title="لا داعمين بعد" />
       </section>
     );
   }
-  const loop = [...sponsors, ...sponsors];
+  const renderGroup = (suffix: string) => (
+    <div className="sponsors-marquee__group" key={suffix} aria-hidden={suffix !== "a"}>
+      {sponsors.map((s) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          key={`${suffix}-${s.id}`}
+          src={s.logoUrl}
+          alt={suffix === "a" ? s.name : ""}
+          title={s.name}
+          className="sponsors-marquee__logo"
+        />
+      ))}
+    </div>
+  );
   return (
-    <section className="live-screen__sponsors dashboard-section">
+    <section className="live-screen__sponsors">
       <h2 className="live-screen__section-title">الداعمين</h2>
-      <div className="sponsors-marquee" aria-label="شعارات الداعمين">
+      <div className="sponsors-marquee" dir="ltr" aria-label="شعارات الداعمين">
         <div className="sponsors-marquee__track">
-          {loop.map((s, idx) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={`${s.id}-${idx}`}
-              src={s.logoUrl}
-              alt={s.name}
-              title={s.name}
-              className="sponsors-marquee__logo"
-            />
-          ))}
+          {renderGroup("a")}
+          {renderGroup("b")}
         </div>
       </div>
     </section>
