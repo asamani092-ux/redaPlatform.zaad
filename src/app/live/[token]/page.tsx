@@ -44,8 +44,8 @@ type LivePayload = {
   attributeLabels?: Record<string, string>;
 };
 
-/** شعارات الداعمين — صف أفقي ثابت متجاوب. Time: O(n). */
-function SponsorsMarquee({ sponsors }: { sponsors: Sponsor[] }) {
+/** شعارات الداعمين — صف أفقي ثابت. Time: O(n). */
+function SponsorsRow({ sponsors }: { sponsors: Sponsor[] }) {
   if (!sponsors.length) {
     return (
       <section className="live-screen__sponsors">
@@ -57,7 +57,22 @@ function SponsorsMarquee({ sponsors }: { sponsors: Sponsor[] }) {
   return (
     <section className="live-screen__sponsors">
       <h2 className="live-screen__section-title">الداعمين</h2>
-      <div className="sponsors-grid" aria-label="شعارات الداعمين">
+      <div
+        className="sponsors-grid"
+        dir="ltr"
+        aria-label="شعارات الداعمين"
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          flexWrap: "nowrap",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "2rem",
+          width: "100%",
+          overflowX: "auto",
+          overflowY: "hidden",
+        }}
+      >
         {sponsors.map((s) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -66,6 +81,14 @@ function SponsorsMarquee({ sponsors }: { sponsors: Sponsor[] }) {
             alt={s.name}
             title={s.name}
             className="sponsors-grid__logo"
+            style={{
+              display: "block",
+              height: "72px",
+              width: "auto",
+              maxWidth: "200px",
+              objectFit: "contain",
+              flex: "0 0 auto",
+            }}
           />
         ))}
       </div>
@@ -185,7 +208,7 @@ export default function LiveDisplayPage() {
         ]}
       />
 
-      <SponsorsMarquee sponsors={data.sponsors ?? []} />
+      <SponsorsRow sponsors={data.sponsors ?? []} />
 
       <details className="live-screen__more">
         <summary>تفاصيل إضافية</summary>
