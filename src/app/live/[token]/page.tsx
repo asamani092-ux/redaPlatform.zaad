@@ -44,7 +44,7 @@ type LivePayload = {
   attributeLabels?: Record<string, string>;
 };
 
-/** شعارات الداعمين — شبكة ثابتة متجاوبة حتى سطرين. Time: O(n). */
+/** شعارات الداعمين — صف أفقي ثابت متجاوب. Time: O(n). */
 function SponsorsMarquee({ sponsors }: { sponsors: Sponsor[] }) {
   if (!sponsors.length) {
     return (

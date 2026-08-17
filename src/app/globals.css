@@ -1659,16 +1659,18 @@ textarea.input-field {
   overflow: hidden;
 }
 
-/* شبكة ثابتة متجاوبة للداعمين — حتى سطرين تقريباً */
+/* صف أفقي ثابت للداعمين — يتمدد ويستوعب عدداً أكبر بالتمرير الأفقي عند الحاجة */
 .sponsors-grid {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   align-items: center;
-  gap: clamp(1rem, 2vw, 2rem) clamp(1.25rem, 2.5vw, 2.75rem);
+  gap: clamp(1.25rem, 2.5vw, 2.75rem);
   width: 100%;
-  max-height: calc(80px * 2 + 2rem);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.35rem;
+  scrollbar-width: thin;
 }
 
 .sponsors-grid__logo {
@@ -1678,13 +1680,12 @@ textarea.input-field {
   max-width: clamp(96px, 14vw, 220px);
   width: auto;
   object-fit: contain;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   opacity: 0.95;
 }
 
 .live-screen .sponsors-grid {
-  max-height: calc(88px * 2 + 2.5rem);
-  gap: clamp(1.1rem, 1.8vw, 2.25rem) clamp(1.5rem, 2.5vw, 3rem);
+  gap: clamp(1.5rem, 2.5vw, 3.25rem);
 }
 
 .live-screen .sponsors-grid__logo {
