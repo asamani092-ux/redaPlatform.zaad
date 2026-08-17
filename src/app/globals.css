@@ -1659,83 +1659,42 @@ textarea.input-field {
   overflow: hidden;
 }
 
-.sponsors-marquee {
-  overflow: hidden;
+/* شبكة ثابتة متجاوبة للداعمين — حتى سطرين تقريباً */
+.sponsors-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(1rem, 2vw, 2rem) clamp(1.25rem, 2.5vw, 2.75rem);
   width: 100%;
-  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  max-height: calc(80px * 2 + 2rem);
+  overflow: hidden;
 }
 
-.sponsors-marquee__track {
-  display: flex;
-  width: max-content;
-  align-items: center;
-  gap: 0;
-  will-change: transform;
-  animation: sponsors-scroll 22s linear infinite;
-}
-
-.sponsors-marquee__group {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 3rem;
-  padding-inline: 1.5rem;
-}
-
-.sponsors-marquee__logo {
+.sponsors-grid__logo {
   display: block;
   height: auto;
-  max-height: 64px;
-  max-width: 200px;
+  max-height: clamp(48px, 6vw, 80px);
+  max-width: clamp(96px, 14vw, 220px);
   width: auto;
   object-fit: contain;
-  flex-shrink: 0;
+  flex: 0 1 auto;
   opacity: 0.95;
 }
 
-.live-screen .sponsors-marquee__track {
-  animation-duration: 24s;
+.live-screen .sponsors-grid {
+  max-height: calc(88px * 2 + 2.5rem);
+  gap: clamp(1.1rem, 1.8vw, 2.25rem) clamp(1.5rem, 2.5vw, 3rem);
 }
 
-.live-screen .sponsors-marquee__group {
-  gap: 4rem;
-  padding-inline: 2rem;
-}
-
-.live-screen .sponsors-marquee__logo {
-  max-height: 80px;
-  max-width: 240px;
-}
-
-@keyframes sponsors-scroll {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    /* نصف المسار = مجموعة واحدة (مكررة مرتين) */
-    transform: translate3d(-50%, 0, 0);
-  }
+.live-screen .sponsors-grid__logo {
+  max-height: clamp(56px, 5.5vw, 88px);
+  max-width: clamp(110px, 12vw, 240px);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dashboard-section {
     animation: none;
-  }
-
-  .sponsors-marquee__track {
-    animation: none;
-    transform: none;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
-  }
-
-  /* العرض الحي على الشاشات يبقى متحركاً */
-  .live-screen .sponsors-marquee__track {
-    animation: sponsors-scroll 24s linear infinite !important;
-    flex-wrap: nowrap;
-    width: max-content;
-    justify-content: flex-start;
   }
 }
 

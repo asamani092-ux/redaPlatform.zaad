@@ -44,7 +44,7 @@ type LivePayload = {
   attributeLabels?: Record<string, string>;
 };
 
-/** شريط شعارات الداعمين — Time: O(n). */
+/** شعارات الداعمين — شبكة ثابتة متجاوبة حتى سطرين. Time: O(n). */
 function SponsorsMarquee({ sponsors }: { sponsors: Sponsor[] }) {
   if (!sponsors.length) {
     return (
@@ -54,28 +54,20 @@ function SponsorsMarquee({ sponsors }: { sponsors: Sponsor[] }) {
       </section>
     );
   }
-  const renderGroup = (suffix: string) => (
-    <div className="sponsors-marquee__group" key={suffix} aria-hidden={suffix !== "a"}>
-      {sponsors.map((s) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={`${suffix}-${s.id}`}
-          src={s.logoUrl}
-          alt={suffix === "a" ? s.name : ""}
-          title={s.name}
-          className="sponsors-marquee__logo"
-        />
-      ))}
-    </div>
-  );
   return (
     <section className="live-screen__sponsors">
       <h2 className="live-screen__section-title">الداعمين</h2>
-      <div className="sponsors-marquee" dir="ltr" aria-label="شعارات الداعمين">
-        <div className="sponsors-marquee__track">
-          {renderGroup("a")}
-          {renderGroup("b")}
-        </div>
+      <div className="sponsors-grid" aria-label="شعارات الداعمين">
+        {sponsors.map((s) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={s.id}
+            src={s.logoUrl}
+            alt={s.name}
+            title={s.name}
+            className="sponsors-grid__logo"
+          />
+        ))}
       </div>
     </section>
   );
