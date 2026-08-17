@@ -1705,3 +1705,41 @@ textarea.input-field {
     justify-content: center;
   }
 }
+
+.live-screen__section-title {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.15rem, 1.8vw, 1.55rem);
+  font-weight: 800;
+}
+
+.live-screen__kpi-section {
+  margin-bottom: clamp(1rem, 1.8vw, 1.5rem);
+}
+
+.live-screen__stats--pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.live-screen__sponsors {
+  margin: clamp(1.25rem, 2vw, 2rem) 0;
+  padding-block: 0.5rem;
+}
+
+.live-screen__more {
+  margin-top: clamp(1rem, 2vw, 1.75rem);
+  opacity: 0.92;
+}
+
+.live-screen__more > summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin-bottom: 0.85rem;
+  font-size: clamp(1rem, 1.3vw, 1.2rem);
+}
+
+@media (min-width: 1280px) {
+  .live-screen__stats--pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 56rem;
+  }
+}

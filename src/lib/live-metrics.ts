@@ -1,13 +1,18 @@
 import { prisma } from "@/lib/prisma";
-import { buildBreakdownShares } from "@/lib/report-metrics";
+import { buildBreakdownShares, householdSize } from "@/lib/report-metrics";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 import { countDistinctReceived } from "@/lib/report-counts";
 import {
   attributeLabelsFromSchema,
   parseInventorySchema,
 } from "@/lib/inventory-schema";
+import { sponsorLogoPublicUrl } from "@/lib/uploads";
 
-/** مؤشرات العرض الحي بلا PII — O(n) للمستفيدين + تجميعات المعرض */
+/**
+ * مؤشرات العرض الحي بلا PII — للشاشة العامة.
+ * Time: O(a + d + b + s) حيث a حضور، d أسطر صرف، b مستفيدين، s داعمين.
+ * Space: O(a + d + b + s).
+ */
 export async function buildLiveMetrics(exhibitionId: string) {
   const exhibition = await prisma.exhibition.findUnique({
     where: { id: exhibitionId },
@@ -30,6 +35,10 @@ export async function buildLiveMetrics(exhibitionId: string) {
     exceptions,
     beneficiaries,
     topItems,
+    attendanceRows,
+    dispenseLines,
+    associationCount,
+    sponsors,
   ] = await Promise.all([
     prisma.beneficiary.count(),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
@@ -51,7 +60,54 @@ export async function buildLiveMetrics(exhibitionId: string) {
       },
     }),
     fetchTopDispensedItems(exhibitionId, 5),
+    prisma.attendance.findMany({
+      where: { exhibitionId },
+      select: {
+        beneficiary: {
+          select: {
+            dependentsCount: true,
+            associationId: true,
+            associationOther: true,
+          },
+        },
+      },
+    }),
+    prisma.dispenseLine.findMany({
+      where: { dispenseOrder: { exhibitionId } },
+      select: {
+        quantity: true,
+        inventoryItem: { select: { attributesJson: true } },
+      },
+    }),
+    prisma.associationOption.count({ where: { active: true } }),
+    prisma.sponsor.findMany({
+      where: { active: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      select: { id: true, name: true, logoPath: true },
+    }),
   ]);
+
+  let attendedIndividuals = 0;
+  let associationAttendedFamilies = 0;
+  for (const row of attendanceRows) {
+    attendedIndividuals += householdSize(row.beneficiary?.dependentsCount ?? 0);
+    const hasAssoc =
+      Boolean(row.beneficiary?.associationId) ||
+      Boolean(row.beneficiary?.associationOther?.trim());
+    if (hasAssoc) associationAttendedFamilies += 1;
+  }
+  const attendedFamilies = attendanceRows.length;
+
+  let clothesPiecesDispensed = 0;
+  let fabricMetersDispensed = 0;
+  for (const line of dispenseLines) {
+    const qty = Number(line.quantity);
+    const attrs = (line.inventoryItem.attributesJson ?? {}) as Record<string, unknown>;
+    const unit = String(attrs.unit ?? "").trim();
+    if (unit === "قطعة") clothesPiecesDispensed += qty;
+    else if (unit === "متر") fabricMetersDispensed += qty;
+  }
+
   const completionRate =
     attended > 0 ? Math.min(100, Math.round((received / attended) * 100)) : 0;
 
@@ -81,9 +137,21 @@ export async function buildLiveMetrics(exhibitionId: string) {
       piecesDispensed: piecesAgg._sum.piecesCount ?? 0,
       exceptions,
       completionRate,
-      beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
-      totalIndividuals: breakdowns.households.totalIndividuals,
+      /** توافق خلفي */
+      beneficiaryFamilies: attendedFamilies,
+      totalIndividuals: attendedIndividuals,
+      attendedFamilies,
+      attendedIndividuals,
+      clothesPiecesDispensed,
+      fabricMetersDispensed,
+      associationCount,
+      associationAttendedFamilies,
     },
+    sponsors: sponsors.map((s) => ({
+      id: s.id,
+      name: s.name,
+      logoUrl: sponsorLogoPublicUrl(s.logoPath),
+    })),
     byAssociationShares: breakdowns.byAssociation,
     byNeighborhoodShares: breakdowns.byNeighborhood,
     byHouseholdSizeShares: breakdowns.households.byHouseholdSize,

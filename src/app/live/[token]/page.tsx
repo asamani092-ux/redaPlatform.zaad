@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { ShareRow } from "@/lib/report-metrics";
 
+type Sponsor = { id: string; name: string; logoUrl: string };
+
 type LivePayload = {
   exhibition: { id: string; name: string; location: string | null; active: boolean };
   updatedAt: string;
@@ -23,7 +25,14 @@ type LivePayload = {
     completionRate: number;
     beneficiaryFamilies: number;
     totalIndividuals: number;
+    attendedFamilies?: number;
+    attendedIndividuals?: number;
+    clothesPiecesDispensed?: number;
+    fabricMetersDispensed?: number;
+    associationCount?: number;
+    associationAttendedFamilies?: number;
   };
+  sponsors?: Sponsor[];
   byAssociationShares: ShareRow[];
   byNeighborhoodShares: ShareRow[];
   byHouseholdSizeShares: ShareRow[];
@@ -34,6 +43,57 @@ type LivePayload = {
   }>;
   attributeLabels?: Record<string, string>;
 };
+
+/** شريط شعارات الداعمين — Time: O(n). */
+function SponsorsMarquee({ sponsors }: { sponsors: Sponsor[] }) {
+  if (!sponsors.length) {
+    return (
+      <section className="live-screen__sponsors dashboard-section">
+        <h2 className="live-screen__section-title">الداعمين</h2>
+        <EmptyState title="لا داعمين بعد" />
+      </section>
+    );
+  }
+  const loop = [...sponsors, ...sponsors];
+  return (
+    <section className="live-screen__sponsors dashboard-section">
+      <h2 className="live-screen__section-title">الداعمين</h2>
+      <div className="sponsors-marquee" aria-label="شعارات الداعمين">
+        <div className="sponsors-marquee__track">
+          {loop.map((s, idx) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={`${s.id}-${idx}`}
+              src={s.logoUrl}
+              alt={s.name}
+              title={s.name}
+              className="sponsors-marquee__logo"
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function KpiSection({
+  title,
+  tiles,
+}: {
+  title: string;
+  tiles: Array<{ label: string; value: number | string }>;
+}) {
+  return (
+    <section className="live-screen__kpi-section dashboard-section">
+      <h2 className="live-screen__section-title">{title}</h2>
+      <div className="live-screen__stats live-screen__stats--pair">
+        {tiles.map((t) => (
+          <KpiCard key={t.label} label={t.label} value={t.value} />
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function LiveDisplayPage() {
   const params = useParams<{ token: string }>();
@@ -98,45 +158,78 @@ export default function LiveDisplayPage() {
         </div>
       </header>
 
-      <section className="live-screen__stats">
-        {[
-          ["إجمالي المستفيدين", stats.totalIndividuals],
-          ["الأسر المستفيدة", stats.beneficiaryFamilies],
-          ["المدعوون", stats.invited],
-          ["الحاضرون", stats.attended],
-          ["استلموا", stats.received],
-          ["متبقٍ للاستلام", stats.remainingToReceive],
-          ["القطع المصروفة", stats.piecesDispensed],
-          ["حضور استثنائي", stats.exceptions],
-        ].map(([label, value]) => (
-          <KpiCard key={String(label)} label={String(label)} value={value as number | string} />
-        ))}
-      </section>
+      <KpiSection
+        title="الحضور"
+        tiles={[
+          { label: "الأسر", value: stats.attendedFamilies ?? stats.attended },
+          {
+            label: "الأفراد",
+            value: stats.attendedIndividuals ?? stats.totalIndividuals,
+          },
+        ]}
+      />
 
-      <section className="live-screen__grid">
-        <SharePanel title="نسب الجمعيات" rows={data.byAssociationShares} />
-        <SharePanel title="نسب الأحياء" rows={data.byNeighborhoodShares} />
-        <SharePanel title="توزيع الأسر حسب عدد الأفراد" rows={data.byHouseholdSizeShares} />
-        <div className="live-screen__panel">
-          <h2>أعلى 5 قطع مصروفة</h2>
-          <ul>
-            {data.topItems.map((t, i) => (
-              <li key={t.inventoryItemId}>
-                <div className="live-screen__row">
-                  <span>#{i + 1}</span>
-                  <strong>{t.quantity}</strong>
-                </div>
-                <AttrChips attributes={t.attributes} labels={data.attributeLabels} />
-              </li>
-            ))}
-            {!data.topItems.length ? (
-              <li>
-                <EmptyState title="لا بيانات بعد" />
-              </li>
-            ) : null}
-          </ul>
-        </div>
-      </section>
+      <KpiSection
+        title="المصروف"
+        tiles={[
+          { label: "الملابس (قطع)", value: stats.clothesPiecesDispensed ?? 0 },
+          { label: "الأقمشة (أمتار)", value: stats.fabricMetersDispensed ?? 0 },
+        ]}
+      />
+
+      <KpiSection
+        title="الشراكات"
+        tiles={[
+          { label: "الجمعيات الشريكة", value: stats.associationCount ?? 0 },
+          {
+            label: "الأسر المستفيدة من الجمعيات",
+            value: stats.associationAttendedFamilies ?? 0,
+          },
+        ]}
+      />
+
+      <SponsorsMarquee sponsors={data.sponsors ?? []} />
+
+      <details className="live-screen__more">
+        <summary>تفاصيل إضافية</summary>
+        <section className="live-screen__stats">
+          {[
+            ["المدعوون", stats.invited],
+            ["الحاضرون", stats.attended],
+            ["استلموا", stats.received],
+            ["متبقٍ للاستلام", stats.remainingToReceive],
+            ["القطع المصروفة (إجمالي)", stats.piecesDispensed],
+            ["حضور استثنائي", stats.exceptions],
+          ].map(([label, value]) => (
+            <KpiCard key={String(label)} label={String(label)} value={value as number | string} />
+          ))}
+        </section>
+
+        <section className="live-screen__grid">
+          <SharePanel title="نسب الجمعيات" rows={data.byAssociationShares} />
+          <SharePanel title="نسب الأحياء" rows={data.byNeighborhoodShares} />
+          <SharePanel title="توزيع الأسر حسب عدد الأفراد" rows={data.byHouseholdSizeShares} />
+          <div className="live-screen__panel">
+            <h2>أعلى 5 قطع مصروفة</h2>
+            <ul>
+              {data.topItems.map((t, i) => (
+                <li key={t.inventoryItemId}>
+                  <div className="live-screen__row">
+                    <span>#{i + 1}</span>
+                    <strong>{t.quantity}</strong>
+                  </div>
+                  <AttrChips attributes={t.attributes} labels={data.attributeLabels} />
+                </li>
+              ))}
+              {!data.topItems.length ? (
+                <li>
+                  <EmptyState title="لا بيانات بعد" />
+                </li>
+              ) : null}
+            </ul>
+          </div>
+        </section>
+      </details>
     </main>
   );
 }

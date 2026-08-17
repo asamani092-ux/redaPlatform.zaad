@@ -5,14 +5,9 @@ import { requireActiveExhibition } from "@/lib/exhibition";
 import { DEFAULT_INVENTORY_SCHEMA, parseInventorySchema } from "@/lib/inventory-schema";
 import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 import { countDistinctReceived } from "@/lib/report-counts";
-import { householdSize } from "@/lib/report-metrics";
+import { buildHouseholdMetrics } from "@/lib/report-metrics";
 import { summarizePlatformStock, summarizeStoreStock } from "@/lib/store-ledger";
-import { sponsorLogoPublicUrl } from "@/lib/uploads";
 
-/**
- * لوحة التحكم — مؤشرات العميل + تشغيلي.
- * Time: O(a + d + s) حيث a حضور، d أسطر صرف، s داعمين.
- */
 export async function GET() {
   const authz = await requirePermission("dashboard:view");
   if ("error" in authz) return authz.error;
@@ -29,7 +24,7 @@ export async function GET() {
   const exhibitionId = exhibition.id;
 
   const [
-    attendanceRows,
+    dependentsRows,
     invited,
     attended,
     received,
@@ -40,22 +35,8 @@ export async function GET() {
     topDetailed,
     storeSummary,
     platformStock,
-    dispenseLines,
-    associationCount,
-    sponsors,
   ] = await Promise.all([
-    prisma.attendance.findMany({
-      where: { exhibitionId },
-      select: {
-        beneficiary: {
-          select: {
-            dependentsCount: true,
-            associationId: true,
-            associationOther: true,
-          },
-        },
-      },
-    }),
+    prisma.beneficiary.findMany({ select: { dependentsCount: true } }),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
     countDistinctReceived(exhibitionId),
@@ -74,46 +55,15 @@ export async function GET() {
     fetchTopDispensedItems(exhibitionId, 5),
     summarizeStoreStock(prisma, exhibitionId),
     summarizePlatformStock(prisma, exhibitionId),
-    prisma.dispenseLine.findMany({
-      where: { dispenseOrder: { exhibitionId } },
-      select: {
-        quantity: true,
-        inventoryItem: { select: { attributesJson: true } },
-      },
-    }),
-    prisma.associationOption.count({ where: { active: true } }),
-    prisma.sponsor.findMany({
-      where: { active: true },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: { id: true, name: true, logoPath: true },
-    }),
   ]);
 
-  // حضور: أسر = سجلات الحضور؛ أفراد = Σ(1+تابعين)
-  let attendedIndividuals = 0;
-  let associationAttendedFamilies = 0;
-  for (const row of attendanceRows) {
-    const deps = row.beneficiary?.dependentsCount ?? 0;
-    attendedIndividuals += householdSize(deps);
-    const hasAssoc =
-      Boolean(row.beneficiary?.associationId) ||
-      Boolean(row.beneficiary?.associationOther?.trim());
-    if (hasAssoc) associationAttendedFamilies += 1;
-  }
-  const attendedFamilies = attendanceRows.length;
-
-  let clothesPiecesDispensed = 0;
-  let fabricMetersDispensed = 0;
-  for (const line of dispenseLines) {
-    const qty = Number(line.quantity);
-    const attrs = (line.inventoryItem.attributesJson ?? {}) as Record<string, unknown>;
-    const unit = String(attrs.unit ?? "").trim();
-    if (unit === "قطعة") clothesPiecesDispensed += qty;
-    else if (unit === "متر") fabricMetersDispensed += qty;
-  }
+  const households = buildHouseholdMetrics(
+    dependentsRows.map((r) => r.dependentsCount ?? 0),
+  );
 
   const remainingToReceive = Math.max(attended - received, 0);
   const piecesDispensed = piecesAgg._sum.piecesCount ?? 0;
+  // نسبة الإنجاز = المستلمون ÷ الحاضرون (الاستثنائي يدخل الطرفين) بسقف 100% — O(1)
   const completionRate =
     attended > 0 ? Math.min(100, Math.round((received / attended) * 100)) : 0;
   const threshold = exhibition.settings?.lowStockThreshold ?? 10;
@@ -135,21 +85,15 @@ export async function GET() {
       location: exhibition.location,
     },
     stats: {
-      /** توافق خلفي */
-      totalBeneficiaries: attendedFamilies,
-      beneficiaryFamilies: attendedFamilies,
-      totalIndividuals: attendedIndividuals,
-      attendedFamilies,
-      attendedIndividuals,
+      /** توافق خلفي: كان يُعرض كـ«مستفيدين» وهو عدد الأسر */
+      totalBeneficiaries: households.beneficiaryFamilies,
+      beneficiaryFamilies: households.beneficiaryFamilies,
+      totalIndividuals: households.totalIndividuals,
       invited,
       attended,
       received,
       remainingToReceive,
       piecesDispensed,
-      clothesPiecesDispensed,
-      fabricMetersDispensed,
-      associationCount,
-      associationAttendedFamilies,
       exceptions,
       overrideDispenses,
       completionRate,
@@ -161,11 +105,6 @@ export async function GET() {
       storeDispensed,
       storeRemaining,
     },
-    sponsors: sponsors.map((s) => ({
-      id: s.id,
-      name: s.name,
-      logoUrl: sponsorLogoPublicUrl(s.logoPath),
-    })),
     attributeLabels,
     inventorySchema: schema,
     inventory: inventory.map((i) => ({

@@ -14,6 +14,7 @@ export default auth((req) => {
     pathname.startsWith("/api/password") ||
     pathname.startsWith("/api/qr/public") ||
     pathname.startsWith("/api/live/") ||
+    pathname.startsWith("/api/uploads/sponsors/") ||
     pathname.startsWith("/live/") ||
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/_next") ||
