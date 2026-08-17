@@ -1669,7 +1669,7 @@ textarea.input-field {
   width: max-content;
   gap: 2.5rem;
   align-items: center;
-  animation: sponsors-scroll 28s linear infinite;
+  animation: sponsors-scroll 36s linear infinite;
 }
 
 .sponsors-marquee__logo {
@@ -1681,6 +1681,16 @@ textarea.input-field {
   object-fit: contain;
   flex-shrink: 0;
   opacity: 0.92;
+}
+
+.live-screen .sponsors-marquee__track {
+  gap: 3.5rem;
+  animation-duration: 40s;
+}
+
+.live-screen .sponsors-marquee__logo {
+  max-height: 80px;
+  max-width: 240px;
 }
 
 @keyframes sponsors-scroll {
