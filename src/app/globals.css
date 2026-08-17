@@ -1631,3 +1631,77 @@ textarea.input-field {
   }
 }
 
+
+.dashboard-section {
+  animation: dash-fade-up 0.45s ease both;
+}
+
+.dashboard-section:nth-of-type(2) {
+  animation-delay: 0.06s;
+}
+
+.dashboard-section:nth-of-type(3) {
+  animation-delay: 0.12s;
+}
+
+@keyframes dash-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sponsors-band {
+  overflow: hidden;
+}
+
+.sponsors-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.sponsors-marquee__track {
+  display: flex;
+  width: max-content;
+  gap: 2.5rem;
+  align-items: center;
+  animation: sponsors-scroll 28s linear infinite;
+}
+
+.sponsors-marquee__logo {
+  display: block;
+  height: auto;
+  max-height: 64px;
+  max-width: 200px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+@keyframes sponsors-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-section {
+    animation: none;
+  }
+
+  .sponsors-marquee__track {
+    animation: none;
+    transform: none;
+    width: max-content;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}

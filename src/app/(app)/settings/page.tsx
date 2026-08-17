@@ -16,7 +16,21 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PasswordField } from "@/components/PasswordField";
 
 type Association = { id?: string; name: string; active?: boolean };
-type Section = "exhibition" | "schema" | "associations" | "templates" | "whatsapp" | null;
+type SponsorRow = {
+  id: string;
+  name: string;
+  logoUrl: string;
+  active: boolean;
+  sortOrder: number;
+};
+type Section =
+  | "exhibition"
+  | "schema"
+  | "associations"
+  | "sponsors"
+  | "templates"
+  | "whatsapp"
+  | null;
 
 export default function SettingsPage() {
   const [exhibitionName, setExhibitionName] = useState("");
@@ -26,6 +40,11 @@ export default function SettingsPage() {
   const [lowStockThreshold, setLowStockThreshold] = useState("10");
   const [schema, setSchema] = useState<InventorySchemaField[]>(DEFAULT_INVENTORY_SCHEMA);
   const [associations, setAssociations] = useState<Association[]>([]);
+  const [sponsors, setSponsors] = useState<SponsorRow[]>([]);
+  const [sponsorName, setSponsorName] = useState("");
+  const [sponsorSort, setSponsorSort] = useState("0");
+  const [sponsorFile, setSponsorFile] = useState<File | null>(null);
+  const [sponsorBusy, setSponsorBusy] = useState(false);
   const [inviteTpl, setInviteTpl] = useState("");
   const [thanksTpl, setThanksTpl] = useState("");
   const [msg, setMsg] = useState("");
@@ -87,6 +106,64 @@ export default function SettingsPage() {
         setHasItems(Number(j.inventoryCount ?? 0) > 0);
       });
   }, []);
+
+  async function loadSponsors() {
+    const res = await fetch("/api/sponsors");
+    const json = await res.json();
+    if (res.ok && Array.isArray(json.data)) setSponsors(json.data);
+  }
+
+  useEffect(() => {
+    if (section === "sponsors") void loadSponsors();
+  }, [section]);
+
+  /** إضافة داعم — Time: O(size) للرفع. */
+  async function addSponsor(e: FormEvent) {
+    e.preventDefault();
+    if (sponsorBusy || !sponsorFile || !sponsorName.trim()) return;
+    setSponsorBusy(true);
+    const fd = new FormData();
+    fd.set("name", sponsorName.trim());
+    fd.set("sortOrder", String(toIntOrNull(sponsorSort) ?? 0));
+    fd.set("logo", sponsorFile);
+    const res = await fetch("/api/sponsors", { method: "POST", body: fd });
+    const json = await res.json();
+    setSponsorBusy(false);
+    if (!res.ok) {
+      toast.push({ title: json.error || "فشل إضافة الداعم", tone: "danger" });
+      return;
+    }
+    setSponsorName("");
+    setSponsorSort("0");
+    setSponsorFile(null);
+    toast.push({ title: "تمت إضافة الداعم", tone: "success" });
+    await loadSponsors();
+  }
+
+  async function patchSponsor(id: string, patch: { active?: boolean; name?: string; sortOrder?: number }) {
+    const res = await fetch("/api/sponsors", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...patch }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      toast.push({ title: json.error || "فشل التحديث", tone: "danger" });
+      return;
+    }
+    await loadSponsors();
+  }
+
+  async function deleteSponsor(id: string) {
+    const res = await fetch(`/api/sponsors?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    const json = await res.json();
+    if (!res.ok) {
+      toast.push({ title: json.error || "فشل الحذف", tone: "danger" });
+      return;
+    }
+    toast.push({ title: "تم حذف الداعم", tone: "success" });
+    await loadSponsors();
+  }
 
   async function saveSettings() {
     if (busy) return;
@@ -236,6 +313,7 @@ export default function SettingsPage() {
     { id: "exhibition", title: "المعرض والاستحقاق", desc: "الاسم، الموقع، القطع، عتبة النفاد" },
     { id: "schema", title: "سمات المخزون", desc: "تسميات عربية وخيارات دون مفاتيح ظاهرة" },
     { id: "associations", title: "الجمعيات", desc: "قائمة الجمعيات للمستفيدين" },
+    { id: "sponsors", title: "الداعمين", desc: "شعارات الشريط في لوحة التحكم" },
     { id: "templates", title: "قوالب واتساب", desc: "نصوص الدعوة والشكر" },
     { id: "whatsapp", title: "ربط واتساب", desc: "المزوّد والتوكن واختبار الإرسال" },
   ];
@@ -503,6 +581,99 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal open={section === "sponsors"} title="الداعمين" onClose={() => setSection(null)} wide>
+        <p className="page-header__desc" style={{ marginBottom: "0.85rem" }}>
+          يُفضّل شعار مربّع/أفقي شفاف PNG أو WebP، ارتفاع ≈ 64–80px، عرض ≤ 240px، خلفية شفافة.
+        </p>
+        <form onSubmit={addSponsor} className="form-grid" style={{ marginBottom: "1rem" }}>
+          <div>
+            <label className="label-field">اسم الداعم</label>
+            <input
+              className="input-field"
+              value={sponsorName}
+              onChange={(e) => setSponsorName(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="label-field">الترتيب</label>
+            <input
+              className="input-field"
+              dir="ltr"
+              inputMode="numeric"
+              value={sponsorSort}
+              onChange={(e) => setSponsorSort(sanitizeNumericInput(e.target.value))}
+            />
+          </div>
+          <div className="full">
+            <label className="label-field">الشعار (PNG / JPEG / WebP ≤ 1MB)</label>
+            <input
+              className="input-field"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => setSponsorFile(e.target.files?.[0] ?? null)}
+              required
+            />
+          </div>
+          <div className="form-actions full">
+            <button className="btn-primary" type="submit" disabled={sponsorBusy || !sponsorFile}>
+              {sponsorBusy ? "جاري…" : "إضافة داعم"}
+            </button>
+          </div>
+        </form>
+        <div style={{ display: "grid", gap: "0.65rem" }}>
+          {sponsors.length === 0 ? (
+            <p className="page-header__desc">لا داعمين بعد.</p>
+          ) : (
+            sponsors.map((s) => (
+              <div
+                key={s.id}
+                style={{
+                  display: "flex",
+                  gap: "0.75rem",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  borderBottom: "1px solid var(--tmkeen-surface-border)",
+                  paddingBottom: "0.55rem",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={s.logoUrl}
+                  alt={s.name}
+                  style={{ maxHeight: 48, maxWidth: 120, objectFit: "contain" }}
+                />
+                <input
+                  className="input-field"
+                  style={{ flex: "1 1 10rem", minWidth: "8rem" }}
+                  value={s.name}
+                  onChange={(e) =>
+                    setSponsors((list) =>
+                      list.map((x) => (x.id === s.id ? { ...x, name: e.target.value } : x)),
+                    )
+                  }
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v) void patchSponsor(s.id, { name: v });
+                  }}
+                />
+                <label className="label-field" style={{ display: "flex", gap: "0.35rem", alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={s.active}
+                    onChange={(e) => void patchSponsor(s.id, { active: e.target.checked })}
+                  />
+                  نشط
+                </label>
+                <button type="button" className="btn-secondary" onClick={() => void deleteSponsor(s.id)}>
+                  حذف
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </Modal>
 
       <Modal open={section === "templates"} title="قوالب واتساب" onClose={() => setSection(null)} wide>

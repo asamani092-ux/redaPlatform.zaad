@@ -15,12 +15,12 @@ BACKUP_DIR="${BACKUP_DIR:-/data/backups}"
 
 prepare_data_dirs() {
   echo "entrypoint: preparing persistent /data as root"
-  mkdir -p "${UPLOADS_DIR}/evidence" "${BACKUP_DIR}"
+  mkdir -p "${UPLOADS_DIR}/evidence" "${UPLOADS_DIR}/sponsors" "${BACKUP_DIR}"
   # لا نلمس ملكية جذر /data إن منعه Coolify — نضبط المجلدات الفرعية
   chown -R nextjs:nodejs "${UPLOADS_DIR}" "${BACKUP_DIR}" 2>/dev/null \
-    || chown -R nextjs:nodejs "${UPLOADS_DIR}/evidence" 2>/dev/null \
+    || chown -R nextjs:nodejs "${UPLOADS_DIR}/evidence" "${UPLOADS_DIR}/sponsors" 2>/dev/null \
     || true
-  chmod 750 "${UPLOADS_DIR}" "${UPLOADS_DIR}/evidence" "${BACKUP_DIR}" 2>/dev/null || true
+  chmod 750 "${UPLOADS_DIR}" "${UPLOADS_DIR}/evidence" "${UPLOADS_DIR}/sponsors" "${BACKUP_DIR}" 2>/dev/null || true
   # إن كان /data قابل للتعديل
   chmod 755 /data 2>/dev/null || true
   chown nextjs:nodejs /data 2>/dev/null || true
@@ -49,7 +49,7 @@ node -e "try{const u=new URL(process.env.DATABASE_URL); console.log('entrypoint:
   || hold_and_exit 2
 
 # محاولة لطيفة إن شُغّل الدخول مسبقاً كـ nextjs بدون root
-mkdir -p "${UPLOADS_DIR}/evidence" "${BACKUP_DIR}" 2>/dev/null || true
+mkdir -p "${UPLOADS_DIR}/evidence" "${UPLOADS_DIR}/sponsors" "${BACKUP_DIR}" 2>/dev/null || true
 
 if [ -x ./scripts/check-storage-persist.sh ]; then
   ./scripts/check-storage-persist.sh \

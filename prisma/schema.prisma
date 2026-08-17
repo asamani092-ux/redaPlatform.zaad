@@ -390,3 +390,17 @@ model OutboundMessage {
   @@index([status, type])
   @@index([exhibitionId])
 }
+
+/// جهات داعمة للمعرض — شعارات شريط «الداعمين» في اللوحة
+model Sponsor {
+  id        String   @id @default(cuid())
+  name      String
+  /// مسار نسبي تحت UPLOADS_DIR مثل sponsors/xyz.webp
+  logoPath  String
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}
