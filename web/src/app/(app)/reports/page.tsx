@@ -15,6 +15,7 @@ type Summary = {
   attended: number;
   received: number;
   piecesDispensed: number;
+  volunteers?: number;
   byGender: Record<string, number>;
   byCity: Record<string, number>;
   byNeighborhood: Record<string, number>;
@@ -125,6 +126,7 @@ export default function ReportsPage() {
               ["المدعوون", summary.invited],
               ["الحضور", summary.attended],
               ["المستلمون", summary.received],
+              ["المتطوعون", summary.volunteers ?? 0],
               ["القطع", summary.piecesDispensed],
             ].map(([label, value]) => (
               <div key={String(label)} className="stat-tile">

@@ -6,6 +6,7 @@ import type { InventorySchemaField } from "@/lib/inventory-schema";
 import { DEFAULT_INVENTORY_SCHEMA } from "@/lib/inventory-schema";
 
 type Association = { id?: string; name: string; active?: boolean };
+type VolunteerRole = { id?: string; name: string; active?: boolean };
 
 export default function SettingsPage() {
   const [exhibitionName, setExhibitionName] = useState("");
@@ -14,6 +15,7 @@ export default function SettingsPage() {
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [schema, setSchema] = useState<InventorySchemaField[]>(DEFAULT_INVENTORY_SCHEMA);
   const [associations, setAssociations] = useState<Association[]>([]);
+  const [volunteerRoles, setVolunteerRoles] = useState<VolunteerRole[]>([]);
   const [inviteTpl, setInviteTpl] = useState("");
   const [thanksTpl, setThanksTpl] = useState("");
   const [msg, setMsg] = useState("");
@@ -39,6 +41,12 @@ export default function SettingsPage() {
         if (j.associations) setAssociations(j.associations);
         setHasItems(Number(j.inventoryCount ?? 0) > 0);
       });
+    fetch("/api/volunteer-roles")
+      .then((r) => r.json())
+      .then((j) => {
+        if (Array.isArray(j.data)) setVolunteerRoles(j.data);
+      })
+      .catch(() => undefined);
   }, []);
 
   async function save(e: FormEvent) {
@@ -60,9 +68,22 @@ export default function SettingsPage() {
         whatsappThanksTpl: thanksTpl,
       }),
     });
+    const rolesRes = await fetch("/api/volunteer-roles", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roles: volunteerRoles.filter((r) => r.name.trim()),
+      }),
+    });
     const json = await res.json();
+    const rolesJson = await rolesRes.json();
     setBusy(false);
-    setMsg(res.ok ? "تم حفظ الإعدادات" : json.error || "فشل الحفظ");
+    if (rolesRes.ok && Array.isArray(rolesJson.data)) setVolunteerRoles(rolesJson.data);
+    setMsg(
+      res.ok && rolesRes.ok
+        ? "تم حفظ الإعدادات"
+        : json.error || rolesJson.error || "فشل الحفظ",
+    );
   }
 
   function updateField(idx: number, patch: Partial<InventorySchemaField>) {
@@ -200,6 +221,49 @@ export default function SettingsPage() {
         <div className="form-actions">
           <button type="button" className="btn-secondary" onClick={() => setAssociations((a) => [...a, { name: "" }])}>
             إضافة جمعية
+          </button>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2 className="panel-title">أدوار المتطوعين</h2>
+        <p className="page-header__desc" style={{ marginBottom: "0.55rem" }}>
+          تظهر كقائمة منسدلة عند إضافة متطوع.
+        </p>
+        <div style={{ display: "grid", gap: "0.55rem" }}>
+          {volunteerRoles.map((r, idx) => (
+            <div key={r.id ?? idx} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <input
+                className="input-field"
+                value={r.name}
+                onChange={(e) =>
+                  setVolunteerRoles((list) =>
+                    list.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
+                  )
+                }
+              />
+              <label className="label-field" style={{ display: "flex", gap: "0.35rem", whiteSpace: "nowrap" }}>
+                <input
+                  type="checkbox"
+                  checked={r.active !== false}
+                  onChange={(e) =>
+                    setVolunteerRoles((list) =>
+                      list.map((x, i) => (i === idx ? { ...x, active: e.target.checked } : x)),
+                    )
+                  }
+                />
+                نشط
+              </label>
+            </div>
+          ))}
+        </div>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setVolunteerRoles((r) => [...r, { name: "", active: true }])}
+          >
+            إضافة دور
           </button>
         </div>
       </section>

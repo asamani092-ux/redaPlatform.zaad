@@ -17,6 +17,7 @@ export default function InvitesPage() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState("");
   const [q, setQ] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     const res = await fetch(`/api/beneficiaries?q=${encodeURIComponent(q)}`);
@@ -38,13 +39,48 @@ export default function InvitesPage() {
       setMsg("حدد مستفيدين أولاً");
       return;
     }
+    if (busy) return;
+    setBusy(true);
     const res = await fetch("/api/invites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ beneficiaryIds: selectedIds, sendWhatsApp }),
     });
     const json = await res.json();
+    setBusy(false);
     setMsg(res.ok ? `تمت دعوة ${json.invited} مستفيد` : json.error);
+    if (res.ok) {
+      setSelected({});
+      load();
+    }
+  }
+
+  /** إلغاء الدعوة — تأكيد ثنائي. Time: O(k). */
+  async function uninvite() {
+    if (!selectedIds.length) {
+      setMsg("حدد مستفيدين أولاً");
+      return;
+    }
+    if (
+      !window.confirm(
+        `هل تريد إلغاء دعوة ${selectedIds.length} مستفيد؟ سيُلغى ظهورهم كمدعوين.`,
+      )
+    ) {
+      return;
+    }
+    if (!window.confirm("تأكيد نهائي: إلغاء الدعوة للمحددين؟")) {
+      return;
+    }
+    if (busy) return;
+    setBusy(true);
+    const res = await fetch("/api/invites", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ beneficiaryIds: selectedIds }),
+    });
+    const json = await res.json();
+    setBusy(false);
+    setMsg(res.ok ? `أُلغيت دعوة ${json.uninvited} مستفيد` : json.error || "فشل الإلغاء");
     if (res.ok) {
       setSelected({});
       load();
@@ -58,11 +94,29 @@ export default function InvitesPage() {
         description="تحديد المستفيدين من قاعدة البيانات وإنشاء رمز QR داخلي"
         actions={
           <>
-            <button className="btn-primary" type="button" onClick={() => invite(false)}>
+            <button
+              className="btn-primary"
+              type="button"
+              disabled={busy}
+              onClick={() => invite(false)}
+            >
               دعوة المحددين ({selectedIds.length})
             </button>
-            <button className="btn-recommend" type="button" onClick={() => invite(true)}>
+            <button
+              className="btn-recommend"
+              type="button"
+              disabled={busy}
+              onClick={() => invite(true)}
+            >
               دعوة + واتساب
+            </button>
+            <button
+              className="btn-secondary"
+              type="button"
+              disabled={busy}
+              onClick={() => void uninvite()}
+            >
+              إلغاء الدعوة ({selectedIds.length})
             </button>
           </>
         }

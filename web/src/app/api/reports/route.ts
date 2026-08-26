@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
     invited: await prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     attended: await prisma.attendance.count({ where: { exhibitionId } }),
     received: await prisma.dispenseOrder.count({ where: { exhibitionId } }),
+    volunteers: await prisma.volunteer.count({ where: { exhibitionId } }),
     piecesDispensed:
       (
         await prisma.dispenseOrder.aggregate({
@@ -116,6 +117,7 @@ export async function GET(req: NextRequest) {
       ["المدعوون", summary.invited],
       ["الحضور", summary.attended],
       ["المستلمون", summary.received],
+      ["المتطوعون", summary.volunteers],
       ["القطع المصروفة", summary.piecesDispensed],
     ]);
 
@@ -229,6 +231,7 @@ export async function GET(req: NextRequest) {
         <li>المدعوون: ${summary.invited}</li>
         <li>الحضور: ${summary.attended}</li>
         <li>المستلمون: ${summary.received}</li>
+        <li>المتطوعون: ${summary.volunteers}</li>
         <li>القطع: ${summary.piecesDispensed}</li>
       </ul>
       ${pages.join("\n")}

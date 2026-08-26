@@ -32,6 +32,15 @@ async function main() {
     });
   }
 
+  const volunteerRoles = ["تنظيم", "استقبال", "صرف", "مخزون"];
+  for (const [i, name] of volunteerRoles.entries()) {
+    await prisma.volunteerRoleOption.upsert({
+      where: { name },
+      update: { active: true, sortOrder: i },
+      create: { name, sortOrder: i },
+    });
+  }
+
   let exhibition = await prisma.exhibition.findFirst({ where: { active: true } });
   if (!exhibition) {
     exhibition = await prisma.exhibition.findFirst({ where: { name: "معرض رداء الأول" } });

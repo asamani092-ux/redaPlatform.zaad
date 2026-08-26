@@ -18,6 +18,7 @@ export async function GET() {
     exceptions,
     piecesAgg,
     inventory,
+    volunteers,
   ] = await Promise.all([
     prisma.beneficiary.count(),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
@@ -29,6 +30,7 @@ export async function GET() {
       _sum: { piecesCount: true },
     }),
     prisma.inventoryItem.findMany({ where: { exhibitionId } }),
+    prisma.volunteer.count({ where: { exhibitionId } }),
   ]);
 
   const remainingToReceive = Math.max(attended - received, 0);
@@ -69,6 +71,7 @@ export async function GET() {
       piecesDispensed,
       exceptions,
       completionRate,
+      volunteers,
     },
     inventory: inventory.map((i) => ({
       id: i.id,

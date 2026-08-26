@@ -15,6 +15,7 @@ type DashboardData = {
     piecesDispensed: number;
     exceptions: number;
     completionRate: number;
+    volunteers?: number;
   };
   inventory: Array<{ id: string; attributes: Record<string, unknown>; quantity: number; lowStock: boolean }>;
   topItems: Array<{ inventoryItemId: string; quantity: number; attributes: Record<string, unknown> }>;
@@ -69,6 +70,7 @@ export default function DashboardPage() {
     { label: "استلموا", value: data.stats.received },
     { label: "متبقون للاستلام", value: data.stats.remainingToReceive },
     { label: "القطع المصروفة", value: data.stats.piecesDispensed },
+    { label: "المتطوعون", value: data.stats.volunteers ?? 0 },
     { label: "حالات استثنائية", value: data.stats.exceptions },
     { label: "نسبة الإنجاز %", value: data.stats.completionRate },
   ];

@@ -65,6 +65,7 @@ model User {
   stockMovements     StockMovement[]     @relation("StockBy")
   invitesCreated     ExhibitionInvite[]  @relation("InviteBy")
   outboundMessages   OutboundMessage[]   @relation("MessageBy")
+  volunteersCreated  Volunteer[]         @relation("VolunteerBy")
 
   @@index([role])
   @@index([lastActiveAt])
@@ -79,6 +80,41 @@ model AssociationOption {
   updatedAt DateTime @updatedAt
 
   beneficiaries Beneficiary[]
+}
+
+/// أدوار المتطوعين — قائمة منسدلة قابلة للتعديل من الإعدادات
+model VolunteerRoleOption {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  volunteers Volunteer[]
+}
+
+/// متطوعو المعرض — تراكمي لكل معرض
+model Volunteer {
+  id           String    @id @default(cuid())
+  exhibitionId String
+  name         String
+  mobile       String
+  nationalId   String
+  roleId       String
+  thanksSentAt DateTime?
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  exhibition Exhibition          @relation(fields: [exhibitionId], references: [id], onDelete: Cascade)
+  role       VolunteerRoleOption @relation(fields: [roleId], references: [id])
+  createdBy  User?               @relation("VolunteerBy", fields: [createdById], references: [id])
+
+  @@unique([exhibitionId, nationalId])
+  @@index([exhibitionId])
+  @@index([roleId])
+  @@index([mobile])
 }
 
 model Beneficiary {
@@ -127,6 +163,7 @@ model Exhibition {
   stockMovements   StockMovement[]
   surveyResponses  SurveyResponse[]
   outboundMessages OutboundMessage[]
+  volunteers       Volunteer[]
 
   @@index([active])
 }
