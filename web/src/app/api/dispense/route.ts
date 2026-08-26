@@ -209,14 +209,18 @@ export async function POST(req: NextRequest) {
     if (body.data.sendThanks) {
       const tpl =
         settings.whatsappThanksTpl ??
-        "شكراً لزيارتك معرض رداء، {{name}}.";
+        "شكراً لزيارتك {{exhibition}}، {{name}}.";
+      const bodyText = tpl
+        .replaceAll("{{name}}", order.beneficiary.name)
+        .replaceAll("{{exhibition}}", exhibition.name);
       await sendWhatsAppMessage({
         exhibitionId: exhibition.id,
         beneficiaryId: order.beneficiaryId,
         mobile: order.beneficiary.mobile,
-        body: tpl.replaceAll("{{name}}", order.beneficiary.name),
+        body: bodyText,
         type: OutboundMessageType.THANK_YOU,
         createdById: authz.userId,
+        templateParams: [order.beneficiary.name, exhibition.name],
       });
     }
 

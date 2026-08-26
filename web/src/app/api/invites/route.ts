@@ -6,6 +6,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
+import { appOrigin } from "@/lib/app-url";
 import { randomUUID } from "crypto";
 
 const bulkSchema = z.object({
@@ -82,17 +83,23 @@ export async function POST(req: NextRequest) {
   });
 
   if (body.data.sendWhatsApp) {
+    const origin = appOrigin(req);
+    const dateStr = exhibition.startsAt?.toISOString().slice(0, 10) ?? "";
+    const location = exhibition.location ?? "";
     const tpl =
       exhibition.settings?.whatsappInviteTpl ??
-      "مرحباً {{name}}، أنت مدعو لمعرض رداء.";
+      "مرحباً {{name}}، أنت مدعو إلى {{exhibition}}. الموعد: {{date}} — الموقع: {{location}}";
     for (const t of result.tokens) {
       const b = await prisma.beneficiary.findUnique({ where: { id: t.beneficiaryId } });
       if (!b) continue;
+      const qrUrl = `${origin}/api/qr/public/${t.qrToken}`;
       const bodyText = tpl
         .replaceAll("{{name}}", b.name)
-        .replaceAll("{{date}}", exhibition.startsAt?.toISOString().slice(0, 10) ?? "")
-        .replaceAll("{{location}}", exhibition.location ?? "")
-        .replaceAll("{{qr}}", t.qrToken);
+        .replaceAll("{{exhibition}}", exhibition.name)
+        .replaceAll("{{date}}", dateStr)
+        .replaceAll("{{location}}", location)
+        .replaceAll("{{qr}}", t.qrToken)
+        .replaceAll("{{qr_url}}", qrUrl);
       await sendWhatsAppMessage({
         exhibitionId: exhibition.id,
         beneficiaryId: b.id,
@@ -100,6 +107,7 @@ export async function POST(req: NextRequest) {
         body: bodyText,
         type: OutboundMessageType.INVITATION,
         createdById: authz.userId,
+        templateParams: [b.name, exhibition.name, dateStr, location, qrUrl],
       });
     }
   }

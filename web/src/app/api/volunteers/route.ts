@@ -242,6 +242,7 @@ async function sendVolunteerThanks(input: {
     body: bodyText,
     type: OutboundMessageType.THANK_YOU,
     createdById: input.userId,
+    templateParams: [input.name, input.exhibitionName],
   });
 
   await prisma.volunteer.update({

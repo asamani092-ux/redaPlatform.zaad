@@ -7,6 +7,7 @@ import { writeAuditLog } from "@/lib/audit";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
+import { appOrigin } from "@/lib/app-url";
 
 const submitSchema = z.object({
   beneficiaryId: z.string(),
@@ -47,13 +48,18 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.data.sendLink) {
+    const surveyUrl =
+      process.env.WHATSAPP_SURVEY_URL?.trim() ||
+      `${appOrigin(req)}/survey`;
+    const bodyText = `مرحباً ${beneficiary.name}، نرجو تقييم زيارتك لـ${exhibition.name} عبر الرابط: ${surveyUrl}`;
     const msg = await sendWhatsAppMessage({
       exhibitionId: exhibition.id,
       beneficiaryId: beneficiary.id,
       mobile: beneficiary.mobile,
-      body: `مرحباً ${beneficiary.name}، نرجو تقييم زيارتك لمعرض رداء عبر المنصة.`,
+      body: bodyText,
       type: OutboundMessageType.SURVEY,
       createdById: authz.userId,
+      templateParams: [beneficiary.name, exhibition.name, surveyUrl],
     });
     return NextResponse.json({ message: msg });
   }
