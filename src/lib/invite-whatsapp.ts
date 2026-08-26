@@ -86,6 +86,8 @@ export async function sendInviteWhatsApp(input: {
 
   const origin = appOrigin(input.req);
   const qrUrl = `${origin}/api/qr/public/${input.qrToken}`;
+  const dateStr = input.exhibition.startsAt?.toISOString().slice(0, 10) ?? "";
+  const location = input.exhibition.location ?? "";
   const tpl =
     input.exhibition.settings?.whatsappInviteTpl ??
     "مرحباً {{name}}، أنت مدعو إلى {{exhibition}}. الموعد: {{date}} — الموقع: {{location}}";
@@ -93,8 +95,8 @@ export async function sendInviteWhatsApp(input: {
     tpl,
     name: input.beneficiary.name,
     exhibitionName: input.exhibition.name,
-    date: input.exhibition.startsAt?.toISOString().slice(0, 10) ?? "",
-    location: input.exhibition.location ?? "",
+    date: dateStr,
+    location,
     qrToken: input.qrToken,
     qrUrl,
   });
@@ -107,6 +109,13 @@ export async function sendInviteWhatsApp(input: {
     mediaUrl: qrUrl,
     type: OutboundMessageType.INVITATION,
     createdById: input.createdById,
+    templateParams: [
+      input.beneficiary.name,
+      input.exhibition.name,
+      dateStr,
+      location,
+      qrUrl,
+    ],
   });
 
   if (msg.status === "FAILED") {

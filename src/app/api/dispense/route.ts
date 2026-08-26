@@ -17,7 +17,7 @@ import {
   parseSurveyCatalog,
   parseSurveyConfig,
 } from "@/lib/survey-questions";
-import { buildSurveyMessage } from "@/lib/survey-message";
+import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
 import { priorDispenseStats } from "@/lib/report-counts";
 import { createDispenseMovementsFifo } from "@/lib/store-ledger";
 
@@ -343,6 +343,7 @@ export async function POST(req: NextRequest) {
         body: thanksBody,
         type: OutboundMessageType.THANK_YOU,
         createdById: authz.userId,
+        templateParams: [order.beneficiary.name, exhibition.name],
       });
       thanksStatus = thanksMsg.status;
       if (thanksMsg.status === "FAILED") {
@@ -398,6 +399,11 @@ export async function POST(req: NextRequest) {
             ),
             type: OutboundMessageType.SURVEY,
             createdById: authz.userId,
+            templateParams: surveyTemplateParams(
+              order.beneficiary.name,
+              exhibition.name,
+              survey.externalUrl,
+            ),
           });
           lastStatus = surveyMsg.status;
           if (surveyMsg.status === "FAILED") {

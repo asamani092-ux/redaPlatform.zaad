@@ -12,7 +12,7 @@ import {
   parseSurveyCatalog,
 } from "@/lib/survey-questions";
 import { resolveSurveyAudience } from "@/lib/survey-audience";
-import { buildSurveyMessage } from "@/lib/survey-message";
+import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
 
 const schema = z.object({
   surveyId: z.string().min(1),
@@ -92,6 +92,11 @@ export async function POST(req: NextRequest) {
       ),
       type: OutboundMessageType.SURVEY,
       createdById: authz.userId,
+      templateParams: surveyTemplateParams(
+        b.name,
+        exhibition.name,
+        survey.externalUrl,
+      ),
     });
     if (msg.status === "FAILED") {
       failed++;

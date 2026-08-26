@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { OutboundMessageStatus, OutboundMessageType } from "@/generated/prisma/enums";
-import { getWhatsAppConfig } from "@/lib/whatsapp-config";
+import { getWhatsAppConfig, type WhatsAppConfig } from "@/lib/whatsapp-config";
+import { isValidSaudiMobile, normalizeMobile, toWaId } from "@/lib/mobile";
 
 export type WhatsAppSendInput = {
   exhibitionId?: string;
@@ -10,17 +11,114 @@ export type WhatsAppSendInput = {
   body: string;
   type: OutboundMessageType;
   createdById?: string;
-  /** رابط صورة عامة (QR) إن دعمها المزوّد */
+  /** رابط صورة عامة (QR) إن دعمها المزوّد العام */
   mediaUrl?: string;
+  /**
+   * متغيرات body للقالب بالترتيب (ZAD):
+   * INVITATION: name, exhibition, date, location, qr_url
+   * THANK_YOU: name, exhibition
+   * SURVEY: name, exhibition, survey_url
+   */
+  templateParams?: string[];
 };
 
+function templateIdFor(
+  config: WhatsAppConfig,
+  type: OutboundMessageType,
+): string | null {
+  switch (type) {
+    case OutboundMessageType.INVITATION:
+      return config.inviteTemplateId;
+    case OutboundMessageType.THANK_YOU:
+      return config.thanksTemplateId;
+    case OutboundMessageType.SURVEY:
+      return config.surveyTemplateId;
+    default:
+      return null;
+  }
+}
+
+type ZadSendResult = { providerRef?: string; raw?: unknown };
+
 /**
- * منفذ واتساب قابل للاستبدال — الإعداد من قاعدة البيانات (شاشة الإعدادات)
- * مع متغيرات البيئة كافتراضي. Time: O(1) لكل رسالة.
+ * إرسال قالب ZAD — Time O(1)، Space O(1).
+ */
+async function sendZadTemplate(input: {
+  apiUrl: string;
+  apiKey: string;
+  userName: string;
+  mobile: string;
+  templateId: string;
+  params: string[];
+}): Promise<ZadSendResult> {
+  const waId = toWaId(input.mobile);
+  const url = new URL(input.apiUrl);
+  url.searchParams.set("apiKey", input.apiKey);
+
+  const payload = {
+    userName: input.userName,
+    wa_id: waId,
+    templateId: input.templateId,
+    params: [
+      {
+        type: "body",
+        parameters: input.params.map((text) => ({ type: "text", text })),
+      },
+    ],
+  };
+
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apiKey: input.apiKey,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let raw: unknown = {};
+  try {
+    raw = text ? JSON.parse(text) : {};
+  } catch {
+    raw = { raw: text };
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      typeof raw === "object" && raw && "message" in raw
+        ? String((raw as { message: unknown }).message)
+        : text || `WhatsApp API ${res.status}`,
+    );
+  }
+
+  const ref =
+    typeof raw === "object" && raw && "id" in raw
+      ? String((raw as { id: unknown }).id)
+      : typeof raw === "object" && raw && "messageId" in raw
+        ? String((raw as { messageId: unknown }).messageId)
+        : undefined;
+
+  return { providerRef: ref, raw };
+}
+
+/**
+ * منفذ واتساب: stub | zad | api (Bearer).
+ * Time O(1) لكل رسالة، Space O(1).
  */
 export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
   const config = await getWhatsAppConfig();
-  const provider = config.provider;
+  const provider = (config.provider || "stub").toLowerCase();
+  const mobile = normalizeMobile(input.mobile);
+  const templateParams = input.templateParams ?? [];
+
+  const basePayload = {
+    mobile,
+    body: input.body,
+    mediaUrl: input.mediaUrl ?? null,
+    templateParams,
+    provider,
+  };
 
   if (provider === "stub") {
     return prisma.outboundMessage.create({
@@ -29,18 +127,72 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         beneficiaryId: input.beneficiaryId,
         type: input.type,
         status: OutboundMessageStatus.STUBBED,
-        payloadJson: {
-          mobile: input.mobile,
-          body: input.body,
-          mediaUrl: input.mediaUrl ?? null,
-          provider: "stub",
-        } as Prisma.InputJsonValue,
+        payloadJson: basePayload as Prisma.InputJsonValue,
+        createdById: input.createdById,
+      },
+    });
+  }
+
+  if (!isValidSaudiMobile(mobile)) {
+    return prisma.outboundMessage.create({
+      data: {
+        exhibitionId: input.exhibitionId,
+        beneficiaryId: input.beneficiaryId,
+        type: input.type,
+        status: OutboundMessageStatus.FAILED,
+        errorMessage: "رقم الجوال غير صالح — الصيغة: 05xxxxxxxx",
+        payloadJson: basePayload as Prisma.InputJsonValue,
         createdById: input.createdById,
       },
     });
   }
 
   try {
+    if (provider === "zad") {
+      const apiUrl = config.apiUrl;
+      const apiKey = config.apiToken;
+      if (!apiUrl || !apiKey) {
+        throw new Error("رابط ZAD أو apiKey غير مضبوط — من الإعدادات أو متغيرات البيئة");
+      }
+
+      const templateId = templateIdFor(config, input.type);
+      if (!templateId) {
+        throw new Error(
+          `مزوّد ZAD لا يدعم النوع ${input.type} أو معرّف القالب غير مضبوط في البيئة`,
+        );
+      }
+      if (!templateParams.length) {
+        throw new Error("templateParams مطلوبة لمزوّد ZAD");
+      }
+
+      const result = await sendZadTemplate({
+        apiUrl,
+        apiKey,
+        userName: config.sender?.trim() || "platform",
+        mobile,
+        templateId,
+        params: templateParams,
+      });
+
+      return prisma.outboundMessage.create({
+        data: {
+          exhibitionId: input.exhibitionId,
+          beneficiaryId: input.beneficiaryId,
+          type: input.type,
+          status: OutboundMessageStatus.SENT,
+          providerRef: result.providerRef,
+          payloadJson: {
+            ...basePayload,
+            wa_id: toWaId(mobile),
+            templateId,
+            response: result.raw as Prisma.InputJsonValue,
+          } as Prisma.InputJsonValue,
+          createdById: input.createdById,
+        },
+      });
+    }
+
+    // مزوّد عام (api / Bearer)
     const apiUrl = config.apiUrl;
     const token = config.apiToken;
     if (!apiUrl || !token) {
@@ -54,7 +206,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        to: input.mobile,
+        to: mobile,
         body: input.body,
         ...(input.mediaUrl ? { mediaUrl: input.mediaUrl, type: "image" } : {}),
       }),
@@ -74,12 +226,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         type: input.type,
         status: OutboundMessageStatus.SENT,
         providerRef: data.id,
-        payloadJson: {
-          mobile: input.mobile,
-          body: input.body,
-          mediaUrl: input.mediaUrl ?? null,
-          provider,
-        } as Prisma.InputJsonValue,
+        payloadJson: basePayload as Prisma.InputJsonValue,
         createdById: input.createdById,
       },
     });
@@ -91,12 +238,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         type: input.type,
         status: OutboundMessageStatus.FAILED,
         errorMessage: error instanceof Error ? error.message : "unknown",
-        payloadJson: {
-          mobile: input.mobile,
-          body: input.body,
-          mediaUrl: input.mediaUrl ?? null,
-          provider,
-        } as Prisma.InputJsonValue,
+        payloadJson: basePayload as Prisma.InputJsonValue,
         createdById: input.createdById,
       },
     });

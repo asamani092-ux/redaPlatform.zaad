@@ -9,7 +9,7 @@ import { sendInviteWhatsApp } from "@/lib/invite-whatsapp";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
 import { findSurvey, parseSurveyCatalog } from "@/lib/survey-questions";
-import { buildSurveyMessage } from "@/lib/survey-message";
+import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
 import { isValidSaudiMobile, MOBILE_ERROR, normalizeMobile } from "@/lib/mobile";
 
 const schema = z.object({
@@ -170,6 +170,11 @@ export async function POST(req: NextRequest) {
     ),
     type: OutboundMessageType.SURVEY,
     createdById: authz.userId,
+    templateParams: surveyTemplateParams(
+      beneficiary.name,
+      exhibition.name,
+      survey.externalUrl,
+    ),
   });
 
   const status =

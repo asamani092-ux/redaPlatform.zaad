@@ -12,7 +12,7 @@ import {
   parseSurveyCatalog,
   SURVEY_AUDIENCE_OPTIONS,
 } from "@/lib/survey-questions";
-import { buildSurveyMessage } from "@/lib/survey-message";
+import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
 import { buildPageMeta, parsePageParams } from "@/lib/pagination";
 
 const submitSchema = z.object({
@@ -107,6 +107,11 @@ export async function POST(req: NextRequest) {
       ),
       type: OutboundMessageType.SURVEY,
       createdById: authz.userId,
+      templateParams: surveyTemplateParams(
+        beneficiary.name,
+        exhibition.name,
+        survey.externalUrl,
+      ),
     });
     if (msg.status === "FAILED") {
       return NextResponse.json(

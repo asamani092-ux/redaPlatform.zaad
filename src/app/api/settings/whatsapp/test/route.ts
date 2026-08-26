@@ -19,11 +19,15 @@ export async function POST(req: NextRequest) {
   }
 
   const config = await getWhatsAppConfig();
+  const isZad = config.provider === "zad";
   const msg = await sendWhatsAppMessage({
     mobile: body.data.mobile.trim(),
     body: "رسالة اختبار من منصة معرض رداء — الإعداد يعمل بنجاح.",
-    type: OutboundMessageType.TEST,
+    type: isZad ? OutboundMessageType.THANK_YOU : OutboundMessageType.TEST,
     createdById: authz.userId,
+    ...(isZad
+      ? { templateParams: ["اختبار", "منصة رداء"] as string[] }
+      : {}),
   });
 
   const failed = msg.status === OutboundMessageStatus.FAILED;

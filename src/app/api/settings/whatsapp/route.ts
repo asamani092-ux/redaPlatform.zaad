@@ -10,7 +10,7 @@ import {
 } from "@/lib/whatsapp-config";
 
 const putSchema = z.object({
-  provider: z.enum(["stub", "api"]),
+  provider: z.enum(["stub", "api", "zad"]),
   apiUrl: z.string().optional().nullable(),
   /** فارغ = الإبقاء على التوكن المحفوظ */
   apiToken: z.string().optional().nullable(),
@@ -22,8 +22,10 @@ export async function GET() {
   if ("error" in authz) return authz.error;
 
   const config = await getWhatsAppConfig();
+  const provider =
+    config.provider === "zad" ? "zad" : config.provider === "stub" ? "stub" : "api";
   return NextResponse.json({
-    provider: config.provider === "stub" ? "stub" : "api",
+    provider,
     apiUrl: config.apiUrl ?? "",
     tokenMask: maskToken(config.apiToken),
     hasToken: !!config.apiToken,
@@ -43,14 +45,25 @@ export async function PUT(req: NextRequest) {
 
   const current = await prisma.appConfig.findUnique({ where: { id: "app" } });
 
-  if (body.data.provider === "api") {
+  if (body.data.provider === "api" || body.data.provider === "zad") {
     const url = body.data.apiUrl?.trim();
     const token = body.data.apiToken?.trim() || current?.whatsappApiToken;
     if (!url) {
-      return NextResponse.json({ error: "رابط الإرسال (API URL) مطلوب للوضع الفعلي" }, { status: 400 });
+      return NextResponse.json(
+        { error: "رابط الإرسال (API URL) مطلوب للوضع الفعلي" },
+        { status: 400 },
+      );
     }
     if (!token) {
-      return NextResponse.json({ error: "التوكن مطلوب للوضع الفعلي" }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            body.data.provider === "zad"
+              ? "apiKey مطلوب لمزوّد ZAD"
+              : "التوكن مطلوب للوضع الفعلي",
+        },
+        { status: 400 },
+      );
     }
   }
 

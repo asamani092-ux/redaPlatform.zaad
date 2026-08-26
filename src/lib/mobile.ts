@@ -15,4 +15,14 @@ export function isValidSaudiMobile(raw: string): boolean {
   return /^05\d{8}$/.test(normalizeMobile(raw));
 }
 
+/** تحويل 05xxxxxxxx → 9665xxxxxxxx لمزوّد ZAD — O(1) */
+export function toWaId(raw: string): string {
+  const local = normalizeMobile(raw);
+  if (local.startsWith("0") && local.length === 10) {
+    return `966${local.slice(1)}`;
+  }
+  if (local.startsWith("966")) return local;
+  return local.replace(/^\+/, "");
+}
+
 export const MOBILE_ERROR = "رقم الجوال غير صالح — الصيغة: 05xxxxxxxx";

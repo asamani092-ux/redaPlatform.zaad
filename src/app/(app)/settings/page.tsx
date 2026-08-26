@@ -571,14 +571,33 @@ export default function SettingsPage() {
             <select
               className="input-field"
               value={wa.provider}
-              onChange={(e) => setWa((w) => ({ ...w, provider: e.target.value }))}
+              onChange={(e) => {
+                const provider = e.target.value;
+                setWa((w) => ({
+                  ...w,
+                  provider,
+                  apiUrl:
+                    provider === "zad" && !w.apiUrl.trim()
+                      ? "https://wawebhook.icsl.me/whatsapp-automation/wa/send-template"
+                      : w.apiUrl,
+                }));
+              }}
             >
               <option value="stub">تجريبي — تسجيل داخلي بلا إرسال</option>
-              <option value="api">فعلي — إرسال عبر مزوّد API</option>
+              <option value="api">فعلي — إرسال عبر مزوّد API عام</option>
+              <option value="zad">ZAD / ICSL — قوالب send-template</option>
             </select>
+            {wa.provider === "zad" ? (
+              <p className="field-hint" style={{ marginTop: 8 }}>
+                معرّفات القوالب من متغيرات البيئة: WHATSAPP_INVITE_TEMPLATE_ID /
+                THANKS / SURVEY. الحقل «التوكن» = apiKey.
+              </p>
+            ) : null}
           </div>
           <div>
-            <label className="label-field">رقم جوال المرسل</label>
+            <label className="label-field">
+              {wa.provider === "zad" ? "اسم المستخدم (userName)" : "رقم جوال المرسل"}
+            </label>
             <input
               className="input-field"
               dir="ltr"
@@ -602,7 +621,13 @@ export default function SettingsPage() {
             </label>
             <PasswordField
               autoComplete="off"
-              placeholder={wa.hasToken ? "اتركه فارغاً للإبقاء" : "توكن المزوّد"}
+              placeholder={
+                wa.hasToken
+                  ? "اتركه فارغاً للإبقاء"
+                  : wa.provider === "zad"
+                    ? "apiKey لمزوّد ZAD"
+                    : "توكن المزوّد"
+              }
               value={wa.token}
               onChange={(e) => setWa((w) => ({ ...w, token: e.target.value }))}
             />
