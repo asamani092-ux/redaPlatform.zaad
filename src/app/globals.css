@@ -1491,9 +1491,8 @@ textarea.input-field {
   min-height: 100vh;
   padding: var(--space-5) clamp(var(--space-4), 3vw, var(--space-10)) var(--space-8);
   background:
-    radial-gradient(ellipse at 15% 10%, color-mix(in srgb, var(--brand-primary) 22%, transparent), transparent 50%),
-    radial-gradient(ellipse at 85% 30%, color-mix(in srgb, var(--brand-primary) 14%, transparent), transparent 45%),
-    linear-gradient(165deg, var(--surface-base) 0%, var(--surface-sunken) 55%, color-mix(in srgb, var(--brand-primary) 6%, var(--surface-sunken)) 100%);
+    radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--brand-primary) 12%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--surface-base) 0%, var(--surface-sunken) 100%);
   color: var(--text-primary);
   font-family: var(--font-arabic);
 }
@@ -1559,31 +1558,29 @@ textarea.input-field {
   gap: 0.75rem;
   margin-bottom: 1.25rem;
 }
-/* بطاقة زجاجية مستقلة — بدون zad-kpi (خلفيته معتمة من نظام التصميم) */
+/* بطاقة بلا خلفية — حجم العرض الحي السابق + نص خمري */
 .live-screen__stats .live-kpi-card {
   display: grid;
   gap: var(--space-2, 0.5rem);
   padding: var(--space-4, 1rem);
-  background: rgba(255, 255, 255, 0.12) !important;
-  background-color: rgba(255, 255, 255, 0.12) !important;
-  backdrop-filter: blur(20px) saturate(1.5);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  border: 2px dashed color-mix(in srgb, var(--brand-primary, #7a1234) 78%, #c62828);
+  background: transparent;
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 2px dashed color-mix(in srgb, var(--brand-primary, #7a1234) 85%, #8b1e3a);
   border-radius: var(--radius-lg, 0.85rem);
-  box-shadow:
-    0 8px 32px color-mix(in srgb, var(--brand-primary, #7a1234) 12%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  box-shadow: none;
 }
 .live-screen__stats .live-kpi-card__value {
   font-size: clamp(1.6rem, 2.8vw, 2.4rem);
   font-weight: 800;
-  color: var(--text-brand, var(--tmkeen-primary, #7a1234));
+  color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
   line-height: 1.1;
 }
 .live-screen__stats .live-kpi-card__label {
   font-size: clamp(0.9rem, 1.2vw, 1.1rem);
   font-weight: 700;
-  color: var(--text-secondary, var(--tmkeen-brand-gray, #5c5c5c));
+  color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
 }
 .live-screen .kpi-sections {
   gap: clamp(0.85rem, 1.2vw, 1.25rem);
@@ -1671,16 +1668,17 @@ textarea.input-field {
   }
   .live-screen__stats .live-kpi-card {
     padding: clamp(1rem, 1.5vw, 1.5rem);
-    background: rgba(255, 255, 255, 0.1) !important;
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    backdrop-filter: blur(24px) saturate(1.55);
-    -webkit-backdrop-filter: blur(24px) saturate(1.55);
   }
   .live-screen__stats .live-kpi-card__value {
     font-size: clamp(2rem, 3vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
   }
   .live-screen__stats .live-kpi-card__label {
     font-size: clamp(0.95rem, 1.2vw, 1.15rem);
+    font-weight: 700;
+    color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
   }
   .live-screen .zad-kpi {
     padding: clamp(1rem, 1.5vw, 1.5rem);
@@ -1713,7 +1711,8 @@ textarea.input-field {
   .live-screen__stats {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  .live-screen .zad-kpi__value {
+  .live-screen .zad-kpi__value,
+  .live-screen__stats .live-kpi-card__value {
     font-size: clamp(2.4rem, 2.8vw, 3.2rem);
   }
 }
