@@ -1,7 +1,16 @@
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "@/generated/prisma/client";
+import { Prisma, PrismaClient } from "@/generated/prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as {
+  prisma?: PrismaClient;
+  /** يتغيّر بعد prisma generate — لإبطال الـ singleton القديم */
+  prismaFieldRev?: string;
+};
+
+/** بصمة حقول ExhibitionInvite — O(f log f) عند التحميل فقط */
+const PRISMA_FIELD_REV = Object.keys(Prisma.ExhibitionInviteScalarFieldEnum)
+  .sort()
+  .join(",");
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
@@ -12,8 +21,19 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+function getPrisma(): PrismaClient {
+  if (
+    globalForPrisma.prisma &&
+    globalForPrisma.prismaFieldRev === PRISMA_FIELD_REV
+  ) {
+    return globalForPrisma.prisma;
+  }
+  const client = createPrismaClient();
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+    globalForPrisma.prismaFieldRev = PRISMA_FIELD_REV;
+  }
+  return client;
 }
+
+export const prisma = getPrisma();
