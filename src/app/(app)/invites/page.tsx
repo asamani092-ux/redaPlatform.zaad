@@ -221,10 +221,10 @@ export default function InvitesPage() {
         inviteDate,
       }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({} as { error?: string }));
     setBusy(false);
     if (!res.ok) {
-      setMsg(json.error || "فشلت الدعوة");
+      setMsg(json.error || `فشلت الدعوة (${res.status})`);
       setMsgError(true);
       return;
     }
@@ -284,11 +284,11 @@ export default function InvitesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ beneficiaryIds: ids, inviteDate }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({} as { error?: string }));
     setBusy(false);
     setResendingId(null);
     if (!res.ok) {
-      setMsg(json.error || "فشلت إعادة الإرسال");
+      setMsg(json.error || `فشلت إعادة الإرسال (${res.status})`);
       setMsgError(true);
       return;
     }
