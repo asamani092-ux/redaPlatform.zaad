@@ -34,7 +34,7 @@ export function exhibitionKpisToSections(kpis: ExhibitionKpiSections): KpiSectio
   ];
 }
 
-/** شبكة KPI مسطحة (التصميم السابق) — O(1) */
+/** شبكة KPI مسطحة للداشبورد — O(1) */
 export function exhibitionKpisToTiles(kpis: ExhibitionKpiSections): KpiTile[] {
   return exhibitionKpisToSections(kpis).flatMap((section) =>
     section.items.map((item) => ({
@@ -42,4 +42,28 @@ export function exhibitionKpisToTiles(kpis: ExhibitionKpiSections): KpiTile[] {
       value: Number(item.value),
     })),
   );
+}
+
+/** نصوص بطاقات العرض الحي — عدّل هنا فقط */
+export const LIVE_KPI_LABELS = {
+  attendanceFamilies: "الأسر",
+  attendanceIndividuals: "الأفراد",
+  clothesPieces: "الملابس",
+  fabricMeters: "الأقمشة",
+  partnerAssociations: "الجمعيات الشريكة",
+  associationFamilies: "الأسر المستفيدة من الجمعيات",
+  volunteers: "المتطوعون",
+} as const;
+
+/** بطاقات العرض الحي بلا تصنيف (حضور/مصروف/…) — O(1) */
+export function exhibitionKpisToLiveTiles(kpis: ExhibitionKpiSections): KpiTile[] {
+  return [
+    { label: LIVE_KPI_LABELS.attendanceFamilies, value: kpis.attendance.families },
+    { label: LIVE_KPI_LABELS.attendanceIndividuals, value: kpis.attendance.individuals },
+    { label: LIVE_KPI_LABELS.clothesPieces, value: kpis.dispensed.clothesPieces },
+    { label: LIVE_KPI_LABELS.fabricMeters, value: kpis.dispensed.fabricMeters },
+    { label: LIVE_KPI_LABELS.partnerAssociations, value: kpis.partnerships.partnerAssociations },
+    { label: LIVE_KPI_LABELS.associationFamilies, value: kpis.partnerships.associationFamilies },
+    { label: LIVE_KPI_LABELS.volunteers, value: kpis.volunteers.count },
+  ];
 }

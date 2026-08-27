@@ -1536,6 +1536,14 @@ textarea.input-field {
   gap: 0.75rem;
   margin-bottom: 1.25rem;
 }
+.live-screen .live-kpi-card {
+  background: color-mix(in srgb, var(--surface-raised, #fff) 58%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 2px dashed color-mix(in srgb, var(--brand-primary, #7a1234) 72%, #c62828);
+  border-radius: var(--radius-lg, 0.85rem);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-primary, #7a1234) 8%, transparent);
+}
 .live-screen .kpi-sections {
   gap: clamp(0.85rem, 1.2vw, 1.25rem);
 }
