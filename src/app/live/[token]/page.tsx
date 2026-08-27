@@ -17,7 +17,6 @@ type LivePayload = {
     completionRate: number;
   };
   exhibitionKpis: ExhibitionKpiSections;
-  byAssociationShares: ShareRow[];
   byNeighborhoodShares: ShareRow[];
   byHouseholdSizeShares: ShareRow[];
 };
