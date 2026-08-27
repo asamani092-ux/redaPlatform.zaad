@@ -55,6 +55,32 @@ export const LIVE_KPI_LABELS = {
   volunteers: "المتطوعون",
 } as const;
 
+/**
+ * مصدر كل مؤشر (المنطق في buildExhibitionKpiSections — src/lib/exhibition-kpis.ts)
+ * | المؤشر | المصدر |
+ * | الأسر | عدد سجلات Attendance للمعرض النشط (سجل حضور = أسرة) |
+ * | الأفراد | مجموع (1 + dependentsCount) لكل حاضر من Beneficiary |
+ * | الملابس | مجموع كميات DispenseLine حيث نوع=ملابس أو وحدة=قطعة |
+ * | الأقمشة | مجموع كميات DispenseLine حيث نوع=قماش أو وحدة=متر |
+ * | الجمعيات الشريكة | عدد الجمعيات المميزة (associationId أو associationOther) بين الحاضرين |
+ * | الأسر المستفيدة من الجمعيات | عدد الحاضرين المرتبطين بجمعية (معرّف أو نص آخر) |
+ * | المتطوعون | عدد سجلات Volunteer للمعرض النشط |
+ */
+export const LIVE_KPI_SOURCES: Record<keyof typeof LIVE_KPI_LABELS, string> = {
+  attendanceFamilies: "جدول Attendance — عدد سجلات الحضور للمعرض",
+  attendanceIndividuals:
+    "جدول Attendance + Beneficiary.dependentsCount — مجموع أفراد الأسر الحاضرة",
+  clothesPieces:
+    "جدول DispenseLine + InventoryItem.attributes (type=ملابس أو unit=قطعة) — مجموع الكميات المصروفة",
+  fabricMeters:
+    "جدول DispenseLine + InventoryItem.attributes (type=قماش أو unit=متر) — مجموع الأمتار المصروفة",
+  partnerAssociations:
+    "جدول Attendance + Beneficiary.associationId / associationOther — عدد الجمعيات المميزة بين الحاضرين",
+  associationFamilies:
+    "جدول Attendance + Beneficiary — عدد الأسر الحاضرة المرتبطة بجمعية",
+  volunteers: "جدول Volunteer — عدد المتطوعين المسجّلين في المعرض النشط",
+};
+
 /** بطاقات العرض الحي بلا تصنيف (حضور/مصروف/…) — O(1) */
 export function exhibitionKpisToLiveTiles(kpis: ExhibitionKpiSections): KpiTile[] {
   return [

@@ -27,7 +27,10 @@ function dispenseKind(attrs: Record<string, unknown>): "clothes" | "fabric" | "o
   return "other";
 }
 
-/** مؤشرات المعرض المجمّعة للداشبورد والعرض الحي — Time O(a+d)، Space O(a) */
+/** مؤشرات المعرض المجمّعة للداشبورد والعرض الحي — Time O(a+d)، Space O(a)
+ *  الحساب: src/lib/exhibition-kpis.ts
+ *  النصوص: src/lib/exhibition-kpi-labels.ts (LIVE_KPI_LABELS / LIVE_KPI_SOURCES)
+ */
 export async function buildExhibitionKpiSections(
   exhibitionId: string,
 ): Promise<ExhibitionKpiSections> {
