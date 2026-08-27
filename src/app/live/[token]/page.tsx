@@ -18,7 +18,6 @@ type LivePayload = {
   };
   exhibitionKpis: ExhibitionKpiSections;
   byNeighborhoodShares: ShareRow[];
-  byHouseholdSizeShares: ShareRow[];
 };
 
 export default function LiveDisplayPage() {
@@ -91,7 +90,6 @@ export default function LiveDisplayPage() {
       </section>
 
       <section className="live-screen__grid">
-        <SharePanel title="نسب الجمعيات" rows={data.byAssociationShares} />
         <SharePanel title="نسب الأحياء" rows={data.byNeighborhoodShares} />
         <SharePanel title="توزيع الأسر حسب عدد الأفراد" rows={data.byHouseholdSizeShares} />
       </section>
