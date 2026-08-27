@@ -154,7 +154,17 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ data: fresh, thanksStatus, thanksError }, { status: 201 });
   } catch (e) {
+    const code =
+      e && typeof e === "object" && "code" in e
+        ? String((e as { code: unknown }).code)
+        : "";
     const msg = e instanceof Error ? e.message : "";
+    if (code === "P2003" && msg.includes("Volunteer_createdById_fkey")) {
+      return NextResponse.json(
+        { error: "انتهت الجلسة — سجّل الدخول مجدداً" },
+        { status: 401 },
+      );
+    }
     if (msg.includes("Unique constraint") || msg.includes("Volunteer_exhibitionId_nationalId")) {
       return NextResponse.json(
         { error: "متطوع بنفس رقم الهوية مسجّل في هذا المعرض" },

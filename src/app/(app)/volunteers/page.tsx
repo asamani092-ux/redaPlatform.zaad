@@ -101,7 +101,11 @@ export default function VolunteersPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        showFormMsg(json.error || "فشل الحفظ", true);
+        const err = json.error || "فشل الحفظ";
+        showFormMsg(err, true);
+        if (res.status === 401) {
+          window.location.href = "/login?callbackUrl=/volunteers";
+        }
         return;
       }
 
