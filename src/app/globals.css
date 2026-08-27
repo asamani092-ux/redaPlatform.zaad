@@ -1503,6 +1503,10 @@ textarea.input-field {
   gap: 1rem;
   margin-bottom: 1.25rem;
 }
+.live-screen__header--title-only {
+  justify-content: center;
+  margin-bottom: clamp(1.5rem, 2.5vw, 2.5rem);
+}
 .live-screen__brand {
   margin: 0;
   font-weight: 800;
@@ -1514,6 +1518,13 @@ textarea.input-field {
   margin: 0.2rem 0 0;
   font-size: clamp(1.6rem, 3vw, 2.4rem);
   font-weight: 800;
+}
+.live-screen__title--brand {
+  margin: 0;
+  color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  text-align: center;
+  width: 100%;
 }
 .live-screen__sub {
   margin: 0.25rem 0 0;

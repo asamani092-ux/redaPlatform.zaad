@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { KpiCard } from "@/components/ui/KpiCard";
-import { Progress } from "@/components/ui/Progress";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { exhibitionKpisToLiveTiles } from "@/lib/exhibition-kpi-labels";
@@ -11,10 +10,6 @@ import type { ExhibitionKpiSections } from "@/lib/exhibition-kpis";
 
 type LivePayload = {
   exhibition: { id: string; name: string; location: string | null; active: boolean };
-  updatedAt: string;
-  stats: {
-    completionRate: number;
-  };
   exhibitionKpis: ExhibitionKpiSections;
 };
 
@@ -73,20 +68,8 @@ export default function LiveDisplayPage() {
 
   return (
     <main className="live-screen zad-root">
-      <header className="live-screen__header">
-        <div>
-          <p className="live-screen__brand">منصة رداء</p>
-          <h1 className="live-screen__title">{data.exhibition.name}</h1>
-          {data.exhibition.location ? (
-            <p className="live-screen__sub">{data.exhibition.location}</p>
-          ) : null}
-        </div>
-        <div className="live-screen__meta">
-          <Progress value={data.stats.completionRate} label={`نسبة الإنجاز ${data.stats.completionRate}%`} />
-          <div className="live-screen__sub" style={{ marginTop: "var(--space-2)" }}>
-            تحديث: {new Date(data.updatedAt).toLocaleTimeString("ar-SA")}
-          </div>
-        </div>
+      <header className="live-screen__header live-screen__header--title-only">
+        <h1 className="live-screen__title live-screen__title--brand">معرض رداء</h1>
       </header>
 
       <section className="live-screen__stats">
