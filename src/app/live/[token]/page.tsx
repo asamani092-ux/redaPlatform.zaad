@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { AttrChips } from "@/components/AttrChips";
 import { Progress } from "@/components/ui/Progress";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -17,12 +16,6 @@ type LivePayload = {
     completionRate: number;
   };
   exhibitionKpis: ExhibitionKpiSections;
-  topItems: Array<{
-    inventoryItemId: string;
-    quantity: number;
-    attributes: Record<string, unknown>;
-  }>;
-  attributeLabels?: Record<string, string>;
 };
 
 export default function LiveDisplayPage() {
@@ -87,28 +80,6 @@ export default function LiveDisplayPage() {
       </header>
 
       <KpiSections sections={exhibitionKpisToSections(data.exhibitionKpis)} />
-
-      <section className="live-screen__grid" style={{ marginTop: "var(--space-4)" }}>
-        <div className="live-screen__panel">
-          <h2>أعلى 5 قطع مصروفة</h2>
-          <ul>
-            {data.topItems.map((t, i) => (
-              <li key={t.inventoryItemId}>
-                <div className="live-screen__row">
-                  <span>#{i + 1}</span>
-                  <strong>{t.quantity}</strong>
-                </div>
-                <AttrChips attributes={t.attributes} labels={data.attributeLabels} />
-              </li>
-            ))}
-            {!data.topItems.length ? (
-              <li>
-                <EmptyState title="لا بيانات بعد" />
-              </li>
-            ) : null}
-          </ul>
-        </div>
-      </section>
     </main>
   );
 }
