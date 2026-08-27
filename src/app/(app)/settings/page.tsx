@@ -669,8 +669,7 @@ export default function SettingsPage() {
             </select>
             {wa.provider === "zad" ? (
               <p className="field-hint" style={{ marginTop: 8 }}>
-                معرّفات القوالب من متغيرات البيئة: INVITE / THANKS / VOLUNTEER_THANKS
-                (اختياري — نفس THANKS) / VOLUNTEER_THANKS_TAGLINE / SURVEY. التوكن = apiKey.
+                معرّفات القوالب من متغيرات البيئة: INVITE / THANKS / SURVEY. التوكن = apiKey.
               </p>
             ) : null}
           </div>

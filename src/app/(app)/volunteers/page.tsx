@@ -11,7 +11,6 @@ type Volunteer = {
   name: string;
   mobile: string;
   nationalId: string;
-  thanksSentAt: string | null;
   tasks: VolunteerTask[];
 };
 
@@ -20,7 +19,6 @@ const emptyForm = {
   mobile: "",
   nationalId: "",
   taskIds: [] as string[],
-  sendThanks: true,
 };
 
 function taskNames(volunteer: Volunteer): string {
@@ -109,64 +107,13 @@ export default function VolunteersPage() {
         return;
       }
 
-      const thanksFailed =
-        form.sendThanks &&
-        json.thanksStatus &&
-        json.thanksStatus !== "SENT" &&
-        json.thanksStatus !== "STUBBED";
-      const thanksNote = form.sendThanks
-        ? thanksFailed
-          ? ` — فشل واتساب: ${json.thanksError || json.thanksStatus}`
-          : ` — واتساب: ${json.thanksStatus || "تم"}`
-        : "";
-
       resetForm();
       setOpen(false);
       showFormMsg("");
-      showPageMsg(
-        thanksFailed
-          ? `تمت إضافة المتطوع${thanksNote}`
-          : form.sendThanks
-            ? `تمت الإضافة${thanksNote}`
-            : "تمت إضافة المتطوع",
-        thanksFailed,
-      );
+      showPageMsg("تمت إضافة المتطوع");
       await load();
     } catch {
       showFormMsg("تعذر الاتصال بالخادم — حاول مجدداً", true);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function sendThanks(id: string) {
-    if (busy) return;
-    setBusy(true);
-    showPageMsg("");
-    try {
-      const res = await fetch("/api/volunteers", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, sendThanks: true }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        showPageMsg(json.error || "فشل", true);
-        return;
-      }
-      const failed =
-        json.thanksStatus &&
-        json.thanksStatus !== "SENT" &&
-        json.thanksStatus !== "STUBBED";
-      showPageMsg(
-        failed
-          ? `فشل إرسال الشكر: ${json.thanksError || json.thanksStatus}`
-          : `تم إرسال الشكر (${json.thanksStatus ?? "ok"})`,
-        failed,
-      );
-      await load();
-    } catch {
-      showPageMsg("تعذر الاتصال بالخادم", true);
     } finally {
       setBusy(false);
     }
@@ -217,7 +164,6 @@ export default function VolunteersPage() {
                 <th>الهوية</th>
                 <th>الجوال</th>
                 <th>المهام</th>
-                <th>الشكر</th>
                 <th>إجراءات</th>
               </tr>
             </thead>
@@ -228,31 +174,20 @@ export default function VolunteersPage() {
                   <td dir="ltr">{r.nationalId}</td>
                   <td dir="ltr">{r.mobile}</td>
                   <td>{taskNames(r)}</td>
-                  <td>{r.thanksSentAt ? "أُرسل" : "—"}</td>
                   <td>
-                    <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        disabled={busy}
-                        onClick={() => void sendThanks(r.id)}
-                      >
-                        شكر واتساب
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={() => void remove(r.id, r.name)}
-                      >
-                        حذف
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => void remove(r.id, r.name)}
+                    >
+                      حذف
+                    </button>
                   </td>
                 </tr>
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={6} className="empty">
+                  <td colSpan={5} className="empty">
                     لا متطوعين بعد — اضغط «إضافة متطوع» للبدء
                   </td>
                 </tr>
@@ -342,17 +277,6 @@ export default function VolunteersPage() {
                   </label>
                 ))}
               </div>
-            </div>
-            <div className="full" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <input
-                id="sendThanks"
-                type="checkbox"
-                checked={form.sendThanks}
-                onChange={(e) => setForm((f) => ({ ...f, sendThanks: e.target.checked }))}
-              />
-              <label htmlFor="sendThanks" className="label-field" style={{ margin: 0 }}>
-                إرسال رسالة شكر عبر واتساب عند الحفظ
-              </label>
             </div>
             <div className="form-actions full">
               <button
