@@ -48,7 +48,7 @@ export function exhibitionKpisToTiles(kpis: ExhibitionKpiSections): KpiTile[] {
 export const LIVE_KPI_LABELS = {
   attendanceFamilies: "الأسر",
   attendanceIndividuals: "الأفراد",
-  clothesPieces: "الملابس",
+  clothesPieces: "الملابس - قطعة",
   fabricMeters: "الأقمشة - متر",
   partnerAssociations: "الجمعيات الشريكة",
   associationFamilies: "الأسر المستفيدة من الجمعيات",

@@ -1553,13 +1553,16 @@ textarea.input-field {
   line-height: 1;
 }
 .live-screen__stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.75rem;
   margin-bottom: 1.25rem;
 }
 /* بطاقة بلا خلفية — حجم العرض الحي السابق + نص خمري */
 .live-screen__stats .live-kpi-card {
+  flex: 0 1 12rem;
+  min-width: 9.5rem;
   display: grid;
   gap: var(--space-2, 0.5rem);
   padding: var(--space-4, 1rem);
@@ -1662,11 +1665,11 @@ textarea.input-field {
     font-size: clamp(1rem, 1.3vw, 1.25rem);
   }
   .live-screen__stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: clamp(0.85rem, 1.2vw, 1.25rem);
     margin-bottom: clamp(1.25rem, 2vw, 2rem);
   }
   .live-screen__stats .live-kpi-card {
+    flex: 0 1 clamp(12rem, 16vw, 15rem);
     padding: clamp(1rem, 1.5vw, 1.5rem);
   }
   .live-screen__stats .live-kpi-card__value {
