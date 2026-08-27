@@ -1536,13 +1536,16 @@ textarea.input-field {
   gap: 0.75rem;
   margin-bottom: 1.25rem;
 }
-.live-screen .live-kpi-card {
-  background: color-mix(in srgb, var(--surface-raised, #fff) 58%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 2px dashed color-mix(in srgb, var(--brand-primary, #7a1234) 72%, #c62828);
+/* زجاج شفاف — يتجاوز خلفية zad-kpi الافتراضية */
+.live-screen__stats .zad-kpi.live-kpi-card {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 2px dashed color-mix(in srgb, var(--brand-primary, #7a1234) 78%, #c62828);
   border-radius: var(--radius-lg, 0.85rem);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-primary, #7a1234) 8%, transparent);
+  box-shadow:
+    0 8px 32px color-mix(in srgb, var(--brand-primary, #7a1234) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 .live-screen .kpi-sections {
   gap: clamp(0.85rem, 1.2vw, 1.25rem);
@@ -1627,6 +1630,11 @@ textarea.input-field {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: clamp(0.85rem, 1.2vw, 1.25rem);
     margin-bottom: clamp(1.25rem, 2vw, 2rem);
+  }
+  .live-screen__stats .zad-kpi.live-kpi-card {
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
   }
   .live-screen .zad-kpi {
     padding: clamp(1rem, 1.5vw, 1.5rem);
