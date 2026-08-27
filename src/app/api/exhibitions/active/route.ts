@@ -14,6 +14,8 @@ export async function GET() {
       id: active.id,
       name: active.name,
       location: active.location,
+      startsAt: active.startsAt,
+      endsAt: active.endsAt,
       active: active.active,
     },
   });

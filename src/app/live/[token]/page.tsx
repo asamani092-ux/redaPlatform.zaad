@@ -2,37 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { AttrChips } from "@/components/AttrChips";
-import { KpiCard } from "@/components/ui/KpiCard";
-import { Progress } from "@/components/ui/Progress";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import type { ShareRow } from "@/lib/report-metrics";
+import { exhibitionKpisToLiveTiles } from "@/lib/exhibition-kpi-labels";
+import type { ExhibitionKpiSections } from "@/lib/exhibition-kpis";
 
 type LivePayload = {
   exhibition: { id: string; name: string; location: string | null; active: boolean };
   updatedAt: string;
-  stats: {
-    totalBeneficiaries: number;
-    invited: number;
-    attended: number;
-    received: number;
-    remainingToReceive: number;
-    piecesDispensed: number;
-    exceptions: number;
-    completionRate: number;
-    beneficiaryFamilies: number;
-    totalIndividuals: number;
-  };
-  byAssociationShares: ShareRow[];
-  byNeighborhoodShares: ShareRow[];
-  byHouseholdSizeShares: ShareRow[];
-  topItems: Array<{
-    inventoryItemId: string;
-    quantity: number;
-    attributes: Record<string, unknown>;
-  }>;
-  attributeLabels?: Record<string, string>;
+  exhibitionKpis: ExhibitionKpiSections;
 };
 
 export default function LiveDisplayPage() {
@@ -46,14 +24,22 @@ export default function LiveDisplayPage() {
     const res = await fetch(`/api/live/${encodeURIComponent(token)}`, {
       cache: "no-store",
     });
-    const json = await res.json();
+    const raw = await res.text();
+    let json: Record<string, unknown> = {};
+    try {
+      json = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    } catch {
+      setError("تعذر تحميل البيانات — أعد تشغيل الخادم أو راجع السجلات");
+      setData(null);
+      return;
+    }
     if (!res.ok) {
-      setError(json.error || "تعذر التحميل");
+      setError(String(json.error || "تعذر التحميل"));
       setData(null);
       return;
     }
     setError("");
-    setData(json);
+    setData(json as unknown as LivePayload);
   }, [token]);
 
   useEffect(() => {
@@ -78,93 +64,37 @@ export default function LiveDisplayPage() {
     );
   }
 
-  const { stats } = data;
+  const tiles = exhibitionKpisToLiveTiles(data.exhibitionKpis);
 
   return (
     <main className="live-screen zad-root">
       <header className="live-screen__header">
-        <div>
-          <p className="live-screen__brand">منصة رداء</p>
-          <h1 className="live-screen__title">{data.exhibition.name}</h1>
-          {data.exhibition.location ? (
-            <p className="live-screen__sub">{data.exhibition.location}</p>
-          ) : null}
+        <div className="live-screen__brand-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="live-screen__logo"
+            src="/zad-presentation/assets/logo-full.png"
+            alt="الزاد"
+            width={96}
+            height={58}
+          />
+          <h1 className="live-screen__title live-screen__title--brand">معرض رداء</h1>
         </div>
         <div className="live-screen__meta">
-          <Progress value={stats.completionRate} label={`نسبة الإنجاز ${stats.completionRate}%`} />
-          <div className="live-screen__sub" style={{ marginTop: "var(--space-2)" }}>
+          <div className="live-screen__sub">
             تحديث: {new Date(data.updatedAt).toLocaleTimeString("ar-SA")}
           </div>
         </div>
       </header>
 
       <section className="live-screen__stats">
-        {[
-          ["إجمالي المستفيدين", stats.totalIndividuals],
-          ["الأسر المستفيدة", stats.beneficiaryFamilies],
-          ["المدعوون", stats.invited],
-          ["الحاضرون", stats.attended],
-          ["استلموا", stats.received],
-          ["متبقٍ للاستلام", stats.remainingToReceive],
-          ["القطع المصروفة", stats.piecesDispensed],
-          ["حضور استثنائي", stats.exceptions],
-        ].map(([label, value]) => (
-          <KpiCard key={String(label)} label={String(label)} value={value as number | string} />
+        {tiles.map((tile) => (
+          <div key={tile.label} className="live-kpi-card">
+            <div className="live-kpi-card__value">{tile.value}</div>
+            <div className="live-kpi-card__label">{tile.label}</div>
+          </div>
         ))}
-      </section>
-
-      <section className="live-screen__grid">
-        <SharePanel title="نسب الجمعيات" rows={data.byAssociationShares} />
-        <SharePanel title="نسب الأحياء" rows={data.byNeighborhoodShares} />
-        <SharePanel title="توزيع الأسر حسب عدد الأفراد" rows={data.byHouseholdSizeShares} />
-        <div className="live-screen__panel">
-          <h2>أعلى 5 قطع مصروفة</h2>
-          <ul>
-            {data.topItems.map((t, i) => (
-              <li key={t.inventoryItemId}>
-                <div className="live-screen__row">
-                  <span>#{i + 1}</span>
-                  <strong>{t.quantity}</strong>
-                </div>
-                <AttrChips attributes={t.attributes} labels={data.attributeLabels} />
-              </li>
-            ))}
-            {!data.topItems.length ? (
-              <li>
-                <EmptyState title="لا بيانات بعد" />
-              </li>
-            ) : null}
-          </ul>
-        </div>
       </section>
     </main>
-  );
-}
-
-function SharePanel({ title, rows }: { title: string; rows: ShareRow[] }) {
-  return (
-    <div className="live-screen__panel">
-      <h2>{title}</h2>
-      <ul>
-        {rows.slice(0, 8).map((r) => (
-          <li key={r.key}>
-            <div className="live-screen__row">
-              <span>{r.key}</span>
-              <strong>
-                {r.count} ({r.percent}%)
-              </strong>
-            </div>
-            <div className="live-screen__bar" aria-hidden>
-              <span style={{ width: `${Math.min(100, r.percent)}%` }} />
-            </div>
-          </li>
-        ))}
-        {!rows.length ? (
-          <li>
-            <EmptyState title="لا بيانات" />
-          </li>
-        ) : null}
-      </ul>
-    </div>
   );
 }

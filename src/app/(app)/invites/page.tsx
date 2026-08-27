@@ -19,10 +19,15 @@ type Row = {
   dependentsCount?: number;
   statusLabel?: string;
   qrToken?: string | null;
+  inviteDate?: string | null;
   whatsappStatus?: string | null;
   whatsappStatusLabel?: string | null;
   whatsappError?: string | null;
 };
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 /**
  * الدعوات = إنشاء رمز QR + إرساله واتساباً.
@@ -43,6 +48,9 @@ export default function InvitesPage() {
   const [invitedTotal, setInvitedTotal] = useState(0);
   const [waLogOpen, setWaLogOpen] = useState(false);
   const [uninviteStep, setUninviteStep] = useState<0 | 1 | 2>(0);
+  const [inviteConfirmOpen, setInviteConfirmOpen] = useState(false);
+  const [resendConfirmIds, setResendConfirmIds] = useState<string[] | null>(null);
+  const [inviteDate, setInviteDate] = useState(todayIsoDate);
   const toast = useToast();
 
   async function loadPick(search = q, p = 1) {
@@ -93,6 +101,7 @@ export default function InvitesPage() {
       (json.data ?? []).map(
         (inv: {
           qrToken: string;
+          inviteDate?: string | null;
           whatsappStatus?: string | null;
           whatsappStatusLabel?: string | null;
           whatsappError?: string | null;
@@ -111,6 +120,9 @@ export default function InvitesPage() {
           dependentsCount: inv.beneficiary.dependentsCount,
           statusLabel: "مدعو",
           qrToken: inv.qrToken,
+          inviteDate: inv.inviteDate
+            ? String(inv.inviteDate).slice(0, 10)
+            : null,
           whatsappStatus: inv.whatsappStatus ?? null,
           whatsappStatusLabel: inv.whatsappStatusLabel ?? "لم يُرسل",
           whatsappError: inv.whatsappError ?? null,
@@ -134,6 +146,13 @@ export default function InvitesPage() {
       .then((r) => r.json())
       .then((j) => {
         if (typeof j.total === "number") setInvitedTotal(j.total);
+      })
+      .catch(() => undefined);
+    fetch("/api/exhibitions/active")
+      .then((r) => r.json())
+      .then((j) => {
+        const start = j.active?.startsAt ? String(j.active.startsAt).slice(0, 10) : "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(start)) setInviteDate(start);
       })
       .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -180,25 +199,50 @@ export default function InvitesPage() {
     });
   }
 
+  /** فتح تأكيد التاريخ قبل الإرسال — O(1) */
+  function startInviteConfirm() {
+    if (!selectedIds.length) {
+      setMsg("حدد مستفيدين أولاً");
+      setMsgError(true);
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inviteDate)) {
+      setMsg("حدد تاريخ الحضور للدعوة");
+      setMsgError(true);
+      return;
+    }
+    setInviteConfirmOpen(true);
+  }
+
   async function inviteAndSend() {
     if (!selectedIds.length) {
       setMsg("حدد مستفيدين أولاً");
       setMsgError(true);
       return;
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inviteDate)) {
+      setMsg("حدد تاريخ الحضور للدعوة");
+      setMsgError(true);
+      return;
+    }
     if (busy) return;
+    setInviteConfirmOpen(false);
     setBusy(true);
     setMsg("");
     setMsgError(false);
     const res = await fetch("/api/invites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ beneficiaryIds: selectedIds, sendWhatsApp: true }),
+      body: JSON.stringify({
+        beneficiaryIds: selectedIds,
+        sendWhatsApp: true,
+        inviteDate,
+      }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({} as { error?: string }));
     setBusy(false);
     if (!res.ok) {
-      setMsg(json.error || "فشلت الدعوة");
+      setMsg(json.error || `فشلت الدعوة (${res.status})`);
       setMsgError(true);
       return;
     }
@@ -242,8 +286,25 @@ export default function InvitesPage() {
     setUninviteStep(1);
   }
 
+  /** فتح تأكيد التاريخ قبل إعادة الإرسال — O(1) */
+  function startResendConfirm(ids: string[]) {
+    if (!ids.length || busy) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inviteDate)) {
+      setMsg("حدد تاريخ الحضور قبل إعادة الإرسال");
+      setMsgError(true);
+      return;
+    }
+    setResendConfirmIds(ids);
+  }
+
   async function resendWhatsApp(ids: string[]) {
     if (!ids.length || busy) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inviteDate)) {
+      setMsg("حدد تاريخ الحضور قبل إعادة الإرسال");
+      setMsgError(true);
+      return;
+    }
+    setResendConfirmIds(null);
     setBusy(true);
     setResendingId(ids.length === 1 ? ids[0] : "bulk");
     setMsg("");
@@ -251,13 +312,13 @@ export default function InvitesPage() {
     const res = await fetch("/api/invites/resend", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ beneficiaryIds: ids }),
+      body: JSON.stringify({ beneficiaryIds: ids, inviteDate }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({} as { error?: string }));
     setBusy(false);
     setResendingId(null);
     if (!res.ok) {
-      setMsg(json.error || "فشلت إعادة الإرسال");
+      setMsg(json.error || `فشلت إعادة الإرسال (${res.status})`);
       setMsgError(true);
       return;
     }
@@ -296,7 +357,7 @@ export default function InvitesPage() {
                 type="button"
                 disabled={busy || !selectedIds.length}
                 title={!selectedIds.length ? "حدد مستفيدين من الجدول أولاً" : undefined}
-                onClick={inviteAndSend}
+                onClick={startInviteConfirm}
               >
                 {busy ? "جاري الإرسال…" : `دعوة وإرسال QR واتساب (${selectedIds.length})`}
               </button>
@@ -307,7 +368,7 @@ export default function InvitesPage() {
                   type="button"
                   disabled={busy || !selectedIds.length}
                   title={!selectedIds.length ? "حدد مدعوين لإعادة الإرسال" : undefined}
-                  onClick={() => void resendWhatsApp(selectedIds)}
+                  onClick={() => startResendConfirm(selectedIds)}
                 >
                   {busy && resendingId === "bulk"
                     ? "جاري إعادة الإرسال…"
@@ -361,6 +422,18 @@ export default function InvitesPage() {
 
       <section className="panel">
         <div className="toolbar">
+          <label className="toolbar-label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span>تاريخ الحضور</span>
+            <input
+              className="input-field"
+              type="date"
+              value={inviteDate}
+              onChange={(e) => setInviteDate(e.target.value)}
+              dir="ltr"
+              aria-label="تاريخ الحضور للدعوة"
+              title="يُرسل في واتساب كـ {{date}}"
+            />
+          </label>
           <input
             className="input-field"
             value={q}
@@ -412,6 +485,7 @@ export default function InvitesPage() {
                 <th>الجوال</th>
                 <th>عدد التابعين</th>
                 <th>الحالة</th>
+                {view === "invited" ? <th>تاريخ الحضور</th> : null}
                 {view === "invited" ? <th>إرسال واتساب</th> : null}
                 <th>QR</th>
                 {view === "invited" ? <th>إجراءات</th> : null}
@@ -444,6 +518,11 @@ export default function InvitesPage() {
                   <td data-label="الحالة">
                     <span className="badge badge-muted">{r.statusLabel ?? "—"}</span>
                   </td>
+                  {view === "invited" ? (
+                    <td data-label="تاريخ الحضور" dir="ltr">
+                      {r.inviteDate ?? "—"}
+                    </td>
+                  ) : null}
                   {view === "invited" ? (
                     <td data-label="إرسال واتساب">
                       <Chip
@@ -487,7 +566,7 @@ export default function InvitesPage() {
                           type="button"
                           className="btn-secondary btn-sm"
                           disabled={busy}
-                          onClick={() => void resendWhatsApp([r.id])}
+                          onClick={() => startResendConfirm([r.id])}
                         >
                           {resendingId === r.id ? "جاري…" : "إعادة إرسال"}
                         </button>
@@ -498,7 +577,7 @@ export default function InvitesPage() {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={view === "invited" ? 10 : 8}>
+                  <td colSpan={view === "invited" ? 11 : 8}>
                     <EmptyState
                       title={view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
                       body={
@@ -523,6 +602,26 @@ export default function InvitesPage() {
         />
       </section>
 
+      <ConfirmDialog
+        open={inviteConfirmOpen}
+        title="تأكيد تاريخ الحضور"
+        body={`سيتم إرسال الدعوة لـ ${selectedIds.length} مستفيد بتاريخ الحضور ${inviteDate}. تأكد أن التاريخ صحيح قبل الإرسال.`}
+        confirmLabel="نعم، أرسل الدعوة"
+        busy={busy}
+        onClose={() => setInviteConfirmOpen(false)}
+        onConfirm={() => void inviteAndSend()}
+      />
+      <ConfirmDialog
+        open={resendConfirmIds !== null}
+        title="تأكيد تاريخ الحضور"
+        body={`سيتم إعادة إرسال واتساب لـ ${resendConfirmIds?.length ?? 0} مستفيد بتاريخ الحضور ${inviteDate}. تأكد أن التاريخ صحيح.`}
+        confirmLabel="نعم، أعد الإرسال"
+        busy={busy}
+        onClose={() => setResendConfirmIds(null)}
+        onConfirm={() => {
+          if (resendConfirmIds?.length) void resendWhatsApp(resendConfirmIds);
+        }}
+      />
       <ConfirmDialog
         open={uninviteStep === 1}
         title="إلغاء الدعوة"

@@ -55,6 +55,8 @@ export async function sendInviteWhatsApp(input: {
   beneficiary: { id: string; name: string; mobile: string };
   qrToken: string;
   createdById: string;
+  /** تاريخ الحضور لهذا المدعو YYYY-MM-DD — يتجاوز startsAt إن وُجد */
+  inviteDate?: string | null;
 }): Promise<InviteSendResult> {
   const mobile = normalizeMobile(input.beneficiary.mobile);
   if (!isValidSaudiMobile(mobile)) {
@@ -86,7 +88,11 @@ export async function sendInviteWhatsApp(input: {
 
   const origin = appOrigin(input.req);
   const qrUrl = `${origin}/api/qr/public/${input.qrToken}`;
-  const dateStr = input.exhibition.startsAt?.toISOString().slice(0, 10) ?? "";
+  const inviteDateRaw = input.inviteDate?.trim() || "";
+  const dateStr =
+    /^\d{4}-\d{2}-\d{2}$/.test(inviteDateRaw)
+      ? inviteDateRaw
+      : input.exhibition.startsAt?.toISOString().slice(0, 10) ?? "";
   const location = input.exhibition.location ?? "";
   const tpl =
     input.exhibition.settings?.whatsappInviteTpl ??

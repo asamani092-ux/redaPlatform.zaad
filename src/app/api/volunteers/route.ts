@@ -17,6 +17,7 @@ const createSchema = z.object({
   mobile: z.string().min(9),
   nationalId: z.string().min(10).max(14),
   taskIds: z.array(z.string().min(1)).min(1, "اختر مهمة واحدة على الأقل"),
+  volunteerTeam: z.string().trim().min(1).optional().or(z.literal("")),
 });
 
 const patchSchema = z.object({
@@ -25,6 +26,7 @@ const patchSchema = z.object({
   mobile: z.string().min(9).optional(),
   nationalId: z.string().min(10).max(14).optional(),
   taskIds: z.array(z.string().min(1)).min(1).optional(),
+  volunteerTeam: z.string().trim().min(1).optional().or(z.literal("")),
 });
 
 /** تحقق مهام نشطة — Time O(t)، Space O(t) */
@@ -108,6 +110,7 @@ export async function POST(req: NextRequest) {
           name,
           mobile,
           nationalId,
+          volunteerTeam: body.data.volunteerTeam?.trim() || null,
           createdById: authz.userId,
         },
       });
@@ -186,6 +189,10 @@ export async function PATCH(req: NextRequest) {
           name: body.data.name?.trim(),
           mobile: body.data.mobile?.trim(),
           nationalId: body.data.nationalId?.trim(),
+          volunteerTeam:
+            body.data.volunteerTeam !== undefined
+              ? body.data.volunteerTeam?.trim() || null
+              : undefined,
         },
       });
       if (taskIds) {

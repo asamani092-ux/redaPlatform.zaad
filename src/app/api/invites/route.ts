@@ -17,7 +17,19 @@ const bulkSchema = z.object({
   beneficiaryIds: z.array(z.string()).min(1),
   /** افتراضي true — الدعوة بلا واتساب بلا فائدة تشغيلية */
   sendWhatsApp: z.boolean().optional().default(true),
+  /** تاريخ الحضور لهذه الدفعة YYYY-MM-DD */
+  inviteDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "صيغة التاريخ: YYYY-MM-DD")
+    .optional()
+    .nullable(),
 });
+
+/** تحويل YYYY-MM-DD إلى Date UTC ظهر — O(1) */
+function parseInviteDate(raw: string | null | undefined): Date | null {
+  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  return new Date(`${raw}T12:00:00.000Z`);
+}
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("invites:manage");
@@ -71,7 +83,7 @@ export async function POST(req: NextRequest) {
   const authz = await requirePermission("invites:manage");
   if ("error" in authz) return authz.error;
 
-  const body = bulkSchema.safeParse(await req.json());
+  const body = bulkSchema.safeParse(await req.json().catch(() => null));
   if (!body.success) {
     return NextResponse.json({ error: "حدد مستفيدين" }, { status: 400 });
   }
@@ -85,120 +97,135 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const uniqueIds = [...new Set(body.data.beneficiaryIds)];
 
-  const result = await prisma.$transaction(async (tx) => {
-    let invited = 0;
-    const tokens: Array<{ beneficiaryId: string; qrToken: string }> = [];
+  try {
+    const uniqueIds = [...new Set(body.data.beneficiaryIds)];
+    const inviteDate = parseInviteDate(body.data.inviteDate);
+    const inviteDateStr =
+      body.data.inviteDate?.trim() ||
+      exhibition.startsAt?.toISOString().slice(0, 10) ||
+      null;
 
-    for (const beneficiaryId of uniqueIds) {
-      const beneficiary = await tx.beneficiary.findUnique({ where: { id: beneficiaryId } });
-      if (!beneficiary) continue;
+    const result = await prisma.$transaction(async (tx) => {
+      let invited = 0;
+      const tokens: Array<{ beneficiaryId: string; qrToken: string }> = [];
 
-      const invite = await tx.exhibitionInvite.upsert({
-        where: {
-          exhibitionId_beneficiaryId: {
+      for (const beneficiaryId of uniqueIds) {
+        const beneficiary = await tx.beneficiary.findUnique({ where: { id: beneficiaryId } });
+        if (!beneficiary) continue;
+
+        const invite = await tx.exhibitionInvite.upsert({
+          where: {
+            exhibitionId_beneficiaryId: {
+              exhibitionId: exhibition.id,
+              beneficiaryId,
+            },
+          },
+          update: {
+            invited: true,
+            invitedAt: new Date(),
+            invitedById: authz.userId,
+            ...(inviteDate ? { inviteDate } : {}),
+          },
+          create: {
             exhibitionId: exhibition.id,
             beneficiaryId,
+            qrToken: randomUUID().replace(/-/g, ""),
+            invited: true,
+            invitedById: authz.userId,
+            inviteDate,
           },
-        },
-        update: {
-          invited: true,
-          invitedAt: new Date(),
-          invitedById: authz.userId,
-        },
-        create: {
-          exhibitionId: exhibition.id,
-          beneficiaryId,
-          qrToken: randomUUID().replace(/-/g, ""),
-          invited: true,
-          invitedById: authz.userId,
-        },
-      });
-      invited++;
-      tokens.push({ beneficiaryId, qrToken: invite.qrToken });
-    }
-    return { invited, tokens };
-  });
-
-  let whatsappSent = 0;
-  let whatsappFailed = 0;
-  let whatsappStubbed = 0;
-  const whatsappErrors: Array<{
-    beneficiaryId: string;
-    beneficiaryName: string;
-    mobile: string;
-    reason: string;
-  }> = [];
-
-  if (body.data.sendWhatsApp !== false) {
-    for (const t of result.tokens) {
-      const b = await prisma.beneficiary.findUnique({ where: { id: t.beneficiaryId } });
-      if (!b) continue;
-      const send = await sendInviteWhatsApp({
-        req,
-        exhibition,
-        beneficiary: b,
-        qrToken: t.qrToken,
-        createdById: authz.userId,
-      });
-      if (send.status === "FAILED") {
-        whatsappFailed += 1;
-        whatsappErrors.push({
-          beneficiaryId: send.beneficiaryId,
-          beneficiaryName: send.beneficiaryName,
-          mobile: send.mobile,
-          reason: send.reason || "فشل إرسال واتساب",
         });
-      } else if (send.status === "STUBBED") {
-        whatsappStubbed += 1;
-      } else {
-        whatsappSent += 1;
+        invited++;
+        tokens.push({ beneficiaryId, qrToken: invite.qrToken });
+      }
+      return { invited, tokens };
+    });
+
+    let whatsappSent = 0;
+    let whatsappFailed = 0;
+    let whatsappStubbed = 0;
+    const whatsappErrors: Array<{
+      beneficiaryId: string;
+      beneficiaryName: string;
+      mobile: string;
+      reason: string;
+    }> = [];
+
+    if (body.data.sendWhatsApp !== false) {
+      for (const t of result.tokens) {
+        const b = await prisma.beneficiary.findUnique({ where: { id: t.beneficiaryId } });
+        if (!b) continue;
+        const send = await sendInviteWhatsApp({
+          req,
+          exhibition,
+          beneficiary: b,
+          qrToken: t.qrToken,
+          createdById: authz.userId,
+          inviteDate: inviteDateStr,
+        });
+        if (send.status === "FAILED") {
+          whatsappFailed += 1;
+          whatsappErrors.push({
+            beneficiaryId: send.beneficiaryId,
+            beneficiaryName: send.beneficiaryName,
+            mobile: send.mobile,
+            reason: send.reason || "فشل إرسال واتساب",
+          });
+        } else if (send.status === "STUBBED") {
+          whatsappStubbed += 1;
+        } else {
+          whatsappSent += 1;
+        }
       }
     }
-  }
 
-  const status = statusFromSendCounts({
-    sent: whatsappSent,
-    failed: whatsappFailed,
-    stubbed: whatsappStubbed,
-  });
-  const statusReason =
-    whatsappErrors.length > 0
-      ? whatsappErrors
-          .slice(0, 5)
-          .map((e) => `${e.beneficiaryName}: ${e.reason}`)
-          .join(" | ")
-      : result.invited === 0
-        ? "لم يُدعَ أي مستفيد"
-        : null;
+    const status = statusFromSendCounts({
+      sent: whatsappSent,
+      failed: whatsappFailed,
+      stubbed: whatsappStubbed,
+    });
+    const statusReason =
+      whatsappErrors.length > 0
+        ? whatsappErrors
+            .slice(0, 5)
+            .map((e) => `${e.beneficiaryName}: ${e.reason}`)
+            .join(" | ")
+        : result.invited === 0
+          ? "لم يُدعَ أي مستفيد"
+          : null;
 
-  await writeAuditLog({
-    userId: authz.userId,
-    action: "BULK_INVITE",
-    entityType: "ExhibitionInvite",
-    entityId: exhibition.id,
-    meta: {
-      count: result.invited,
-      beneficiaryIds: uniqueIds,
+    await writeAuditLog({
+      userId: authz.userId,
+      action: "BULK_INVITE",
+      entityType: "ExhibitionInvite",
+      entityId: exhibition.id,
+      meta: {
+        count: result.invited,
+        beneficiaryIds: uniqueIds,
+        inviteDate: inviteDateStr,
+        whatsappSent,
+        whatsappFailed,
+        whatsappStubbed,
+        errors: whatsappErrors.slice(0, 20),
+      },
+      status: result.invited === 0 ? "FAILED" : status,
+      statusReason,
+    });
+
+    return NextResponse.json({
+      invited: result.invited,
       whatsappSent,
       whatsappFailed,
       whatsappStubbed,
-      errors: whatsappErrors.slice(0, 20),
-    },
-    status: result.invited === 0 ? "FAILED" : status,
-    statusReason,
-  });
-
-  return NextResponse.json({
-    invited: result.invited,
-    whatsappSent,
-    whatsappFailed,
-    whatsappStubbed,
-    whatsappErrors,
-    status,
-    statusReason,
-  });
+      whatsappErrors,
+      status,
+      statusReason,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "فشل إنشاء الدعوات";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
 
 const uninviteSchema = z.object({

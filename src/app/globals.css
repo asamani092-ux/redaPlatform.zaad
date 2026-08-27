@@ -896,6 +896,25 @@ textarea.input-field {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
 }
 
+.kpi-sections {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.kpi-section {
+  background: var(--surface-raised, #fff);
+  border: var(--border-hairline, 1px) solid var(--border-subtle, var(--tmkeen-surface-border));
+  border-radius: var(--radius-lg, 0.85rem);
+  padding: var(--space-4, 1rem);
+}
+
+.kpi-section__title {
+  margin: 0 0 var(--space-3, 0.75rem);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--tmkeen-primary);
+}
+
 .stat-tile {
   background: #fff;
   border: 1px solid var(--tmkeen-surface-border);
@@ -1481,8 +1500,23 @@ textarea.input-field {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1.25rem;
+}
+.live-screen__brand-block {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2, 0.5rem);
+}
+.live-screen__logo {
+  display: block;
+  width: clamp(4.5rem, 8vw, 6.5rem);
+  height: auto;
+  object-fit: contain;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 .live-screen__brand {
   margin: 0;
@@ -1495,6 +1529,13 @@ textarea.input-field {
   margin: 0.2rem 0 0;
   font-size: clamp(1.6rem, 3vw, 2.4rem);
   font-weight: 800;
+}
+.live-screen__title--brand {
+  margin: 0;
+  color: var(--text-brand, var(--brand-primary, var(--tmkeen-primary, #7a1234)));
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.15;
 }
 .live-screen__sub {
   margin: 0.25rem 0 0;
@@ -1512,10 +1553,43 @@ textarea.input-field {
   line-height: 1;
 }
 .live-screen__stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 0.75rem;
   margin-bottom: 1.25rem;
+}
+/* بطاقة بلا خلفية — حجم العرض الحي السابق + نص خمري */
+.live-screen__stats .live-kpi-card {
+  flex: 0 1 12rem;
+  min-width: 9.5rem;
+  display: grid;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-4, 1rem);
+  background: transparent;
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 2px dashed color-mix(in srgb, var(--brand-primary, #7a1234) 85%, #8b1e3a);
+  border-radius: var(--radius-lg, 0.85rem);
+  box-shadow: none;
+}
+.live-screen__stats .live-kpi-card__value {
+  font-size: clamp(1.6rem, 2.8vw, 2.4rem);
+  font-weight: 800;
+  color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
+  line-height: 1.1;
+}
+.live-screen__stats .live-kpi-card__label {
+  font-size: clamp(0.9rem, 1.2vw, 1.1rem);
+  font-weight: 700;
+  color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
+}
+.live-screen .kpi-sections {
+  gap: clamp(0.85rem, 1.2vw, 1.25rem);
+}
+.live-screen .kpi-section__title {
+  font-size: clamp(1.05rem, 1.4vw, 1.35rem);
 }
 .live-screen__tile {
   background: var(--surface-raised);
@@ -1591,9 +1665,23 @@ textarea.input-field {
     font-size: clamp(1rem, 1.3vw, 1.25rem);
   }
   .live-screen__stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: clamp(0.85rem, 1.2vw, 1.25rem);
     margin-bottom: clamp(1.25rem, 2vw, 2rem);
+  }
+  .live-screen__stats .live-kpi-card {
+    flex: 0 1 clamp(12rem, 16vw, 15rem);
+    padding: clamp(1rem, 1.5vw, 1.5rem);
+  }
+  .live-screen__stats .live-kpi-card__value {
+    font-size: clamp(2rem, 3vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
+  }
+  .live-screen__stats .live-kpi-card__label {
+    font-size: clamp(0.95rem, 1.2vw, 1.15rem);
+    font-weight: 700;
+    color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
   }
   .live-screen .zad-kpi {
     padding: clamp(1rem, 1.5vw, 1.5rem);
@@ -1626,7 +1714,8 @@ textarea.input-field {
   .live-screen__stats {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  .live-screen .zad-kpi__value {
+  .live-screen .zad-kpi__value,
+  .live-screen__stats .live-kpi-card__value {
     font-size: clamp(2.4rem, 2.8vw, 3.2rem);
   }
 }

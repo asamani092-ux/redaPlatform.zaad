@@ -122,6 +122,7 @@ model Volunteer {
   name         String
   mobile       String
   nationalId   String
+  volunteerTeam String?
   thanksSentAt DateTime?
   createdById  String?
   createdAt    DateTime  @default(now())
@@ -234,6 +235,8 @@ model ExhibitionInvite {
   qrToken       String   @unique @default(cuid())
   invited       Boolean  @default(true)
   invitedAt     DateTime @default(now())
+  /// تاريخ الحضور المرسل في الدعوة (يوم المعرض لهذا المستفيد) — تراكمي
+  inviteDate    DateTime?
   invitedById   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -244,6 +247,7 @@ model ExhibitionInvite {
 
   @@unique([exhibitionId, beneficiaryId])
   @@index([exhibitionId, invited])
+  @@index([exhibitionId, inviteDate])
   @@index([qrToken])
 }
 
