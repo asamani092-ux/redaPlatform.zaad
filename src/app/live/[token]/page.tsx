@@ -29,14 +29,22 @@ export default function LiveDisplayPage() {
     const res = await fetch(`/api/live/${encodeURIComponent(token)}`, {
       cache: "no-store",
     });
-    const json = await res.json();
+    const raw = await res.text();
+    let json: Record<string, unknown> = {};
+    try {
+      json = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    } catch {
+      setError("تعذر تحميل البيانات — أعد تشغيل الخادم أو راجع السجلات");
+      setData(null);
+      return;
+    }
     if (!res.ok) {
-      setError(json.error || "تعذر التحميل");
+      setError(String(json.error || "تعذر التحميل"));
       setData(null);
       return;
     }
     setError("");
-    setData(json);
+    setData(json as unknown as LivePayload);
   }, [token]);
 
   useEffect(() => {
