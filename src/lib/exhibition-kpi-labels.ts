@@ -49,7 +49,7 @@ export const LIVE_KPI_LABELS = {
   attendanceFamilies: "الأسر",
   attendanceIndividuals: "الأفراد",
   clothesPieces: "الملابس",
-  fabricMeters: "الأقمشة",
+  fabricMeters: "الأقمشة - متر",
   partnerAssociations: "الجمعيات الشريكة",
   associationFamilies: "الأسر المستفيدة من الجمعيات",
   volunteers: "المتطوعون",
