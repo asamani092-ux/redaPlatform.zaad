@@ -1500,12 +1500,20 @@ textarea.input-field {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1.25rem;
 }
-.live-screen__header--title-only {
-  justify-content: center;
-  margin-bottom: clamp(1.5rem, 2.5vw, 2.5rem);
+.live-screen__brand-block {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2, 0.5rem);
+}
+.live-screen__logo {
+  display: block;
+  width: clamp(4.5rem, 8vw, 6.5rem);
+  height: auto;
+  object-fit: contain;
 }
 .live-screen__brand {
   margin: 0;
@@ -1521,10 +1529,10 @@ textarea.input-field {
 }
 .live-screen__title--brand {
   margin: 0;
-  color: var(--brand-primary, var(--tmkeen-primary, #7a1234));
-  font-size: clamp(2rem, 4vw, 3.2rem);
-  text-align: center;
-  width: 100%;
+  color: var(--text-brand, var(--brand-primary, var(--tmkeen-primary, #7a1234)));
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.15;
 }
 .live-screen__sub {
   margin: 0.25rem 0 0;

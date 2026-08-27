@@ -10,6 +10,7 @@ import type { ExhibitionKpiSections } from "@/lib/exhibition-kpis";
 
 type LivePayload = {
   exhibition: { id: string; name: string; location: string | null; active: boolean };
+  updatedAt: string;
   exhibitionKpis: ExhibitionKpiSections;
 };
 
@@ -68,8 +69,23 @@ export default function LiveDisplayPage() {
 
   return (
     <main className="live-screen zad-root">
-      <header className="live-screen__header live-screen__header--title-only">
-        <h1 className="live-screen__title live-screen__title--brand">معرض رداء</h1>
+      <header className="live-screen__header">
+        <div className="live-screen__brand-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="live-screen__logo"
+            src="/logo.webp"
+            alt="الزاد"
+            width={96}
+            height={58}
+          />
+          <h1 className="live-screen__title live-screen__title--brand">معرض رداء</h1>
+        </div>
+        <div className="live-screen__meta">
+          <div className="live-screen__sub">
+            تحديث: {new Date(data.updatedAt).toLocaleTimeString("ar-SA")}
+          </div>
+        </div>
       </header>
 
       <section className="live-screen__stats">
