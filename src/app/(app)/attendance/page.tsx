@@ -42,6 +42,7 @@ export default function AttendancePage() {
   const [msgError, setMsgError] = useState(false);
   const [scanOn, setScanOn] = useState(false);
   const [lookup, setLookup] = useState<Lookup | null>(null);
+  const resultPanelRef = useRef<HTMLElement | null>(null);
   const [qrToken, setQrToken] = useState("");
   const [q, setQ] = useState("");
   const [needsException, setNeedsException] = useState(false);
@@ -67,6 +68,12 @@ export default function AttendancePage() {
     const t = setInterval(() => void refresh(), 10000);
     return () => clearInterval(t);
   }, []);
+
+  /** بعد المعاينة الناجحة — تمرير لوحة البيانات للأعلى — O(1) */
+  useEffect(() => {
+    if (!lookup) return;
+    resultPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [lookup]);
 
   const preview = useCallback(async (params: { qrToken?: string; q?: string }) => {
     setMsg("");
@@ -216,7 +223,7 @@ export default function AttendancePage() {
       </section>
 
       {lookup ? (
-        <section className="panel">
+        <section className="panel" ref={resultPanelRef}>
           <h2 className="panel-title">تأكيد التسجيل</h2>
           <BeneficiaryCard
             name={lookup.beneficiary.name}
