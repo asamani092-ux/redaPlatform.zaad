@@ -12,6 +12,8 @@
     "init": "prisma generate && tsx prisma/seed.ts",
     "db:seed": "prisma generate && tsx prisma/seed.ts",
     "db:reset-admin": "prisma generate && tsx scripts/reset-admin.ts",
+    "db:ensure-admin": "prisma generate && tsx scripts/ensure-admin.ts",
+    "db:ensure-admin-if-empty": "prisma generate && tsx scripts/ensure-admin.ts --if-empty",
     "db:seed-once": "./scripts/seed-once.sh",
     "db:purge-launch": "tsx scripts/purge-for-launch.ts",
     "db:generate": "prisma generate",

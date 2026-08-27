@@ -25,7 +25,11 @@ function LoginForm() {
     });
     setLoading(false);
     if (res?.error) {
-      setError("بيانات الدخول غير صحيحة");
+      setError(
+        res.error === "CredentialsSignin"
+          ? "بيانات الدخول غير صحيحة — تأكد من الجوال 05xxxxxxxx وكلمة المرور"
+          : `تعذّر الدخول (${res.error})`,
+      );
       return;
     }
     router.replace(search.get("callbackUrl") || "/");

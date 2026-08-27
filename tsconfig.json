@@ -27,6 +27,7 @@
     "node_modules",
     "scripts/redeploy-safety-proof.ts",
     "scripts/purge-for-launch.ts",
-    "scripts/reset-admin.ts"
+    "scripts/reset-admin.ts",
+    "scripts/ensure-admin.ts"
   ]
 }

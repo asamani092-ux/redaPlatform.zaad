@@ -63,5 +63,13 @@ fi
 
 ./scripts/apply-pending.sh || hold_and_exit $?
 
+if [ -n "${ADMIN_PASSWORD:-}" ]; then
+  echo "entrypoint: ensure admin if database has no users"
+  npm run db:ensure-admin-if-empty \
+    || echo "entrypoint: تحذير — فشل ensure-admin-if-empty (قد تحتاج npm run db:ensure-admin يدوياً)" >&2
+else
+  echo "entrypoint: ADMIN_PASSWORD غير مضبوط — تخطي ensure-admin-if-empty"
+fi
+
 echo "entrypoint: starting node server.js"
 exec node server.js
