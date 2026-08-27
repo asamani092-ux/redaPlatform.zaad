@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { KpiCard } from "@/components/ui/KpiCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { exhibitionKpisToLiveTiles } from "@/lib/exhibition-kpi-labels";
@@ -90,7 +89,10 @@ export default function LiveDisplayPage() {
 
       <section className="live-screen__stats">
         {tiles.map((tile) => (
-          <KpiCard key={tile.label} className="live-kpi-card" label={tile.label} value={tile.value} />
+          <div key={tile.label} className="live-kpi-card">
+            <div className="live-kpi-card__value">{tile.value}</div>
+            <div className="live-kpi-card__label">{tile.label}</div>
+          </div>
         ))}
       </section>
     </main>
