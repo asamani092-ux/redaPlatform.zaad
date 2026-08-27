@@ -122,6 +122,7 @@ model Volunteer {
   name         String
   mobile       String
   nationalId   String
+  volunteerTeam String?
   thanksSentAt DateTime?
   createdById  String?
   createdAt    DateTime  @default(now())

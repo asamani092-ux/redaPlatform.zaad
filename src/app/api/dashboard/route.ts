@@ -7,6 +7,7 @@ import { fetchTopDispensedItems } from "@/lib/top-dispensed";
 import { countDistinctReceived } from "@/lib/report-counts";
 import { buildHouseholdMetrics } from "@/lib/report-metrics";
 import { summarizePlatformStock, summarizeStoreStock } from "@/lib/store-ledger";
+import { buildExhibitionKpiSections } from "@/lib/exhibition-kpis";
 
 export async function GET() {
   const authz = await requirePermission("dashboard:view");
@@ -35,7 +36,7 @@ export async function GET() {
     topDetailed,
     storeSummary,
     platformStock,
-    volunteers,
+    exhibitionKpis,
   ] = await Promise.all([
     prisma.beneficiary.findMany({ select: { dependentsCount: true } }),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
@@ -56,7 +57,7 @@ export async function GET() {
     fetchTopDispensedItems(exhibitionId, 5),
     summarizeStoreStock(prisma, exhibitionId),
     summarizePlatformStock(prisma, exhibitionId),
-    prisma.volunteer.count({ where: { exhibitionId } }),
+    buildExhibitionKpiSections(exhibitionId),
   ]);
 
   const households = buildHouseholdMetrics(
@@ -106,8 +107,9 @@ export async function GET() {
       storeContributed,
       storeDispensed,
       storeRemaining,
-      volunteers,
+      volunteers: exhibitionKpis.volunteers.count,
     },
+    exhibitionKpis,
     attributeLabels,
     inventorySchema: schema,
     inventory: inventory.map((i) => ({

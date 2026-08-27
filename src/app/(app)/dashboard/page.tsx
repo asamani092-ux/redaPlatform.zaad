@@ -3,34 +3,22 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { AttrChips } from "@/components/AttrChips";
-import { KpiCard } from "@/components/ui/KpiCard";
 import { Progress } from "@/components/ui/Progress";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { KpiSections } from "@/components/ui/KpiSections";
+import { exhibitionKpisToSections } from "@/lib/exhibition-kpi-labels";
+import type { ExhibitionKpiSections } from "@/lib/exhibition-kpis";
 
 type DashboardData = {
   exhibition: { name: string; location?: string | null };
   stats: {
-    totalBeneficiaries: number;
-    beneficiaryFamilies?: number;
-    totalIndividuals?: number;
-    invited: number;
-    attended: number;
     received: number;
-    remainingToReceive: number;
-    piecesDispensed: number;
-    exceptions: number;
-    overrideDispenses?: number;
+    attended: number;
     completionRate: number;
     inventoryRemaining?: number;
-    platformContributed?: number;
-    platformDispensed?: number;
-    platformRemaining?: number;
-    storeContributed?: number;
-    storeDispensed?: number;
-    storeRemaining?: number;
-    volunteers?: number;
   };
+  exhibitionKpis: ExhibitionKpiSections;
   attributeLabels?: Record<string, string>;
   inventory: Array<{
     id: string;
@@ -40,14 +28,6 @@ type DashboardData = {
     lowStock: boolean;
   }>;
   topItems: Array<{ inventoryItemId: string; quantity: number; attributes: Record<string, unknown> }>;
-  storeSummary?: Array<{
-    storeName: string;
-    skuCode: string;
-    attributes: Record<string, unknown>;
-    added: number;
-    dispensed: number;
-    remaining: number;
-  }>;
 };
 
 export default function DashboardPage() {
@@ -97,29 +77,6 @@ export default function DashboardPage() {
     );
   }
 
-  const families =
-    data.stats.beneficiaryFamilies ?? data.stats.totalBeneficiaries;
-  const individuals = data.stats.totalIndividuals ?? data.stats.totalBeneficiaries;
-  const tiles = [
-    { label: "إجمالي الأسر", value: families },
-    { label: "إجمالي المستفيدين", value: individuals },
-    { label: "المدعوون", value: data.stats.invited },
-    { label: "المتطوعون", value: data.stats.volunteers ?? 0 },
-    { label: "الحاضرون", value: data.stats.attended },
-    { label: "استلموا", value: data.stats.received },
-    { label: "متبقون للاستلام", value: data.stats.remainingToReceive },
-    { label: "القطع المصروفة (إجمالي)", value: data.stats.piecesDispensed },
-    { label: "متبقي المخزون (إجمالي)", value: data.stats.inventoryRemaining ?? 0 },
-    { label: "مضاف من المنصة", value: data.stats.platformContributed ?? 0 },
-    { label: "مصروف من المنصة", value: data.stats.platformDispensed ?? 0 },
-    { label: "متبقي للمنصة", value: data.stats.platformRemaining ?? 0 },
-    { label: "مساهمات المتاجر", value: data.stats.storeContributed ?? 0 },
-    { label: "مصروف من المتاجر", value: data.stats.storeDispensed ?? 0 },
-    { label: "متبقي للمتاجر", value: data.stats.storeRemaining ?? 0 },
-    { label: "حضور استثنائي", value: data.stats.exceptions },
-    { label: "صرف استثنائي", value: data.stats.overrideDispenses ?? 0 },
-  ];
-
   return (
     <div className="page-stack">
       <PageHeader
@@ -135,11 +92,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="stat-grid">
-        {tiles.map((t) => (
-          <KpiCard key={t.label} label={t.label} value={t.value} />
-        ))}
-      </div>
+      <KpiSections sections={exhibitionKpisToSections(data.exhibitionKpis)} />
 
       <div className="split-2">
         <section className="panel zad-card">

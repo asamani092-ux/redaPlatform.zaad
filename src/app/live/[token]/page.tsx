@@ -3,30 +3,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { AttrChips } from "@/components/AttrChips";
-import { KpiCard } from "@/components/ui/KpiCard";
 import { Progress } from "@/components/ui/Progress";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import type { ShareRow } from "@/lib/report-metrics";
+import { KpiSections } from "@/components/ui/KpiSections";
+import { exhibitionKpisToSections } from "@/lib/exhibition-kpi-labels";
+import type { ExhibitionKpiSections } from "@/lib/exhibition-kpis";
 
 type LivePayload = {
   exhibition: { id: string; name: string; location: string | null; active: boolean };
   updatedAt: string;
   stats: {
-    totalBeneficiaries: number;
-    invited: number;
-    attended: number;
-    received: number;
-    remainingToReceive: number;
-    piecesDispensed: number;
-    exceptions: number;
     completionRate: number;
-    beneficiaryFamilies: number;
-    totalIndividuals: number;
   };
-  byAssociationShares: ShareRow[];
-  byNeighborhoodShares: ShareRow[];
-  byHouseholdSizeShares: ShareRow[];
+  exhibitionKpis: ExhibitionKpiSections;
   topItems: Array<{
     inventoryItemId: string;
     quantity: number;
@@ -78,8 +68,6 @@ export default function LiveDisplayPage() {
     );
   }
 
-  const { stats } = data;
-
   return (
     <main className="live-screen zad-root">
       <header className="live-screen__header">
@@ -91,32 +79,16 @@ export default function LiveDisplayPage() {
           ) : null}
         </div>
         <div className="live-screen__meta">
-          <Progress value={stats.completionRate} label={`نسبة الإنجاز ${stats.completionRate}%`} />
+          <Progress value={data.stats.completionRate} label={`نسبة الإنجاز ${data.stats.completionRate}%`} />
           <div className="live-screen__sub" style={{ marginTop: "var(--space-2)" }}>
             تحديث: {new Date(data.updatedAt).toLocaleTimeString("ar-SA")}
           </div>
         </div>
       </header>
 
-      <section className="live-screen__stats">
-        {[
-          ["إجمالي المستفيدين", stats.totalIndividuals],
-          ["الأسر المستفيدة", stats.beneficiaryFamilies],
-          ["المدعوون", stats.invited],
-          ["الحاضرون", stats.attended],
-          ["استلموا", stats.received],
-          ["متبقٍ للاستلام", stats.remainingToReceive],
-          ["القطع المصروفة", stats.piecesDispensed],
-          ["حضور استثنائي", stats.exceptions],
-        ].map(([label, value]) => (
-          <KpiCard key={String(label)} label={String(label)} value={value as number | string} />
-        ))}
-      </section>
+      <KpiSections sections={exhibitionKpisToSections(data.exhibitionKpis)} />
 
-      <section className="live-screen__grid">
-        <SharePanel title="نسب الجمعيات" rows={data.byAssociationShares} />
-        <SharePanel title="نسب الأحياء" rows={data.byNeighborhoodShares} />
-        <SharePanel title="توزيع الأسر حسب عدد الأفراد" rows={data.byHouseholdSizeShares} />
+      <section className="live-screen__grid" style={{ marginTop: "var(--space-4)" }}>
         <div className="live-screen__panel">
           <h2>أعلى 5 قطع مصروفة</h2>
           <ul>
@@ -138,33 +110,5 @@ export default function LiveDisplayPage() {
         </div>
       </section>
     </main>
-  );
-}
-
-function SharePanel({ title, rows }: { title: string; rows: ShareRow[] }) {
-  return (
-    <div className="live-screen__panel">
-      <h2>{title}</h2>
-      <ul>
-        {rows.slice(0, 8).map((r) => (
-          <li key={r.key}>
-            <div className="live-screen__row">
-              <span>{r.key}</span>
-              <strong>
-                {r.count} ({r.percent}%)
-              </strong>
-            </div>
-            <div className="live-screen__bar" aria-hidden>
-              <span style={{ width: `${Math.min(100, r.percent)}%` }} />
-            </div>
-          </li>
-        ))}
-        {!rows.length ? (
-          <li>
-            <EmptyState title="لا بيانات" />
-          </li>
-        ) : null}
-      </ul>
-    </div>
   );
 }

@@ -12,6 +12,7 @@ type Volunteer = {
   name: string;
   mobile: string;
   nationalId: string;
+  volunteerTeam?: string | null;
   tasks: VolunteerTask[];
 };
 
@@ -19,6 +20,7 @@ const emptyForm = {
   name: "",
   mobile: "",
   nationalId: "",
+  volunteerTeam: "",
   taskIds: [] as string[],
 };
 
@@ -169,6 +171,7 @@ export default function VolunteersPage() {
                 <th>الاسم</th>
                 <th>الهوية</th>
                 <th>الجوال</th>
+                <th>الفريق التطوعي</th>
                 <th>المهام</th>
                 <th>إجراءات</th>
               </tr>
@@ -179,6 +182,7 @@ export default function VolunteersPage() {
                   <td>{r.name}</td>
                   <td dir="ltr">{r.nationalId}</td>
                   <td dir="ltr">{r.mobile}</td>
+                  <td>{r.volunteerTeam?.trim() || "—"}</td>
                   <td>{taskNames(r)}</td>
                   <td>
                     <button
@@ -196,7 +200,7 @@ export default function VolunteersPage() {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={5} className="empty">
+                  <td colSpan={6} className="empty">
                     لا متطوعين بعد — اضغط «إضافة متطوع» للبدء
                   </td>
                 </tr>
@@ -256,6 +260,14 @@ export default function VolunteersPage() {
                 maxLength={14}
                 value={form.nationalId}
                 onChange={(e) => setForm((f) => ({ ...f, nationalId: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label-field">الفريق التطوعي (اختياري)</label>
+              <input
+                className="input-field"
+                value={form.volunteerTeam}
+                onChange={(e) => setForm((f) => ({ ...f, volunteerTeam: e.target.value }))}
               />
             </div>
             <div className="full">
