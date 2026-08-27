@@ -17,6 +17,7 @@ export type WhatsAppSendInput = {
    * متغيرات body للقالب بالترتيب (ZAD):
    * INVITATION: name, exhibition, date, location, qr_url
    * THANK_YOU: name, exhibition
+   * VOLUNTEER_THANKS: name, exhibition [, tagline] — tagline عند قالب مخصص
    * SURVEY: name, exhibition, survey_url
    */
   templateParams?: string[];
@@ -31,6 +32,8 @@ function templateIdFor(
       return config.inviteTemplateId;
     case OutboundMessageType.THANK_YOU:
       return config.thanksTemplateId;
+    case OutboundMessageType.VOLUNTEER_THANKS:
+      return config.volunteerThanksTemplateId || config.thanksTemplateId;
     case OutboundMessageType.SURVEY:
       return config.surveyTemplateId;
     default:

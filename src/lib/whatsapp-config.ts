@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
  * إعداد واتساب: قاعدة البيانات أولاً (قابل للتعديل من الواجهة)،
  * ومتغيرات البيئة كقيمة افتراضية للتوافق الخلفي — O(1) لكل قراءة.
  */
+/** النص الثالث في قالب شكر المتطوع (ZAD body param) */
+export const DEFAULT_VOLUNTEER_THANKS_TAGLINE = "مشاركتك معنا سبب النجاح";
+
 export type WhatsAppConfig = {
   provider: string;
   apiUrl: string | null;
@@ -12,6 +15,9 @@ export type WhatsAppConfig = {
   source: "database" | "env";
   inviteTemplateId: string | null;
   thanksTemplateId: string | null;
+  volunteerThanksTemplateId: string | null;
+  /** معامل body ثالث لقالب المتطوع — يُستخدم فقط مع قالب مخصص */
+  volunteerThanksTagline: string | null;
   surveyTemplateId: string | null;
 };
 
@@ -26,6 +32,10 @@ function envTemplates() {
   return {
     inviteTemplateId: process.env.WHATSAPP_INVITE_TEMPLATE_ID?.trim() || null,
     thanksTemplateId: process.env.WHATSAPP_THANKS_TEMPLATE_ID?.trim() || null,
+    volunteerThanksTemplateId:
+      process.env.WHATSAPP_VOLUNTEER_THANKS_TEMPLATE_ID?.trim() || null,
+    volunteerThanksTagline:
+      process.env.WHATSAPP_VOLUNTEER_THANKS_TAGLINE?.trim() || null,
     surveyTemplateId: process.env.WHATSAPP_SURVEY_TEMPLATE_ID?.trim() || null,
   };
 }
@@ -79,6 +89,24 @@ export function maskToken(token: string | null | undefined): string {
   if (!token) return "";
   if (token.length <= 8) return "••••";
   return `${token.slice(0, 4)}••••${token.slice(-4)}`;
+}
+
+/**
+ * متغيرات قالب شكر المتطوع — Time O(1)، Space O(1).
+ * 3 معاملات عند وجود WHATSAPP_VOLUNTEER_THANKS_TEMPLATE_ID؛ وإلا 2 (fallback لقالب الشكر).
+ */
+export function buildVolunteerThanksTemplateParams(
+  config: WhatsAppConfig,
+  name: string,
+  exhibitionName: string,
+): string[] {
+  const params: string[] = [name, exhibitionName];
+  if (config.volunteerThanksTemplateId) {
+    params.push(
+      config.volunteerThanksTagline?.trim() || DEFAULT_VOLUNTEER_THANKS_TAGLINE,
+    );
+  }
+  return params;
 }
 
 export { ZAD_DEFAULT_URL };

@@ -16,7 +16,15 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PasswordField } from "@/components/PasswordField";
 
 type Association = { id?: string; name: string; active?: boolean };
-type Section = "exhibition" | "schema" | "associations" | "templates" | "whatsapp" | null;
+type VolunteerRole = { id?: string; name: string; active?: boolean };
+type Section =
+  | "exhibition"
+  | "schema"
+  | "associations"
+  | "volunteer-roles"
+  | "templates"
+  | "whatsapp"
+  | null;
 
 export default function SettingsPage() {
   const [exhibitionName, setExhibitionName] = useState("");
@@ -26,6 +34,7 @@ export default function SettingsPage() {
   const [lowStockThreshold, setLowStockThreshold] = useState("10");
   const [schema, setSchema] = useState<InventorySchemaField[]>(DEFAULT_INVENTORY_SCHEMA);
   const [associations, setAssociations] = useState<Association[]>([]);
+  const [volunteerRoles, setVolunteerRoles] = useState<VolunteerRole[]>([]);
   const [inviteTpl, setInviteTpl] = useState("");
   const [thanksTpl, setThanksTpl] = useState("");
   const [msg, setMsg] = useState("");
@@ -86,6 +95,12 @@ export default function SettingsPage() {
         if (j.associations) setAssociations(j.associations);
         setHasItems(Number(j.inventoryCount ?? 0) > 0);
       });
+    fetch("/api/volunteer-roles")
+      .then((r) => r.json())
+      .then((j) => {
+        if (Array.isArray(j.data)) setVolunteerRoles(j.data);
+      })
+      .catch(() => undefined);
   }, []);
 
   async function saveSettings() {
@@ -128,7 +143,33 @@ export default function SettingsPage() {
 
   async function onSaveSection(e: FormEvent) {
     e.preventDefault();
+    if (section === "volunteer-roles") {
+      await saveVolunteerRoles();
+      return;
+    }
     await saveSettings();
+  }
+
+  async function saveVolunteerRoles() {
+    if (busy) return;
+    setBusy(true);
+    setMsg("");
+    const res = await fetch("/api/volunteer-roles", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roles: volunteerRoles.filter((r) => r.name.trim()),
+      }),
+    });
+    const json = await res.json();
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(json.error || "فشل حفظ الأدوار");
+      return;
+    }
+    if (Array.isArray(json.data)) setVolunteerRoles(json.data);
+    setMsg("تم حفظ مهام المتطوعين");
+    setSection(null);
   }
 
   async function saveWhatsApp() {
@@ -236,6 +277,7 @@ export default function SettingsPage() {
     { id: "exhibition", title: "المعرض والاستحقاق", desc: "الاسم، الموقع، القطع، عتبة النفاد" },
     { id: "schema", title: "سمات المخزون", desc: "تسميات عربية وخيارات دون مفاتيح ظاهرة" },
     { id: "associations", title: "الجمعيات", desc: "قائمة الجمعيات للمستفيدين" },
+    { id: "volunteer-roles", title: "مهام المتطوعين", desc: "قائمة المهام في نموذج المتطوعين" },
     { id: "templates", title: "قوالب واتساب", desc: "نصوص الدعوة والشكر" },
     { id: "whatsapp", title: "ربط واتساب", desc: "المزوّد والتوكن واختبار الإرسال" },
   ];
@@ -505,6 +547,44 @@ export default function SettingsPage() {
         </form>
       </Modal>
 
+      <Modal
+        open={section === "volunteer-roles"}
+        title="مهام المتطوعين"
+        onClose={() => setSection(null)}
+      >
+        <form onSubmit={onSaveSection}>
+          <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
+            تُستخدم في قائمة المتطوعين — يمكن إضافة مهام جديدة أو تعديل الأسماء.
+          </p>
+          <div style={{ display: "grid", gap: "0.55rem" }}>
+            {volunteerRoles.map((r, idx) => (
+              <input
+                key={r.id ?? idx}
+                className="input-field"
+                value={r.name}
+                onChange={(e) =>
+                  setVolunteerRoles((list) =>
+                    list.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
+                  )
+                }
+              />
+            ))}
+          </div>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setVolunteerRoles((list) => [...list, { name: "" }])}
+            >
+              إضافة مهمة
+            </button>
+            <button className="btn-primary" type="submit" disabled={busy}>
+              {busy ? "جاري…" : "حفظ"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       <Modal open={section === "templates"} title="قوالب واتساب" onClose={() => setSection(null)} wide>
         <form onSubmit={onSaveSection}>
           <div className="form-grid">
@@ -589,8 +669,8 @@ export default function SettingsPage() {
             </select>
             {wa.provider === "zad" ? (
               <p className="field-hint" style={{ marginTop: 8 }}>
-                معرّفات القوالب من متغيرات البيئة: WHATSAPP_INVITE_TEMPLATE_ID /
-                THANKS / SURVEY. الحقل «التوكن» = apiKey.
+                معرّفات القوالب من متغيرات البيئة: INVITE / THANKS / VOLUNTEER_THANKS /
+                TAGLINE / SURVEY. الحقل «التوكن» = apiKey.
               </p>
             ) : null}
           </div>
