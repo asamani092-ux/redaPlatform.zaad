@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/session";
+import { requireAdmin, requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { parseInventorySchema } from "@/lib/inventory-schema";
@@ -254,4 +254,44 @@ export async function PATCH(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "تعذّر تحديث المتجر" }, { status: 400 });
   }
+}
+
+/** حذف متجر — مدير النظام فقط. Time: O(1). */
+export async function DELETE(req: NextRequest) {
+  const authz = await requireAdmin();
+  if ("error" in authz) return authz.error;
+
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
+
+  const id = req.nextUrl.searchParams.get("id")?.trim();
+  if (!id) {
+    return NextResponse.json({ error: "معرّف مطلوب" }, { status: 400 });
+  }
+
+  const before = await prisma.store.findFirst({
+    where: { id, exhibitionId: exhibition.id },
+  });
+  if (!before) {
+    return NextResponse.json({ error: "المتجر غير موجود" }, { status: 404 });
+  }
+
+  await prisma.store.delete({ where: { id: before.id } });
+
+  await writeAuditLog({
+    userId: authz.userId,
+    action: "STORE_DELETE",
+    entityType: "Store",
+    entityId: before.id,
+    before,
+  });
+
+  return NextResponse.json({ ok: true });
 }

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."OutboundMessageType" ADD VALUE IF NOT EXISTS 'VOLUNTEER_THANKS';

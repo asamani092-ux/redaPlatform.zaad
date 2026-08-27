@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/session";
+import { requireAdmin, requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { parseInventorySchema } from "@/lib/inventory-schema";
@@ -315,4 +315,69 @@ export async function PATCH(req: NextRequest) {
       { status: 400 },
     );
   }
+}
+
+const deleteItemSchema = z.object({
+  id: z.string().min(1),
+  reason: z.string().min(2, "سبب الحذف مطلوب"),
+});
+
+/**
+ * حذف صنف مخزون — مدير النظام فقط؛ الكمية يجب أن تكون صفراً.
+ * Time: O(1).
+ */
+export async function DELETE(req: NextRequest) {
+  const authz = await requireAdmin();
+  if ("error" in authz) return authz.error;
+
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
+
+  const body = deleteItemSchema.safeParse(await req.json().catch(() => ({})));
+  if (!body.success) {
+    return NextResponse.json(
+      { error: body.error.issues[0]?.message ?? "بيانات غير صالحة" },
+      { status: 400 },
+    );
+  }
+
+  const item = await prisma.inventoryItem.findFirst({
+    where: { id: body.data.id, exhibitionId: exhibition.id },
+    include: { _count: { select: { dispenseLines: true } } },
+  });
+  if (!item) {
+    return NextResponse.json({ error: "الصنف غير موجود" }, { status: 404 });
+  }
+  if (Number(item.quantity) !== 0) {
+    return NextResponse.json(
+      { error: `لا يمكن الحذف — الكمية المتبقية ${Number(item.quantity)}` },
+      { status: 409 },
+    );
+  }
+  if (item._count.dispenseLines > 0) {
+    return NextResponse.json(
+      { error: "لا يمكن حذف صنف له سجل صرف — استخدم حركة كمية فقط" },
+      { status: 409 },
+    );
+  }
+
+  await prisma.inventoryItem.delete({ where: { id: item.id } });
+
+  await writeAuditLog({
+    userId: authz.userId,
+    action: "INVENTORY_ITEM_DELETE",
+    entityType: "InventoryItem",
+    entityId: item.id,
+    before: item,
+    meta: { reason: body.data.reason.trim() },
+  });
+
+  return NextResponse.json({ ok: true });
 }

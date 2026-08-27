@@ -8,6 +8,7 @@ import { optionsWithNone, type InventorySchemaField } from "@/lib/inventory-sche
 import { sanitizeNumericInput, toNumberOrNull } from "@/lib/num";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable } from "@/components/ui/DataTable";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useSession } from "next-auth/react";
 import { hasPermission } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/enums";
@@ -55,6 +56,7 @@ export default function StoresPage() {
   const { data: session } = useSession();
   const role = session?.user?.role as Role | undefined;
   const canManage = role ? hasPermission(role, "stores:manage") : false;
+  const isAdmin = role === "ADMIN";
   const toast = useToast();
 
   const [stores, setStores] = useState<StoreRow[]>([]);
@@ -73,6 +75,7 @@ export default function StoresPage() {
   const [inventoryItemId, setInventoryItemId] = useState("");
   const [qty, setQty] = useState("1");
   const [attrs, setAttrs] = useState<Record<string, string>>({});
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
 
   async function load() {
     const [storesRes, invRes] = await Promise.all([
@@ -186,6 +189,25 @@ export default function StoresPage() {
     void load();
   }
 
+  async function deleteStore() {
+    if (!detailStore || busy) return;
+    setBusy(true);
+    const res = await fetch(`/api/stores?id=${encodeURIComponent(detailStore.id)}`, {
+      method: "DELETE",
+    });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    setDeleteStep(1);
+    if (!res.ok) {
+      setMsg(json.error || "فشل حذف المتجر");
+      toast.push({ title: json.error || "فشل حذف المتجر", tone: "danger" });
+      return;
+    }
+    setDetailStoreId(null);
+    toast.push({ title: "تم حذف المتجر", tone: "success" });
+    void load();
+  }
+
   function openContribute(forStoreId?: string) {
     setStoreId(forStoreId || stores[0]?.id || "");
     setMode("existing");
@@ -293,6 +315,15 @@ export default function StoresPage() {
                 >
                   تسجيل مساهمة لهذا المتجر
                 </button>
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    className="btn-danger btn-sm"
+                    onClick={() => setDeleteStep(1)}
+                  >
+                    حذف المتجر
+                  </button>
+                ) : null}
               </div>
             ) : null}
             <div className="table-wrap table-wrap--stack" style={{ marginTop: "0.75rem" }}>
@@ -455,6 +486,26 @@ export default function StoresPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!detailStore && deleteStep === 1}
+        title={detailStore ? `حذف المتجر: ${detailStore.name}` : "حذف متجر"}
+        body="هل تريد حذف هذا المتجر؟ لن يُحذف المخزون المرتبط."
+        destructive
+        confirmLabel="متابعة"
+        onClose={() => setDeleteStep(1)}
+        onConfirm={() => setDeleteStep(2)}
+      />
+      <ConfirmDialog
+        open={!!detailStore && deleteStep === 2}
+        title="تأكيد نهائي"
+        body="سيتم حذف المتجر نهائياً."
+        destructive
+        confirmLabel="نعم، احذف"
+        busy={busy}
+        onClose={() => setDeleteStep(1)}
+        onConfirm={() => void deleteStore()}
+      />
     </div>
   );
 }

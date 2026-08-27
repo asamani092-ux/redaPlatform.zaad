@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
 import { AttrChips } from "@/components/AttrChips";
 import { Modal } from "@/components/Modal";
@@ -12,6 +13,7 @@ import { sanitizeNumericInput, toNumberOrNull } from "@/lib/num";
 import { PaginationBar } from "@/components/PaginationBar";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable } from "@/components/ui/DataTable";
 import { Chip } from "@/components/ui/Chip";
 
@@ -28,6 +30,8 @@ type Item = {
  * Time: O(n) لعرض القائمة، O(s) لحفظ السمات.
  */
 export default function InventoryPage() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
   const [schema, setSchema] = useState<InventorySchemaField[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [page, setPage] = useState(1);
@@ -44,6 +48,8 @@ export default function InventoryPage() {
   const [move, setMove] = useState({ inventoryItemId: "", type: "ADD", quantity: "1", note: "" });
   const [copiedSku, setCopiedSku] = useState("");
   const [detailItem, setDetailItem] = useState<Item | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
   const toast = useToast();
 
   async function copySku(code: string) {
@@ -212,6 +218,29 @@ export default function InventoryPage() {
       setMoveOpen(false);
       await load();
     }
+  }
+
+  async function onDeleteItem() {
+    if (!detailItem || busy || !deleteReason.trim()) return;
+    setBusy(true);
+    const res = await fetch("/api/inventory", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: detailItem.id, reason: deleteReason.trim() }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setMsg(json.error || "فشل حذف الصنف");
+      toast.push({ title: json.error || "فشل حذف الصنف", tone: "danger" });
+      return;
+    }
+    setDetailItem(null);
+    setDeleteStep(1);
+    setDeleteReason("");
+    setMsg("تم حذف الصنف");
+    toast.push({ title: "تم حذف الصنف", tone: "success" });
+    await load();
   }
 
   function attrFields() {
@@ -400,6 +429,18 @@ export default function InventoryPage() {
               >
                 حركة كمية
               </button>
+              {isAdmin && detailItem.quantity === 0 ? (
+                <button
+                  type="button"
+                  className="btn-danger btn-sm"
+                  onClick={() => {
+                    setDeleteReason("");
+                    setDeleteStep(1);
+                  }}
+                >
+                  حذف الصنف
+                </button>
+              ) : null}
               <button type="button" className="btn-secondary btn-sm" onClick={() => setDetailItem(null)}>
                 إغلاق
               </button>
@@ -554,6 +595,41 @@ export default function InventoryPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!detailItem && deleteStep === 1}
+        title="حذف الصنف"
+        body={`حذف الصنف ${detailItem ? itemSummary(detailItem) : ""} نهائياً؟ يجب أن تكون الكمية صفراً.`}
+        destructive
+        confirmLabel="متابعة"
+        onClose={() => setDeleteStep(1)}
+        onConfirm={() => setDeleteStep(2)}
+      />
+      <ConfirmDialog
+        open={!!detailItem && deleteStep === 2}
+        title="تأكيد حذف الصنف"
+        body="أدخل سبب الحذف ثم أكّد."
+        destructive
+        confirmLabel="نعم، احذف الصنف"
+        busy={busy}
+        onClose={() => {
+          setDeleteStep(1);
+          setDeleteReason("");
+        }}
+        onConfirm={() => {
+          if (!deleteReason.trim()) return;
+          void onDeleteItem();
+        }}
+      >
+        <label className="label-field">سبب الحذف</label>
+        <input
+          className="input-field"
+          value={deleteReason}
+          onChange={(e) => setDeleteReason(e.target.value)}
+          placeholder="مثال: خطأ إدخال / صنف مكرر"
+          required
+        />
+      </ConfirmDialog>
     </div>
   );
 }

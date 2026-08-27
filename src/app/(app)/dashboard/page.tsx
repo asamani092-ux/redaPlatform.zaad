@@ -29,6 +29,7 @@ type DashboardData = {
     storeContributed?: number;
     storeDispensed?: number;
     storeRemaining?: number;
+    volunteers?: number;
   };
   attributeLabels?: Record<string, string>;
   inventory: Array<{
@@ -103,6 +104,7 @@ export default function DashboardPage() {
     { label: "إجمالي الأسر", value: families },
     { label: "إجمالي المستفيدين", value: individuals },
     { label: "المدعوون", value: data.stats.invited },
+    { label: "المتطوعون", value: data.stats.volunteers ?? 0 },
     { label: "الحاضرون", value: data.stats.attended },
     { label: "استلموا", value: data.stats.received },
     { label: "متبقون للاستلام", value: data.stats.remainingToReceive },

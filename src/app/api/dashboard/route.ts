@@ -35,6 +35,7 @@ export async function GET() {
     topDetailed,
     storeSummary,
     platformStock,
+    volunteers,
   ] = await Promise.all([
     prisma.beneficiary.findMany({ select: { dependentsCount: true } }),
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
@@ -55,6 +56,7 @@ export async function GET() {
     fetchTopDispensedItems(exhibitionId, 5),
     summarizeStoreStock(prisma, exhibitionId),
     summarizePlatformStock(prisma, exhibitionId),
+    prisma.volunteer.count({ where: { exhibitionId } }),
   ]);
 
   const households = buildHouseholdMetrics(
@@ -104,6 +106,7 @@ export async function GET() {
       storeContributed,
       storeDispensed,
       storeRemaining,
+      volunteers,
     },
     attributeLabels,
     inventorySchema: schema,

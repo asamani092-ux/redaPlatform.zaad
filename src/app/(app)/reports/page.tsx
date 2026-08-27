@@ -31,6 +31,7 @@ type Summary = {
   invited: number;
   attended: number;
   received: number;
+  volunteers?: number;
   exceptionAttendance?: number;
   overrideDispenses?: number;
   piecesDispensed: number;
@@ -292,6 +293,7 @@ export default function ReportsPage() {
               ["المدعوون", summary.invited],
               ["الحاضرون", summary.attended],
               ["استلموا", summary.received],
+              ["المتطوعون", summary.volunteers ?? 0],
               ["القطع المصروفة (إجمالي)", summary.piecesDispensed],
               ["متبقي المخزون (إجمالي)", summary.inventoryRemainingTotal ?? 0],
               ["مضاف من المنصة", summary.platformContributed ?? 0],

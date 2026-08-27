@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
       totalBeneficiaries,
       storeSummary,
       platformStock,
+      volunteers,
     ] = await Promise.all([
       prisma.beneficiary.findMany({
         select: {
@@ -115,6 +116,7 @@ export async function GET(req: NextRequest) {
       prisma.beneficiary.count(),
       summarizeStoreStock(prisma, exhibitionId),
       summarizePlatformStock(prisma, exhibitionId),
+      prisma.volunteer.count({ where: { exhibitionId } }),
     ]);
 
     const breakdowns = buildBreakdownShares({
@@ -137,6 +139,7 @@ export async function GET(req: NextRequest) {
       invited,
       attended,
       received,
+      volunteers,
       exceptionAttendance,
       overrideDispenses,
       piecesDispensed: piecesAgg._sum.piecesCount ?? 0,
@@ -282,6 +285,7 @@ export async function GET(req: NextRequest) {
     topItems,
     storeSummary,
     platformStock,
+    volunteers,
   ] = await Promise.all([
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
@@ -303,6 +307,7 @@ export async function GET(req: NextRequest) {
     fetchTopDispensedItems(exhibitionId, 5),
     summarizeStoreStock(prisma, exhibitionId),
     summarizePlatformStock(prisma, exhibitionId),
+    prisma.volunteer.count({ where: { exhibitionId } }),
   ]);
 
   const summary = {
@@ -313,6 +318,7 @@ export async function GET(req: NextRequest) {
     invited,
     attended,
     received,
+    volunteers,
     exceptionAttendance,
     overrideDispenses,
     piecesDispensed: piecesAgg._sum.piecesCount ?? 0,
@@ -366,6 +372,7 @@ export async function GET(req: NextRequest) {
       ["المدعوون", summary.invited],
       ["الحضور", summary.attended],
       ["المستلمون", summary.received],
+      ["المتطوعون", summary.volunteers ?? 0],
       ["القطع المصروفة (إجمالي)", summary.piecesDispensed],
       ["مضاف من المنصة", summary.platformContributed],
       ["مصروف من المنصة", summary.platformDispensed],
@@ -553,6 +560,7 @@ export async function GET(req: NextRequest) {
         { label: "المدعوون", value: summary.invited },
         { label: "الحاضرون", value: summary.attended },
         { label: "استلموا", value: summary.received },
+        { label: "المتطوعون", value: summary.volunteers ?? 0 },
         { label: "القطع المصروفة", value: summary.piecesDispensed },
         { label: "حضور استثنائي", value: summary.exceptionAttendance },
         { label: "صرف استثنائي", value: summary.overrideDispenses },

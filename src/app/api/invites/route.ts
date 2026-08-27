@@ -200,3 +200,51 @@ export async function POST(req: NextRequest) {
     statusReason,
   });
 }
+
+const uninviteSchema = z.object({
+  beneficiaryIds: z.array(z.string()).min(1),
+});
+
+/**
+ * إلغاء الدعوة (soft): invited=false — تراكمي بلا حذف السجل/الـ QR.
+ * Time: O(k) حيث k عدد المحددين.
+ */
+export async function DELETE(req: NextRequest) {
+  const authz = await requirePermission("invites:manage");
+  if ("error" in authz) return authz.error;
+
+  const body = uninviteSchema.safeParse(await req.json().catch(() => ({})));
+  if (!body.success) {
+    return NextResponse.json({ error: "حدد مستفيدين" }, { status: 400 });
+  }
+
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
+  const uniqueIds = [...new Set(body.data.beneficiaryIds)];
+
+  const result = await prisma.exhibitionInvite.updateMany({
+    where: {
+      exhibitionId: exhibition.id,
+      beneficiaryId: { in: uniqueIds },
+      invited: true,
+    },
+    data: { invited: false },
+  });
+
+  await writeAuditLog({
+    userId: authz.userId,
+    action: "BULK_UNINVITE",
+    entityType: "ExhibitionInvite",
+    entityId: exhibition.id,
+    meta: { count: result.count, beneficiaryIds: uniqueIds },
+  });
+
+  return NextResponse.json({ uninvited: result.count });
+}

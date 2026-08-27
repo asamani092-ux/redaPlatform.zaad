@@ -14,6 +14,7 @@ import { FilterBar } from "@/components/ui/FilterBar";
 import { Dropzone } from "@/components/ui/Dropzone";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProfileDrawer } from "@/components/ui/ProfileDrawer";
 import { STATUS_LABELS, type BeneficiaryExhibitionStatus } from "@/lib/status";
 
@@ -39,6 +40,7 @@ export default function BeneficiariesPage() {
   const { data: session } = useSession();
   const role = session?.user?.role as Role | undefined;
   const canManage = role ? hasPermission(role, "beneficiaries:manage") : false;
+  const isAdmin = role === "ADMIN";
 
   const [q, setQ] = useState("");
   const [associationFilter, setAssociationFilter] = useState("");
@@ -55,7 +57,7 @@ export default function BeneficiariesPage() {
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [editing, setEditing] = useState<Beneficiary | null>(null);
   const [deleting, setDeleting] = useState<Beneficiary | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
   const [busy, setBusy] = useState(false);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const toast = useToast();
@@ -151,16 +153,16 @@ export default function BeneficiariesPage() {
   }
 
   async function onDelete() {
-    if (busy || !deleting || deleteConfirmText.trim() !== "حذف") return;
+    if (busy || !deleting) return;
     setBusy(true);
     setMsg("");
     const res = await fetch(`/api/beneficiaries/${deleting.id}`, { method: "DELETE" });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     setBusy(false);
     setMsg(res.ok ? "تم حذف المستفيد" : json.error || "فشل الحذف");
     if (res.ok) {
       setDeleting(null);
-      setDeleteConfirmText("");
+      setDeleteStep(1);
       load();
     }
   }
@@ -470,16 +472,18 @@ export default function BeneficiariesPage() {
                         >
                           تعديل
                         </button>
-                        <button
-                          type="button"
-                          className="btn-danger btn-sm"
-                          onClick={() => {
-                            setDeleteConfirmText("");
-                            setDeleting(r);
-                          }}
-                        >
-                          حذف
-                        </button>
+                        {isAdmin ? (
+                          <button
+                            type="button"
+                            className="btn-danger btn-sm"
+                            onClick={() => {
+                              setDeleteStep(1);
+                              setDeleting(r);
+                            }}
+                          >
+                            حذف
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   ) : null}
@@ -543,34 +547,31 @@ export default function BeneficiariesPage() {
         </form>
       </Modal>
 
-      <Modal
-        open={!!deleting}
-        title={`حذف المستفيد: ${deleting?.name ?? ""}`}
-        onClose={() => setDeleting(null)}
-      >
-        <p className="msg msg-error">
-          تأكيد ثنائي: الحذف نهائي ولا يشمل من له حضور أو صرف مسجل. اكتب «حذف» ثم أكّد.
-        </p>
-        <input
-          className="input-field"
-          value={deleteConfirmText}
-          onChange={(e) => setDeleteConfirmText(e.target.value)}
-          placeholder="اكتب: حذف"
-        />
-        <div className="form-actions">
-          <button
-            type="button"
-            className="btn-danger"
-            disabled={busy || deleteConfirmText.trim() !== "حذف"}
-            onClick={onDelete}
-          >
-            {busy ? "جاري الحذف..." : "تأكيد الحذف النهائي"}
-          </button>
-          <button type="button" className="btn-secondary" onClick={() => setDeleting(null)}>
-            إلغاء
-          </button>
-        </div>
-      </Modal>
+      <ConfirmDialog
+        open={!!deleting && deleteStep === 1}
+        title={deleting ? `حذف المستفيد: ${deleting.name}` : "حذف مستفيد"}
+        body="الحذف نهائي ويشمل السجلات المرتبطة (حضور، صرف، دعوات…). هل تريد المتابعة؟"
+        destructive
+        confirmLabel="متابعة"
+        onClose={() => {
+          setDeleting(null);
+          setDeleteStep(1);
+        }}
+        onConfirm={() => setDeleteStep(2)}
+      />
+      <ConfirmDialog
+        open={!!deleting && deleteStep === 2}
+        title="تأكيد نهائي"
+        body="سيتم حذف المستفيد وجميع بياناته المرتبطة. لا يمكن التراجع."
+        destructive
+        confirmLabel="نعم، احذف"
+        busy={busy}
+        onClose={() => {
+          setDeleting(null);
+          setDeleteStep(1);
+        }}
+        onConfirm={() => void onDelete()}
+      />
 
       <Modal
         open={importOpen}

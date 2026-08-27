@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type TaskOpt = { id: string; name: string; active: boolean };
 type VolunteerTask = { id: string; role: TaskOpt };
@@ -39,6 +40,8 @@ export default function VolunteersPage() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
 
   function showPageMsg(text: string, isError = false) {
     setMsg(text);
@@ -119,13 +122,16 @@ export default function VolunteersPage() {
     }
   }
 
-  async function remove(id: string, name: string) {
-    if (!window.confirm(`حذف المتطوع «${name}»؟`)) return;
-    if (!window.confirm("تأكيد نهائي: سيتم حذف السجل.")) return;
-    const res = await fetch(`/api/volunteers?id=${encodeURIComponent(id)}`, {
+  async function removeVolunteer() {
+    if (!deleteTarget || busy) return;
+    setBusy(true);
+    const res = await fetch(`/api/volunteers?id=${encodeURIComponent(deleteTarget.id)}`, {
       method: "DELETE",
     });
     const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    setDeleteTarget(null);
+    setDeleteStep(1);
     showPageMsg(res.ok ? "تم الحذف" : json.error || "فشل الحذف", !res.ok);
     if (res.ok) await load();
   }
@@ -178,7 +184,10 @@ export default function VolunteersPage() {
                     <button
                       type="button"
                       className="btn-secondary"
-                      onClick={() => void remove(r.id, r.name)}
+                      onClick={() => {
+                        setDeleteStep(1);
+                        setDeleteTarget({ id: r.id, name: r.name });
+                      }}
                     >
                       حذف
                     </button>
@@ -297,6 +306,32 @@ export default function VolunteersPage() {
           </form>
         )}
       </Modal>
+
+      <ConfirmDialog
+        open={!!deleteTarget && deleteStep === 1}
+        title={deleteTarget ? `حذف المتطوع: ${deleteTarget.name}` : "حذف متطوع"}
+        body="هل تريد حذف سجل المتطوع؟"
+        destructive
+        confirmLabel="متابعة"
+        onClose={() => {
+          setDeleteTarget(null);
+          setDeleteStep(1);
+        }}
+        onConfirm={() => setDeleteStep(2)}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget && deleteStep === 2}
+        title="تأكيد نهائي"
+        body="سيتم حذف السجل نهائياً ولا يمكن التراجع."
+        destructive
+        confirmLabel="نعم، احذف"
+        busy={busy}
+        onClose={() => {
+          setDeleteTarget(null);
+          setDeleteStep(1);
+        }}
+        onConfirm={() => void removeVolunteer()}
+      />
     </div>
   );
 }

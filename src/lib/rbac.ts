@@ -14,6 +14,7 @@ export type AppPermission =
   | "beneficiaries:manage"
   | "beneficiaries:view"
   | "invites:manage"
+  | "volunteers:manage"
   | "attendance:manage"
   | "attendance:exception"
   | "dispense:manage"
@@ -36,6 +37,7 @@ const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
     "beneficiaries:manage",
     "beneficiaries:view",
     "invites:manage",
+    "volunteers:manage",
     "attendance:manage",
     "attendance:exception",
     "dispense:manage",
@@ -56,6 +58,7 @@ const ROLE_PERMISSIONS: Record<Role, AppPermission[]> = {
     "beneficiaries:manage",
     "beneficiaries:view",
     "invites:manage",
+    "volunteers:manage",
     "messages:view",
   ],
   RECEPTION: ["beneficiaries:view", "attendance:manage", "attendance:exception"],
@@ -81,6 +84,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "لوحة التحكم", permission: "dashboard:view" },
   { href: "/beneficiaries", label: "المستفيدون", permission: "beneficiaries:view" },
   { href: "/invites", label: "الدعوات", permission: "invites:manage" },
+  { href: "/volunteers", label: "المتطوعون", permission: "volunteers:manage" },
   { href: "/attendance", label: "الحضور", permission: "attendance:manage" },
   { href: "/dispense", label: "صرف القطع", permission: "dispense:manage" },
   { href: "/inventory", label: "المخزون", permission: "inventory:manage" },
@@ -127,6 +131,7 @@ export function canAccessPath(role: Role, pathname: string): boolean {
     { prefix: "/dashboard", permission: "dashboard:view" },
     { prefix: "/beneficiaries", permission: "beneficiaries:view" },
     { prefix: "/invites", permission: "invites:manage" },
+    { prefix: "/volunteers", permission: "volunteers:manage" },
     { prefix: "/attendance", permission: "attendance:manage" },
     { prefix: "/dispense", permission: "dispense:manage" },
     { prefix: "/inventory", permission: "inventory:manage" },

@@ -39,3 +39,13 @@ export async function requirePermission(permission: AppPermission) {
   }
   return result;
 }
+
+/** مدير النظام فقط — O(1) */
+export async function requireAdmin() {
+  const result = await requireSession();
+  if ("error" in result) return result;
+  if (result.role !== Role.ADMIN) {
+    return { error: NextResponse.json({ error: "مدير النظام فقط" }, { status: 403 }) };
+  }
+  return result;
+}

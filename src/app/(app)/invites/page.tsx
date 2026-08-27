@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { Chip } from "@/components/ui/Chip";
 import { Tabs } from "@/components/ui/Tabs";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
 
 type Row = {
@@ -41,6 +42,7 @@ export default function InvitesPage() {
   const [total, setTotal] = useState(0);
   const [invitedTotal, setInvitedTotal] = useState(0);
   const [waLogOpen, setWaLogOpen] = useState(false);
+  const [uninviteStep, setUninviteStep] = useState<0 | 1 | 2>(0);
   const toast = useToast();
 
   async function loadPick(search = q, p = 1) {
@@ -206,6 +208,40 @@ export default function InvitesPage() {
     await loadInvited(1);
   }
 
+  /** إلغاء الدعوة — تأكيد ثنائي. Time: O(k). */
+  async function uninviteConfirmed() {
+    if (!selectedIds.length || busy) return;
+    setBusy(true);
+    setMsg("");
+    setMsgError(false);
+    const res = await fetch("/api/invites", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ beneficiaryIds: selectedIds }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    setUninviteStep(0);
+    if (!res.ok) {
+      setMsg(json.error || "فشل الإلغاء");
+      setMsgError(true);
+      return;
+    }
+    setMsg(`أُلغيت دعوة ${json.uninvited ?? 0} مستفيد`);
+    setMsgError(false);
+    setSelected({});
+    await loadInvited(page);
+  }
+
+  function startUninvite() {
+    if (!selectedIds.length) {
+      setMsg("حدد مستفيدين أولاً");
+      setMsgError(true);
+      return;
+    }
+    setUninviteStep(1);
+  }
+
   async function resendWhatsApp(ids: string[]) {
     if (!ids.length || busy) return;
     setBusy(true);
@@ -265,17 +301,28 @@ export default function InvitesPage() {
                 {busy ? "جاري الإرسال…" : `دعوة وإرسال QR واتساب (${selectedIds.length})`}
               </button>
             ) : (
-              <button
-                className="btn-primary"
-                type="button"
-                disabled={busy || !selectedIds.length}
-                title={!selectedIds.length ? "حدد مدعوين لإعادة الإرسال" : undefined}
-                onClick={() => void resendWhatsApp(selectedIds)}
-              >
-                {busy && resendingId === "bulk"
-                  ? "جاري إعادة الإرسال…"
-                  : `إعادة إرسال واتساب (${selectedIds.length})`}
-              </button>
+              <>
+                <button
+                  className="btn-primary"
+                  type="button"
+                  disabled={busy || !selectedIds.length}
+                  title={!selectedIds.length ? "حدد مدعوين لإعادة الإرسال" : undefined}
+                  onClick={() => void resendWhatsApp(selectedIds)}
+                >
+                  {busy && resendingId === "bulk"
+                    ? "جاري إعادة الإرسال…"
+                    : `إعادة إرسال واتساب (${selectedIds.length})`}
+                </button>
+                <button
+                  className="btn-danger"
+                  type="button"
+                  disabled={busy || !selectedIds.length}
+                  title={!selectedIds.length ? "حدد مدعوين لإلغاء الدعوة" : undefined}
+                  onClick={() => startUninvite()}
+                >
+                  إلغاء الدعوة ({selectedIds.length})
+                </button>
+              </>
             )}
             <button
               className="btn-secondary"
@@ -475,6 +522,26 @@ export default function InvitesPage() {
           onPageChange={(p) => void load(p)}
         />
       </section>
+
+      <ConfirmDialog
+        open={uninviteStep === 1}
+        title="إلغاء الدعوة"
+        body={`هل تريد إلغاء دعوة ${selectedIds.length} مستفيد؟ سيُلغى ظهورهم كمدعوين.`}
+        destructive
+        confirmLabel="متابعة"
+        onClose={() => setUninviteStep(0)}
+        onConfirm={() => setUninviteStep(2)}
+      />
+      <ConfirmDialog
+        open={uninviteStep === 2}
+        title="تأكيد نهائي"
+        body="إلغاء الدعوة للمحددين — السجل يبقى لكن لن يظهروا كمدعوين."
+        destructive
+        confirmLabel="نعم، ألغِ الدعوة"
+        busy={busy}
+        onClose={() => setUninviteStep(0)}
+        onConfirm={() => void uninviteConfirmed()}
+      />
     </div>
   );
 }

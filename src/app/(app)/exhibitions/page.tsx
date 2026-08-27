@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -34,6 +35,10 @@ export default function ExhibitionsPage() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
   const toast = useToast();
 
   async function load() {
@@ -82,6 +87,23 @@ export default function ExhibitionsPage() {
     setBusy(false);
     setMsg(res.ok ? "تم تفعيل المعرض" : json.error || "فشل التفعيل");
     toast.push({ title: res.ok ? "تم تفعيل المعرض" : (json.error || "فشل التفعيل"), tone: res.ok ? "success" : "danger" });
+    if (res.ok) load();
+  }
+
+  async function removeExhibition() {
+    if (!deleteId || busy) return;
+    setBusy(true);
+    setMsg("");
+    const res = await fetch(`/api/exhibitions/${deleteId}`, { method: "DELETE" });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    setDeleteId(null);
+    setDeleteStep(1);
+    setMsg(res.ok ? "تم حذف المعرض" : json.error || "فشل الحذف");
+    toast.push({
+      title: res.ok ? "تم حذف المعرض" : json.error || "فشل الحذف",
+      tone: res.ok ? "success" : "danger",
+    });
     if (res.ok) load();
   }
 
@@ -135,19 +157,36 @@ export default function ExhibitionsPage() {
                       </span>
                     </td>
                     <td data-label="إجراء">
-                      {r.active ? (
-                        "—"
-                      ) : (
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          disabled={busy || status === "ended"}
-                          onClick={() => setConfirmId(r.id)}
-                          title={status === "ended" ? "المعرض منتهٍ" : "تفعيل تشغيلي"}
-                        >
-                          تفعيل
-                        </button>
-                      )}
+                      <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                        {r.active ? (
+                          "—"
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-secondary"
+                              disabled={busy || status === "ended"}
+                              onClick={() => setConfirmId(r.id)}
+                              title={status === "ended" ? "المعرض منتهٍ" : "تفعيل تشغيلي"}
+                            >
+                              تفعيل
+                            </button>
+                            {isAdmin ? (
+                              <button
+                                type="button"
+                                className="btn-danger"
+                                disabled={busy}
+                                onClick={() => {
+                                  setDeleteStep(1);
+                                  setDeleteId(r.id);
+                                }}
+                              >
+                                حذف
+                              </button>
+                            ) : null}
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -208,6 +247,32 @@ export default function ExhibitionsPage() {
           setConfirmId(null);
           if (id) void activate(id);
         }}
+      />
+
+      <ConfirmDialog
+        open={!!deleteId && deleteStep === 1}
+        title="حذف المعرض"
+        body="سيُحذف المعرض وجميع بياناته (مخزون، حضور، صرف…). هل تريد المتابعة؟"
+        destructive
+        confirmLabel="متابعة"
+        onClose={() => {
+          setDeleteId(null);
+          setDeleteStep(1);
+        }}
+        onConfirm={() => setDeleteStep(2)}
+      />
+      <ConfirmDialog
+        open={!!deleteId && deleteStep === 2}
+        title="تأكيد نهائي"
+        body="لا يمكن التراجع عن حذف المعرض."
+        destructive
+        confirmLabel="نعم، احذف"
+        busy={busy}
+        onClose={() => {
+          setDeleteId(null);
+          setDeleteStep(1);
+        }}
+        onConfirm={() => void removeExhibition()}
       />
     </div>
   );

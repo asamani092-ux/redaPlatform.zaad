@@ -6,6 +6,7 @@ export const ACTION_LABELS: Record<string, string> = {
   IMPORT: "استيراد",
   INVITE: "دعوة",
   BULK_INVITE: "دعوة جماعية",
+  BULK_UNINVITE: "إلغاء دعوة جماعي",
   INVITE_RESEND: "إعادة إرسال دعوة",
   CHECKIN: "تسجيل حضور",
   CHECKIN_EXCEPTION: "حضور استثنائي",
@@ -14,11 +15,13 @@ export const ACTION_LABELS: Record<string, string> = {
   ENTITLEMENT_OVERRIDE: "تعديل استحقاق",
   INVENTORY_CREATE: "إضافة صنف",
   INVENTORY_UPDATE: "تعديل صنف",
+  INVENTORY_ITEM_DELETE: "حذف صنف",
   STOCK_ADD: "إضافة كمية",
   STOCK_RETURN: "استرجاع كمية",
   STOCK_REMOVE: "حذف كمية",
   EXHIBITION_CREATE: "إنشاء معرض",
   EXHIBITION_ACTIVATE: "تفعيل معرض",
+  EXHIBITION_DELETE: "حذف معرض",
   UPDATE_SETTINGS: "تحديث الإعدادات",
   ASSOCIATION_UPSERT: "تحديث جمعية",
   USER_CREATE: "إنشاء مستخدم",
@@ -33,8 +36,13 @@ export const ACTION_LABELS: Record<string, string> = {
   PASSWORD_RESET: "استعادة كلمة مرور",
   WHATSAPP_SETTINGS_UPDATE: "تحديث إعداد واتساب",
   WHATSAPP_TEST: "اختبار إرسال واتساب",
+  VOLUNTEER_CREATE: "إضافة متطوع",
+  VOLUNTEER_UPDATE: "تعديل متطوع",
+  VOLUNTEER_DELETE: "حذف متطوع",
+  UPDATE_VOLUNTEER_ROLES: "تحديث أدوار المتطوعين",
   LIVE_LINK_CREATE: "إنشاء رابط عرض حي",
   LIVE_LINK_DELETE: "حذف رابط عرض حي",
+  STORE_DELETE: "حذف متجر",
 };
 
 export const ENTITY_LABELS: Record<string, string> = {
@@ -52,6 +60,8 @@ export const ENTITY_LABELS: Record<string, string> = {
   OutboundMessage: "رسالة صادرة",
   AppConfig: "إعدادات المنصة",
   LiveDisplayLink: "رابط عرض حي",
+  Store: "متجر",
+  Volunteer: "متطوع",
 };
 
 export function actionLabel(action: string): string {
