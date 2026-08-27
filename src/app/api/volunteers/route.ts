@@ -86,7 +86,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const exhibition = await requireActiveExhibition();
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
+
   const taskIds = await resolveActiveTaskIds(body.data.taskIds);
   if (!taskIds) {
     return NextResponse.json({ error: "مهمة غير موجودة أو غير نشطة" }, { status: 400 });
@@ -125,8 +134,9 @@ export async function POST(req: NextRequest) {
     });
 
     let thanksStatus: string | null = null;
+    let thanksError: string | null = null;
     if (body.data.sendThanks) {
-      thanksStatus = await sendVolunteerThanks({
+      const thanks = await sendVolunteerThanks({
         volunteerId: created.id,
         exhibitionId: exhibition.id,
         exhibitionName: exhibition.name,
@@ -134,13 +144,15 @@ export async function POST(req: NextRequest) {
         mobile: created.mobile,
         userId: authz.userId,
       });
+      thanksStatus = thanks.status;
+      thanksError = thanks.error;
     }
 
     const fresh = await prisma.volunteer.findUnique({
       where: { id: created.id },
       include: volunteerInclude,
     });
-    return NextResponse.json({ data: fresh, thanksStatus }, { status: 201 });
+    return NextResponse.json({ data: fresh, thanksStatus, thanksError }, { status: 201 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg.includes("Unique constraint") || msg.includes("Volunteer_exhibitionId_nationalId")) {
@@ -149,6 +161,7 @@ export async function POST(req: NextRequest) {
         { status: 409 },
       );
     }
+    console.error("volunteer POST failed:", e);
     return NextResponse.json({ error: "فشل الحفظ" }, { status: 500 });
   }
 }
@@ -211,11 +224,12 @@ export async function PATCH(req: NextRequest) {
     });
 
     let thanksStatus: string | null = null;
+    let thanksError: string | null = null;
     if (body.data.sendThanks) {
       const exhibition = await prisma.exhibition.findUnique({
         where: { id: updated.exhibitionId },
       });
-      thanksStatus = await sendVolunteerThanks({
+      const thanks = await sendVolunteerThanks({
         volunteerId: updated.id,
         exhibitionId: updated.exhibitionId,
         exhibitionName: exhibition?.name ?? "",
@@ -223,9 +237,11 @@ export async function PATCH(req: NextRequest) {
         mobile: updated.mobile,
         userId: authz.userId,
       });
+      thanksStatus = thanks.status;
+      thanksError = thanks.error;
     }
 
-    return NextResponse.json({ data: updated, thanksStatus });
+    return NextResponse.json({ data: updated, thanksStatus, thanksError });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
     if (msg.includes("Unique constraint")) {
@@ -273,23 +289,36 @@ async function sendVolunteerThanks(input: {
   name: string;
   mobile: string;
   userId: string;
-}): Promise<string> {
-  const waConfig = await getWhatsAppConfig();
-  const bodyText = volunteerThanksBodyText(waConfig, input.name);
+}): Promise<{ status: string | null; error: string | null }> {
+  try {
+    const waConfig = await getWhatsAppConfig();
+    const bodyText = volunteerThanksBodyText(waConfig, input.name);
 
-  const msg = await sendWhatsAppMessage({
-    exhibitionId: input.exhibitionId,
-    mobile: input.mobile,
-    body: bodyText,
-    type: OutboundMessageType.VOLUNTEER_THANKS,
-    createdById: input.userId,
-    templateParams: buildVolunteerThanksTemplateParams(waConfig, input.name),
-  });
+    const msg = await sendWhatsAppMessage({
+      exhibitionId: input.exhibitionId,
+      mobile: input.mobile,
+      body: bodyText,
+      type: OutboundMessageType.VOLUNTEER_THANKS,
+      createdById: input.userId,
+      templateParams: buildVolunteerThanksTemplateParams(waConfig, input.name),
+    });
 
-  await prisma.volunteer.update({
-    where: { id: input.volunteerId },
-    data: { thanksSentAt: new Date() },
-  });
+    if (msg.status === "SENT" || msg.status === "STUBBED") {
+      await prisma.volunteer.update({
+        where: { id: input.volunteerId },
+        data: { thanksSentAt: new Date() },
+      });
+      return { status: msg.status, error: null };
+    }
 
-  return msg.status;
+    return {
+      status: msg.status,
+      error: msg.errorMessage ?? "فشل إرسال رسالة الشكر",
+    };
+  } catch (e) {
+    return {
+      status: "FAILED",
+      error: e instanceof Error ? e.message : "فشل إرسال رسالة الشكر",
+    };
+  }
 }
