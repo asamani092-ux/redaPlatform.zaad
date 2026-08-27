@@ -48,6 +48,8 @@ export default function InvitesPage() {
   const [invitedTotal, setInvitedTotal] = useState(0);
   const [waLogOpen, setWaLogOpen] = useState(false);
   const [uninviteStep, setUninviteStep] = useState<0 | 1 | 2>(0);
+  const [inviteConfirmOpen, setInviteConfirmOpen] = useState(false);
+  const [resendConfirmIds, setResendConfirmIds] = useState<string[] | null>(null);
   const [inviteDate, setInviteDate] = useState(todayIsoDate);
   const toast = useToast();
 
@@ -197,6 +199,21 @@ export default function InvitesPage() {
     });
   }
 
+  /** فتح تأكيد التاريخ قبل الإرسال — O(1) */
+  function startInviteConfirm() {
+    if (!selectedIds.length) {
+      setMsg("حدد مستفيدين أولاً");
+      setMsgError(true);
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inviteDate)) {
+      setMsg("حدد تاريخ الحضور للدعوة");
+      setMsgError(true);
+      return;
+    }
+    setInviteConfirmOpen(true);
+  }
+
   async function inviteAndSend() {
     if (!selectedIds.length) {
       setMsg("حدد مستفيدين أولاً");
@@ -209,6 +226,7 @@ export default function InvitesPage() {
       return;
     }
     if (busy) return;
+    setInviteConfirmOpen(false);
     setBusy(true);
     setMsg("");
     setMsgError(false);
@@ -268,6 +286,17 @@ export default function InvitesPage() {
     setUninviteStep(1);
   }
 
+  /** فتح تأكيد التاريخ قبل إعادة الإرسال — O(1) */
+  function startResendConfirm(ids: string[]) {
+    if (!ids.length || busy) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inviteDate)) {
+      setMsg("حدد تاريخ الحضور قبل إعادة الإرسال");
+      setMsgError(true);
+      return;
+    }
+    setResendConfirmIds(ids);
+  }
+
   async function resendWhatsApp(ids: string[]) {
     if (!ids.length || busy) return;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(inviteDate)) {
@@ -275,6 +304,7 @@ export default function InvitesPage() {
       setMsgError(true);
       return;
     }
+    setResendConfirmIds(null);
     setBusy(true);
     setResendingId(ids.length === 1 ? ids[0] : "bulk");
     setMsg("");
@@ -327,7 +357,7 @@ export default function InvitesPage() {
                 type="button"
                 disabled={busy || !selectedIds.length}
                 title={!selectedIds.length ? "حدد مستفيدين من الجدول أولاً" : undefined}
-                onClick={inviteAndSend}
+                onClick={startInviteConfirm}
               >
                 {busy ? "جاري الإرسال…" : `دعوة وإرسال QR واتساب (${selectedIds.length})`}
               </button>
@@ -338,7 +368,7 @@ export default function InvitesPage() {
                   type="button"
                   disabled={busy || !selectedIds.length}
                   title={!selectedIds.length ? "حدد مدعوين لإعادة الإرسال" : undefined}
-                  onClick={() => void resendWhatsApp(selectedIds)}
+                  onClick={() => startResendConfirm(selectedIds)}
                 >
                   {busy && resendingId === "bulk"
                     ? "جاري إعادة الإرسال…"
@@ -536,7 +566,7 @@ export default function InvitesPage() {
                           type="button"
                           className="btn-secondary btn-sm"
                           disabled={busy}
-                          onClick={() => void resendWhatsApp([r.id])}
+                          onClick={() => startResendConfirm([r.id])}
                         >
                           {resendingId === r.id ? "جاري…" : "إعادة إرسال"}
                         </button>
@@ -572,6 +602,26 @@ export default function InvitesPage() {
         />
       </section>
 
+      <ConfirmDialog
+        open={inviteConfirmOpen}
+        title="تأكيد تاريخ الحضور"
+        body={`سيتم إرسال الدعوة لـ ${selectedIds.length} مستفيد بتاريخ الحضور ${inviteDate}. تأكد أن التاريخ صحيح قبل الإرسال.`}
+        confirmLabel="نعم، أرسل الدعوة"
+        busy={busy}
+        onClose={() => setInviteConfirmOpen(false)}
+        onConfirm={() => void inviteAndSend()}
+      />
+      <ConfirmDialog
+        open={resendConfirmIds !== null}
+        title="تأكيد تاريخ الحضور"
+        body={`سيتم إعادة إرسال واتساب لـ ${resendConfirmIds?.length ?? 0} مستفيد بتاريخ الحضور ${inviteDate}. تأكد أن التاريخ صحيح.`}
+        confirmLabel="نعم، أعد الإرسال"
+        busy={busy}
+        onClose={() => setResendConfirmIds(null)}
+        onConfirm={() => {
+          if (resendConfirmIds?.length) void resendWhatsApp(resendConfirmIds);
+        }}
+      />
       <ConfirmDialog
         open={uninviteStep === 1}
         title="إلغاء الدعوة"
