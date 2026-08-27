@@ -3,20 +3,17 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { AttrChips } from "@/components/AttrChips";
+import { KpiCard } from "@/components/ui/KpiCard";
 import { Progress } from "@/components/ui/Progress";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { KpiSections } from "@/components/ui/KpiSections";
-import { exhibitionKpisToSections } from "@/lib/exhibition-kpi-labels";
+import { exhibitionKpisToTiles } from "@/lib/exhibition-kpi-labels";
 import type { ExhibitionKpiSections } from "@/lib/exhibition-kpis";
 
 type DashboardData = {
   exhibition: { name: string; location?: string | null };
   stats: {
-    received: number;
-    attended: number;
     completionRate: number;
-    inventoryRemaining?: number;
   };
   exhibitionKpis: ExhibitionKpiSections;
   attributeLabels?: Record<string, string>;
@@ -77,6 +74,8 @@ export default function DashboardPage() {
     );
   }
 
+  const tiles = exhibitionKpisToTiles(data.exhibitionKpis);
+
   return (
     <div className="page-stack">
       <PageHeader
@@ -92,7 +91,11 @@ export default function DashboardPage() {
         />
       </div>
 
-      <KpiSections sections={exhibitionKpisToSections(data.exhibitionKpis)} />
+      <div className="stat-grid">
+        {tiles.map((tile) => (
+          <KpiCard key={tile.label} label={tile.label} value={tile.value} />
+        ))}
+      </div>
 
       <div className="split-2">
         <section className="panel zad-card">

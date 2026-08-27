@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { KpiCard } from "@/components/ui/KpiCard";
 import { Progress } from "@/components/ui/Progress";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { KpiSections } from "@/components/ui/KpiSections";
-import { exhibitionKpisToSections } from "@/lib/exhibition-kpi-labels";
+import { exhibitionKpisToTiles } from "@/lib/exhibition-kpi-labels";
 import type { ExhibitionKpiSections } from "@/lib/exhibition-kpis";
+import type { ShareRow } from "@/lib/report-metrics";
 
 type LivePayload = {
   exhibition: { id: string; name: string; location: string | null; active: boolean };
@@ -16,6 +17,9 @@ type LivePayload = {
     completionRate: number;
   };
   exhibitionKpis: ExhibitionKpiSections;
+  byAssociationShares: ShareRow[];
+  byNeighborhoodShares: ShareRow[];
+  byHouseholdSizeShares: ShareRow[];
 };
 
 export default function LiveDisplayPage() {
@@ -61,6 +65,8 @@ export default function LiveDisplayPage() {
     );
   }
 
+  const tiles = exhibitionKpisToTiles(data.exhibitionKpis);
+
   return (
     <main className="live-screen zad-root">
       <header className="live-screen__header">
@@ -79,7 +85,45 @@ export default function LiveDisplayPage() {
         </div>
       </header>
 
-      <KpiSections sections={exhibitionKpisToSections(data.exhibitionKpis)} />
+      <section className="live-screen__stats">
+        {tiles.map((tile) => (
+          <KpiCard key={tile.label} label={tile.label} value={tile.value} />
+        ))}
+      </section>
+
+      <section className="live-screen__grid">
+        <SharePanel title="نسب الجمعيات" rows={data.byAssociationShares} />
+        <SharePanel title="نسب الأحياء" rows={data.byNeighborhoodShares} />
+        <SharePanel title="توزيع الأسر حسب عدد الأفراد" rows={data.byHouseholdSizeShares} />
+      </section>
     </main>
+  );
+}
+
+function SharePanel({ title, rows }: { title: string; rows: ShareRow[] }) {
+  return (
+    <div className="live-screen__panel">
+      <h2>{title}</h2>
+      <ul>
+        {rows.slice(0, 8).map((r) => (
+          <li key={r.key}>
+            <div className="live-screen__row">
+              <span>{r.key}</span>
+              <strong>
+                {r.count} ({r.percent}%)
+              </strong>
+            </div>
+            <div className="live-screen__bar" aria-hidden>
+              <span style={{ width: `${Math.min(100, r.percent)}%` }} />
+            </div>
+          </li>
+        ))}
+        {!rows.length ? (
+          <li>
+            <EmptyState title="لا بيانات" />
+          </li>
+        ) : null}
+      </ul>
+    </div>
   );
 }
