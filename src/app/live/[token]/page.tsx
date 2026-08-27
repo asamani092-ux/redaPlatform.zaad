@@ -74,7 +74,7 @@ export default function LiveDisplayPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="live-screen__logo"
-            src="/logo.webp"
+            src="/zad-presentation/assets/logo-full.png"
             alt="الزاد"
             width={96}
             height={58}

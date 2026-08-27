@@ -1514,6 +1514,9 @@ textarea.input-field {
   width: clamp(4.5rem, 8vw, 6.5rem);
   height: auto;
   object-fit: contain;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 .live-screen__brand {
   margin: 0;
