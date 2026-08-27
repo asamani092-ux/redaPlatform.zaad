@@ -343,7 +343,7 @@ export async function POST(req: NextRequest) {
         body: thanksBody,
         type: OutboundMessageType.THANK_YOU,
         createdById: authz.userId,
-        templateParams: [order.beneficiary.name, exhibition.name],
+        templateParams: [exhibition.name, order.beneficiary.name],
       });
       thanksStatus = thanksMsg.status;
       if (thanksMsg.status === "FAILED") {

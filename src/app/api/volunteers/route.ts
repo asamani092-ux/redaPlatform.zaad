@@ -5,7 +5,7 @@ import { requirePermission } from "@/lib/session";
 import { writeAuditLog } from "@/lib/audit";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import { buildVolunteerThanksTemplateParams, getWhatsAppConfig } from "@/lib/whatsapp-config";
+import { buildVolunteerThanksTemplateParams, getWhatsAppConfig, volunteerThanksBodyText } from "@/lib/whatsapp-config";
 import { OutboundMessageType } from "@/generated/prisma/enums";
 
 const volunteerInclude = {
@@ -274,20 +274,16 @@ async function sendVolunteerThanks(input: {
   mobile: string;
   userId: string;
 }): Promise<string> {
-  const bodyText = `شكراً لتطوعك في ${input.exhibitionName}، ${input.name}.`;
-
   const waConfig = await getWhatsAppConfig();
+  const bodyText = volunteerThanksBodyText(waConfig, input.name);
+
   const msg = await sendWhatsAppMessage({
     exhibitionId: input.exhibitionId,
     mobile: input.mobile,
     body: bodyText,
     type: OutboundMessageType.VOLUNTEER_THANKS,
     createdById: input.userId,
-    templateParams: buildVolunteerThanksTemplateParams(
-      waConfig,
-      input.name,
-      input.exhibitionName,
-    ),
+    templateParams: buildVolunteerThanksTemplateParams(waConfig, input.name),
   });
 
   await prisma.volunteer.update({

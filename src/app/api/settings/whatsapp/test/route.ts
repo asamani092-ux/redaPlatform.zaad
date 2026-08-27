@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     type: isZad ? OutboundMessageType.THANK_YOU : OutboundMessageType.TEST,
     createdById: authz.userId,
     ...(isZad
-      ? { templateParams: ["اختبار", "منصة رداء"] as string[] }
+      ? { templateParams: ["منصة رداء", "اختبار"] as string[] }
       : {}),
   });
 

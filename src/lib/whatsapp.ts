@@ -16,8 +16,8 @@ export type WhatsAppSendInput = {
   /**
    * متغيرات body للقالب بالترتيب (ZAD):
    * INVITATION: name, exhibition, date, location, qr_url
-   * THANK_YOU: name, exhibition
-   * VOLUNTEER_THANKS: name, exhibition [, tagline] — tagline عند قالب مخصص
+   * THANK_YOU: exhibition, name
+   * VOLUNTEER_THANKS: VOL, name (نفس قالب الشكر — VOL بدل exhibition)
    * SURVEY: name, exhibition, survey_url
    */
   templateParams?: string[];

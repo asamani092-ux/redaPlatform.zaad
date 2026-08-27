@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
  * إعداد واتساب: قاعدة البيانات أولاً (قابل للتعديل من الواجهة)،
  * ومتغيرات البيئة كقيمة افتراضية للتوافق الخلفي — O(1) لكل قراءة.
  */
-/** النص الثالث في قالب شكر المتطوع (ZAD body param) */
-export const DEFAULT_VOLUNTEER_THANKS_TAGLINE = "مشاركتك معنا سبب النجاح";
+/** يُمرَّر مكان {{exhibition}} في قالب الشكر لرسالة المتطوع */
+export const DEFAULT_VOLUNTEER_THANKS_TAGLINE = "مشاركتك معنا سبب للنجاح";
 
 export type WhatsAppConfig = {
   provider: string;
@@ -16,7 +16,7 @@ export type WhatsAppConfig = {
   inviteTemplateId: string | null;
   thanksTemplateId: string | null;
   volunteerThanksTemplateId: string | null;
-  /** معامل body ثالث لقالب المتطوع — يُستخدم فقط مع قالب مخصص */
+  /** نص VOL — يُستبدل به اسم المعرض في المعامل الثاني لنفس قالب الشكر */
   volunteerThanksTagline: string | null;
   surveyTemplateId: string | null;
 };
@@ -92,21 +92,25 @@ export function maskToken(token: string | null | undefined): string {
 }
 
 /**
- * متغيرات قالب شكر المتطوع — Time O(1)، Space O(1).
- * 3 معاملات عند وجود WHATSAPP_VOLUNTEER_THANKS_TEMPLATE_ID؛ وإلا 2 (fallback لقالب الشكر).
+ * نفس قالب الشكر (معاملاً) — Time O(1)، Space O(1).
+ * المستفيد: [exhibition, name] | المتطوع: [VOL, name]
  */
 export function buildVolunteerThanksTemplateParams(
   config: WhatsAppConfig,
   name: string,
-  exhibitionName: string,
 ): string[] {
-  const params: string[] = [name, exhibitionName];
-  if (config.volunteerThanksTemplateId) {
-    params.push(
-      config.volunteerThanksTagline?.trim() || DEFAULT_VOLUNTEER_THANKS_TAGLINE,
-    );
-  }
-  return params;
+  const vol =
+    config.volunteerThanksTagline?.trim() || DEFAULT_VOLUNTEER_THANKS_TAGLINE;
+  return [vol, name];
+}
+
+export function volunteerThanksBodyText(
+  config: WhatsAppConfig,
+  name: string,
+): string {
+  const vol =
+    config.volunteerThanksTagline?.trim() || DEFAULT_VOLUNTEER_THANKS_TAGLINE;
+  return `شكراً لزيارتك ${vol}، ${name}.`;
 }
 
 export { ZAD_DEFAULT_URL };
