@@ -1,9 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Dropzone } from "@/components/ui/Dropzone";
 
 type TaskOpt = { id: string; name: string; active: boolean };
 type VolunteerTask = { id: string; role: TaskOpt };
@@ -44,6 +46,10 @@ export default function VolunteersPage() {
   const [form, setForm] = useState(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const [importMsgError, setImportMsgError] = useState(false);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
 
   function showPageMsg(text: string, isError = false) {
     setMsg(text);
@@ -138,26 +144,68 @@ export default function VolunteersPage() {
     if (res.ok) await load();
   }
 
+  async function onImport(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setImportErrors([]);
+    setImportMsg("");
+    const fd = new FormData(e.currentTarget);
+    const res = await fetch("/api/volunteers/import", { method: "POST", body: fd });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    const errs: string[] = Array.isArray(json.errors) ? json.errors : [];
+    setImportErrors(errs);
+    const created = Number(json.created ?? 0);
+    const skipped = Number(json.skipped ?? 0);
+    if (!res.ok) {
+      setImportMsgError(true);
+      setImportMsg(json.error || json.message || "فشل الاستيراد");
+      return;
+    }
+    setImportMsgError(created === 0);
+    setImportMsg(json.message || `استيراد: ${created} ناجح / ${skipped} متجاوز`);
+    if (created > 0) {
+      await load();
+      if (errs.length === 0) setImportOpen(false);
+    }
+  }
+
   return (
     <div className="page-stack">
       <PageHeader
         title="المتطوعون"
         description="تسجيل متطوعي المعرض: الاسم، الجوال، الهوية، والمهام (متعددة)"
         actions={
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={!tasks.length}
-            title={!tasks.length ? "أضف مهام المتطوعين من الإعدادات أولاً" : undefined}
-            onClick={() => {
-              showPageMsg("");
-              showFormMsg("");
-              resetForm();
-              setOpen(true);
-            }}
-          >
-            إضافة متطوع
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={!tasks.length}
+              title={!tasks.length ? "أضف مهام المتطوعين من الإعدادات أولاً" : undefined}
+              onClick={() => {
+                setImportErrors([]);
+                setImportMsg("");
+                setImportOpen(true);
+              }}
+            >
+              استيراد Excel
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!tasks.length}
+              title={!tasks.length ? "أضف مهام المتطوعين من الإعدادات أولاً" : undefined}
+              onClick={() => {
+                showPageMsg("");
+                showFormMsg("");
+                resetForm();
+                setOpen(true);
+              }}
+            >
+              إضافة متطوع
+            </button>
+          </div>
         }
       />
       {msg ? <p className={`msg${msgError ? " msg-error" : ""}`}>{msg}</p> : null}
@@ -317,6 +365,69 @@ export default function VolunteersPage() {
             </div>
           </form>
         )}
+      </Modal>
+
+      <Modal
+        open={importOpen}
+        title="استيراد المتطوعين من Excel"
+        onClose={() => {
+          setImportOpen(false);
+          setImportErrors([]);
+          setImportMsg("");
+        }}
+      >
+        <p className="page-header__desc" style={{ marginBottom: "0.75rem" }}>
+          حمّل النموذج، عبّئه، ثم ارفعه. الهوية من 10 إلى 14 رقماً، الجوال
+          05xxxxxxxx، والمهام مفصولة بفاصلة. المتطوعون يُضافون للمعرض النشط.
+        </p>
+        <div className="form-actions" style={{ marginBottom: "0.85rem" }}>
+          <Link className="btn-secondary" href="/api/volunteers/import/template">
+            تحميل نموذج Excel
+          </Link>
+        </div>
+        <form onSubmit={onImport} className="form-grid" onDragOver={(e) => e.preventDefault()}>
+          <Dropzone
+            accept=".xlsx,.xls,.csv"
+            title="اسحب ملف Excel هنا أو اختر للتصفح"
+            body="الصيغ: xlsx / xls / csv"
+            onFiles={(files) => {
+              const input = document.getElementById("volunteer-import-file") as HTMLInputElement | null;
+              if (!input || !files.length) return;
+              const dt = new DataTransfer();
+              dt.items.add(files[0]);
+              input.files = dt.files;
+              showPageMsg("");
+              setImportMsg(`تم اختيار الملف: ${files[0]?.name ?? ""}`);
+              setImportMsgError(false);
+            }}
+          />
+          <input
+            id="volunteer-import-file"
+            type="file"
+            name="file"
+            accept=".xlsx,.xls,.csv"
+            required
+            hidden
+          />
+          <button className="btn-primary" type="submit" disabled={busy}>
+            {busy ? "جاري..." : "رفع الملف"}
+          </button>
+        </form>
+        {importMsg ? (
+          <p className={`msg${importMsgError ? " msg-error" : ""}`} style={{ marginTop: "0.75rem" }}>
+            {importMsg}
+          </p>
+        ) : null}
+        {importErrors.length ? (
+          <div className="msg msg-error" style={{ marginTop: "0.85rem" }}>
+            <strong>أسباب الرفض / التجاوز:</strong>
+            <ul style={{ margin: "0.5rem 0 0", paddingInlineStart: "1.25rem" }}>
+              {importErrors.map((err, i) => (
+                <li key={`${i}-${err.slice(0, 24)}`}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </Modal>
 
       <ConfirmDialog
