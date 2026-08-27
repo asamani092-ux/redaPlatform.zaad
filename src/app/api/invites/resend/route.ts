@@ -9,7 +9,18 @@ import { sendInviteWhatsApp } from "@/lib/invite-whatsapp";
 
 const schema = z.object({
   beneficiaryIds: z.array(z.string()).min(1),
+  /** إن وُجد يحدّث inviteDate ويعيد الإرسال بهذا التاريخ */
+  inviteDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "صيغة التاريخ: YYYY-MM-DD")
+    .optional()
+    .nullable(),
 });
+
+function parseInviteDate(raw: string | null | undefined): Date | null {
+  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  return new Date(`${raw}T12:00:00.000Z`);
+}
 
 /**
  * إعادة إرسال دعوة واتساب لمدعوين موجودين — تراكمي (رسالة جديدة)، O(n).
@@ -34,6 +45,19 @@ export async function POST(req: NextRequest) {
   }
 
   const uniqueIds = [...new Set(body.data.beneficiaryIds)];
+  const nextInviteDate = parseInviteDate(body.data.inviteDate);
+
+  if (nextInviteDate) {
+    await prisma.exhibitionInvite.updateMany({
+      where: {
+        exhibitionId: exhibition.id,
+        invited: true,
+        beneficiaryId: { in: uniqueIds },
+      },
+      data: { inviteDate: nextInviteDate },
+    });
+  }
+
   const invites = await prisma.exhibitionInvite.findMany({
     where: {
       exhibitionId: exhibition.id,
@@ -66,12 +90,18 @@ export async function POST(req: NextRequest) {
   }> = [];
 
   for (const inv of invites) {
+    const dateStr =
+      (inv.inviteDate ? inv.inviteDate.toISOString().slice(0, 10) : null) ||
+      body.data.inviteDate?.trim() ||
+      exhibition.startsAt?.toISOString().slice(0, 10) ||
+      null;
     const send = await sendInviteWhatsApp({
       req,
       exhibition,
       beneficiary: inv.beneficiary,
       qrToken: inv.qrToken,
       createdById: authz.userId,
+      inviteDate: dateStr,
     });
     results.push({
       beneficiaryId: send.beneficiaryId,
@@ -113,6 +143,7 @@ export async function POST(req: NextRequest) {
     entityId: exhibition.id,
     meta: {
       count: invites.length,
+      inviteDate: body.data.inviteDate ?? null,
       whatsappSent,
       whatsappFailed,
       whatsappStubbed,

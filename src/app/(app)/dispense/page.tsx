@@ -56,6 +56,7 @@ export default function DispensePage() {
 
   const [q, setQ] = useState("");
   const [lookup, setLookup] = useState<Lookup | null>(null);
+  const resultPanelRef = useRef<HTMLElement | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [schema, setSchema] = useState<InventorySchemaField[]>([]);
   // كميات نصّية لتفادي قفل حقول type=number مع الأرقام العربية — O(1) لكل تحديث
@@ -91,6 +92,12 @@ export default function DispensePage() {
   useEffect(() => {
     void loadItems();
   }, []);
+
+  /** بعد المعاينة الناجحة — تمرير لوحة البيانات للأعلى — O(1) */
+  useEffect(() => {
+    if (!lookup) return;
+    resultPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [lookup]);
 
   const preview = useCallback(async (params: { qrToken?: string; q?: string }) => {
     setMsg("");
@@ -341,7 +348,7 @@ export default function DispensePage() {
       </section>
 
       {lookup ? (
-        <section className="panel">
+        <section className="panel" ref={resultPanelRef}>
           <h2 className="panel-title">بيانات الصرف</h2>
           <BeneficiaryCard
             name={lookup.beneficiary.name}

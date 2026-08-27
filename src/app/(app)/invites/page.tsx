@@ -19,10 +19,15 @@ type Row = {
   dependentsCount?: number;
   statusLabel?: string;
   qrToken?: string | null;
+  inviteDate?: string | null;
   whatsappStatus?: string | null;
   whatsappStatusLabel?: string | null;
   whatsappError?: string | null;
 };
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 /**
  * الدعوات = إنشاء رمز QR + إرساله واتساباً.
@@ -43,6 +48,7 @@ export default function InvitesPage() {
   const [invitedTotal, setInvitedTotal] = useState(0);
   const [waLogOpen, setWaLogOpen] = useState(false);
   const [uninviteStep, setUninviteStep] = useState<0 | 1 | 2>(0);
+  const [inviteDate, setInviteDate] = useState(todayIsoDate);
   const toast = useToast();
 
   async function loadPick(search = q, p = 1) {
@@ -93,6 +99,7 @@ export default function InvitesPage() {
       (json.data ?? []).map(
         (inv: {
           qrToken: string;
+          inviteDate?: string | null;
           whatsappStatus?: string | null;
           whatsappStatusLabel?: string | null;
           whatsappError?: string | null;
@@ -111,6 +118,9 @@ export default function InvitesPage() {
           dependentsCount: inv.beneficiary.dependentsCount,
           statusLabel: "مدعو",
           qrToken: inv.qrToken,
+          inviteDate: inv.inviteDate
+            ? String(inv.inviteDate).slice(0, 10)
+            : null,
           whatsappStatus: inv.whatsappStatus ?? null,
           whatsappStatusLabel: inv.whatsappStatusLabel ?? "لم يُرسل",
           whatsappError: inv.whatsappError ?? null,
@@ -134,6 +144,13 @@ export default function InvitesPage() {
       .then((r) => r.json())
       .then((j) => {
         if (typeof j.total === "number") setInvitedTotal(j.total);
+      })
+      .catch(() => undefined);
+    fetch("/api/exhibitions/active")
+      .then((r) => r.json())
+      .then((j) => {
+        const start = j.active?.startsAt ? String(j.active.startsAt).slice(0, 10) : "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(start)) setInviteDate(start);
       })
       .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -186,6 +203,11 @@ export default function InvitesPage() {
       setMsgError(true);
       return;
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inviteDate)) {
+      setMsg("حدد تاريخ الحضور للدعوة");
+      setMsgError(true);
+      return;
+    }
     if (busy) return;
     setBusy(true);
     setMsg("");
@@ -193,7 +215,11 @@ export default function InvitesPage() {
     const res = await fetch("/api/invites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ beneficiaryIds: selectedIds, sendWhatsApp: true }),
+      body: JSON.stringify({
+        beneficiaryIds: selectedIds,
+        sendWhatsApp: true,
+        inviteDate,
+      }),
     });
     const json = await res.json();
     setBusy(false);
@@ -244,6 +270,11 @@ export default function InvitesPage() {
 
   async function resendWhatsApp(ids: string[]) {
     if (!ids.length || busy) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inviteDate)) {
+      setMsg("حدد تاريخ الحضور قبل إعادة الإرسال");
+      setMsgError(true);
+      return;
+    }
     setBusy(true);
     setResendingId(ids.length === 1 ? ids[0] : "bulk");
     setMsg("");
@@ -251,7 +282,7 @@ export default function InvitesPage() {
     const res = await fetch("/api/invites/resend", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ beneficiaryIds: ids }),
+      body: JSON.stringify({ beneficiaryIds: ids, inviteDate }),
     });
     const json = await res.json();
     setBusy(false);
@@ -361,6 +392,18 @@ export default function InvitesPage() {
 
       <section className="panel">
         <div className="toolbar">
+          <label className="toolbar-label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span>تاريخ الحضور</span>
+            <input
+              className="input-field"
+              type="date"
+              value={inviteDate}
+              onChange={(e) => setInviteDate(e.target.value)}
+              dir="ltr"
+              aria-label="تاريخ الحضور للدعوة"
+              title="يُرسل في واتساب كـ {{date}}"
+            />
+          </label>
           <input
             className="input-field"
             value={q}
@@ -412,6 +455,7 @@ export default function InvitesPage() {
                 <th>الجوال</th>
                 <th>عدد التابعين</th>
                 <th>الحالة</th>
+                {view === "invited" ? <th>تاريخ الحضور</th> : null}
                 {view === "invited" ? <th>إرسال واتساب</th> : null}
                 <th>QR</th>
                 {view === "invited" ? <th>إجراءات</th> : null}
@@ -444,6 +488,11 @@ export default function InvitesPage() {
                   <td data-label="الحالة">
                     <span className="badge badge-muted">{r.statusLabel ?? "—"}</span>
                   </td>
+                  {view === "invited" ? (
+                    <td data-label="تاريخ الحضور" dir="ltr">
+                      {r.inviteDate ?? "—"}
+                    </td>
+                  ) : null}
                   {view === "invited" ? (
                     <td data-label="إرسال واتساب">
                       <Chip
@@ -498,7 +547,7 @@ export default function InvitesPage() {
               ))}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={view === "invited" ? 10 : 8}>
+                  <td colSpan={view === "invited" ? 11 : 8}>
                     <EmptyState
                       title={view === "invited" ? "لا مدعوون بعد" : "لا توجد بيانات"}
                       body={

@@ -17,7 +17,19 @@ const bulkSchema = z.object({
   beneficiaryIds: z.array(z.string()).min(1),
   /** افتراضي true — الدعوة بلا واتساب بلا فائدة تشغيلية */
   sendWhatsApp: z.boolean().optional().default(true),
+  /** تاريخ الحضور لهذه الدفعة YYYY-MM-DD */
+  inviteDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "صيغة التاريخ: YYYY-MM-DD")
+    .optional()
+    .nullable(),
 });
+
+/** تحويل YYYY-MM-DD إلى Date UTC ظهر — O(1) */
+function parseInviteDate(raw: string | null | undefined): Date | null {
+  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  return new Date(`${raw}T12:00:00.000Z`);
+}
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("invites:manage");
@@ -86,6 +98,11 @@ export async function POST(req: NextRequest) {
     );
   }
   const uniqueIds = [...new Set(body.data.beneficiaryIds)];
+  const inviteDate = parseInviteDate(body.data.inviteDate);
+  const inviteDateStr =
+    body.data.inviteDate?.trim() ||
+    exhibition.startsAt?.toISOString().slice(0, 10) ||
+    null;
 
   const result = await prisma.$transaction(async (tx) => {
     let invited = 0;
@@ -106,6 +123,7 @@ export async function POST(req: NextRequest) {
           invited: true,
           invitedAt: new Date(),
           invitedById: authz.userId,
+          ...(inviteDate ? { inviteDate } : {}),
         },
         create: {
           exhibitionId: exhibition.id,
@@ -113,6 +131,7 @@ export async function POST(req: NextRequest) {
           qrToken: randomUUID().replace(/-/g, ""),
           invited: true,
           invitedById: authz.userId,
+          inviteDate,
         },
       });
       invited++;
@@ -141,6 +160,7 @@ export async function POST(req: NextRequest) {
         beneficiary: b,
         qrToken: t.qrToken,
         createdById: authz.userId,
+        inviteDate: inviteDateStr,
       });
       if (send.status === "FAILED") {
         whatsappFailed += 1;
@@ -181,6 +201,7 @@ export async function POST(req: NextRequest) {
     meta: {
       count: result.invited,
       beneficiaryIds: uniqueIds,
+      inviteDate: inviteDateStr,
       whatsappSent,
       whatsappFailed,
       whatsappStubbed,
