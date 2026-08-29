@@ -18,6 +18,15 @@ type UserRow = {
   active: boolean;
 };
 
+type ResetRequestRow = {
+  id: string;
+  status: string;
+  createdAt: string;
+  expiresAt: string;
+  expiresInSec: number;
+  user: { id: string; name: string; mobile: string; role: string };
+};
+
 export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [page, setPage] = useState(1);
@@ -30,6 +39,8 @@ export default function UsersPage() {
   const [deleting, setDeleting] = useState<UserRow | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetRequests, setResetRequests] = useState<ResetRequestRow[]>([]);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   async function load(p = page) {
     const res = await fetch(`/api/users?page=${p}&pageSize=${DEFAULT_PAGE_SIZE}`);
@@ -42,10 +53,36 @@ export default function UsersPage() {
     }
   }
 
+  async function loadResetRequests() {
+    const res = await fetch("/api/password/requests");
+    const json = await res.json().catch(() => ({}));
+    if (res.ok) setResetRequests(json.data ?? []);
+  }
+
   useEffect(() => {
     void load(1);
+    void loadResetRequests();
+    const t = window.setInterval(() => void loadResetRequests(), 5000);
+    return () => window.clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function approveReset(requestId: string) {
+    if (busy) return;
+    setBusy(true);
+    setApprovingId(requestId);
+    setMsg("");
+    const res = await fetch("/api/password/requests/approve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    setApprovingId(null);
+    setMsg(res.ok ? "تمت الموافقة — يمكن للموظف تعيين كلمة المرور الآن" : json.error || "فشلت الموافقة");
+    await loadResetRequests();
+  }
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -156,6 +193,65 @@ export default function UsersPage() {
         }
       />
       {msg ? <p className="msg">{msg}</p> : null}
+
+      <section className="panel">
+        <div className="toolbar" style={{ marginBottom: "var(--space-3)" }}>
+          <h2 className="panel-title" style={{ margin: 0 }}>
+            طلبات استعادة كلمة المرور ({resetRequests.length})
+          </h2>
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            disabled={busy}
+            onClick={() => void loadResetRequests()}
+          >
+            تحديث
+          </button>
+        </div>
+        {resetRequests.length ? (
+          <div className="table-wrap table-wrap--stack">
+            <table>
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>الجوال</th>
+                  <th>المتبقي</th>
+                  <th>إجراء</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resetRequests.map((r) => (
+                  <tr key={r.id}>
+                    <td data-label="الاسم">{r.user.name}</td>
+                    <td data-label="الجوال" dir="ltr">
+                      {r.user.mobile}
+                    </td>
+                    <td data-label="المتبقي" dir="ltr">
+                      {Math.floor(r.expiresInSec / 60)}:
+                      {String(r.expiresInSec % 60).padStart(2, "0")}
+                    </td>
+                    <td data-label="إجراء">
+                      <button
+                        type="button"
+                        className="btn-primary btn-sm"
+                        disabled={busy}
+                        onClick={() => void approveReset(r.id)}
+                      >
+                        {approvingId === r.id ? "جاري…" : "موافقة"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            title="لا طلبات معلّقة"
+            body="عند طلب موظف لاستعادة كلمة المرور يظهر هنا لمدة 5 دقائق."
+          />
+        )}
+      </section>
 
       <section className="panel">
         <div className="toolbar" style={{ marginBottom: "var(--space-3)" }}>

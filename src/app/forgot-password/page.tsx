@@ -1,25 +1,82 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Stepper } from "@/components/ui/Stepper";
 import { PasswordField } from "@/components/PasswordField";
 
+type FlowStep = "mobile" | "waiting" | "password" | "expired";
+
 /**
- * نسيت كلمة المرور: إدخال الجوال ثم فتح نموذج التغيير مباشرة.
- * Time: O(1) لكل طلب.
+ * نسيت كلمة المرور: طلب → انتظار موافقة المدير (5 دقائق) → تعيين كلمة المرور.
+ * Time: O(1) لكل طلب؛ polling كل 3 ثوانٍ.
  */
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<FlowStep>("mobile");
   const [mobile, setMobile] = useState("");
-  const [code, setCode] = useState("");
+  const [requestId, setRequestId] = useState("");
+  const [expiresInSec, setExpiresInSec] = useState(300);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const expiresAtRef = useRef<number | null>(null);
 
-  async function requestCode(e: FormEvent) {
+  useEffect(() => {
+    if (step !== "waiting" && step !== "password") return;
+    if (!requestId) return;
+
+    let cancelled = false;
+    const tick = async () => {
+      const res = await fetch(
+        `/api/password/forgot/status?requestId=${encodeURIComponent(requestId)}`,
+      );
+      const json = await res.json().catch(() => ({}));
+      if (cancelled) return;
+      const status = String(json.status ?? "EXPIRED");
+      if (json.expiresAt) {
+        const t = new Date(json.expiresAt).getTime();
+        expiresAtRef.current = t;
+        setExpiresInSec(Math.max(0, Math.floor((t - Date.now()) / 1000)));
+      }
+      if (status === "APPROVED") {
+        setStep("password");
+        setMsg("وافق المدير — عيّن كلمة المرور الجديدة الآن");
+        setError("");
+        return;
+      }
+      if (status === "EXPIRED" || status === "USED") {
+        setStep("expired");
+        setError(
+          status === "USED"
+            ? "تم استخدام هذا الطلب مسبقاً"
+            : "انتهت مدة الطلب (5 دقائق) — أعد الطلب وبلّغ المدير",
+        );
+        setMsg("");
+      }
+    };
+
+    void tick();
+    const poll = window.setInterval(() => void tick(), 3000);
+    const countdown = window.setInterval(() => {
+      if (!expiresAtRef.current) return;
+      const left = Math.max(0, Math.floor((expiresAtRef.current - Date.now()) / 1000));
+      setExpiresInSec(left);
+      if (left <= 0 && step === "waiting") {
+        setStep("expired");
+        setError("انتهت مدة الطلب (5 دقائق) — أعد الطلب وبلّغ المدير");
+      }
+    }, 1000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+      window.clearInterval(countdown);
+    };
+  }, [step, requestId]);
+
+  async function requestReset(e: FormEvent) {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
@@ -30,21 +87,28 @@ export default function ForgotPasswordPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mobile }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     setLoading(false);
     if (!res.ok) {
       setError(json.error || "تعذر الإرسال");
       return;
     }
-    setMsg(json.message);
-    if (json.trialCode) setCode(String(json.trialCode));
-    // فتح شاشة تعديل كلمة المرور مباشرة بعد إدخال الجوال
-    setStep(2);
+    const id = String(json.requestId ?? "");
+    if (!id) {
+      setError("تعذر إنشاء الطلب");
+      return;
+    }
+    setRequestId(id);
+    const sec = Number(json.expiresInSec ?? 300);
+    setExpiresInSec(sec);
+    expiresAtRef.current = Date.now() + sec * 1000;
+    setMsg(json.message || "بلّغ المدير خلال 5 دقائق للموافقة");
+    setStep("waiting");
   }
 
   async function resetPassword(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (loading) return;
+    if (loading || !requestId) return;
     const fd = new FormData(e.currentTarget);
     const password = String(fd.get("password") ?? "");
     const confirm = String(fd.get("confirm") ?? "");
@@ -57,17 +121,29 @@ export default function ForgotPasswordPage() {
     const res = await fetch("/api/password/reset", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mobile, code: code || String(fd.get("code") ?? ""), password }),
+      body: JSON.stringify({ requestId, password }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({}));
     setLoading(false);
     if (!res.ok) {
       setError(json.error || "تعذر التغيير");
       return;
     }
-    setMsg(json.message);
+    setMsg(json.message || "تم التغيير");
     setTimeout(() => router.replace("/login"), 1200);
   }
+
+  function restart() {
+    setStep("mobile");
+    setRequestId("");
+    setExpiresInSec(300);
+    expiresAtRef.current = null;
+    setError("");
+    setMsg("");
+  }
+
+  const stepperId =
+    step === "mobile" ? "mobile" : step === "password" ? "reset" : "wait";
 
   return (
     <div className="login-screen page-shell">
@@ -76,22 +152,23 @@ export default function ForgotPasswordPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.webp" alt="رداء" width={80} height={48} />
           <h1>استعادة كلمة المرور</h1>
-          <p>أدخل الجوال ثم عدّل كلمة المرور مباشرة بعد رمز التحقق</p>
+          <p>اطلب الاستعادة ثم اطلب من المدير الموافقة خلال 5 دقائق</p>
         </div>
 
         <Stepper
           steps={[
             { id: "mobile", label: "الجوال" },
+            { id: "wait", label: "موافقة المدير" },
             { id: "reset", label: "كلمة المرور" },
           ]}
-          currentId={step === 1 ? "mobile" : "reset"}
+          currentId={stepperId}
         />
 
         {msg ? <p className="msg">{msg}</p> : null}
         {error ? <p className="msg msg-error">{error}</p> : null}
 
-        {step === 1 ? (
-          <form onSubmit={requestCode} className="login-form" method="post" action="#">
+        {step === "mobile" ? (
+          <form onSubmit={requestReset} className="login-form" method="post" action="#">
             <div>
               <label className="label-field" htmlFor="mobile">
                 رقم الجوال
@@ -108,30 +185,37 @@ export default function ForgotPasswordPage() {
               />
             </div>
             <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading}>
-              {loading ? "جاري…" : "متابعة لتعديل كلمة المرور"}
+              {loading ? "جاري…" : "إرسال طلب الاستعادة"}
             </button>
             <Link href="/login" className="btn-secondary" style={{ width: "100%", textAlign: "center" }}>
               العودة للدخول
             </Link>
           </form>
-        ) : (
+        ) : null}
+
+        {step === "waiting" ? (
+          <div className="login-form">
+            <p className="page-header__desc">
+              بانتظار موافقة المدير… المتبقي{" "}
+              <strong dir="ltr">
+                {Math.floor(expiresInSec / 60)}:{String(expiresInSec % 60).padStart(2, "0")}
+              </strong>
+            </p>
+            <p className="page-header__desc">بلّغ المدير الآن من شاشة المستخدمين → طلبات الاستعادة.</p>
+            <button type="button" className="btn-secondary" style={{ width: "100%" }} onClick={restart}>
+              إلغاء / طلب جديد
+            </button>
+          </div>
+        ) : null}
+
+        {step === "password" ? (
           <form onSubmit={resetPassword} className="login-form" method="post" action="#">
-            <div>
-              <label className="label-field" htmlFor="code">
-                رمز التحقق
-              </label>
-              <input
-                id="code"
-                name="code"
-                className="input-field"
-                dir="ltr"
-                inputMode="numeric"
-                required
-                placeholder="123456"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-              />
-            </div>
+            <p className="page-header__desc">
+              المتبقي للتعيين:{" "}
+              <strong dir="ltr">
+                {Math.floor(expiresInSec / 60)}:{String(expiresInSec % 60).padStart(2, "0")}
+              </strong>
+            </p>
             <div>
               <label className="label-field" htmlFor="password">
                 كلمة المرور الجديدة
@@ -159,16 +243,22 @@ export default function ForgotPasswordPage() {
             <button type="submit" className="btn-primary" style={{ width: "100%" }} disabled={loading}>
               {loading ? "جاري التغيير..." : "تغيير كلمة المرور"}
             </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              style={{ width: "100%" }}
-              onClick={() => setStep(1)}
-            >
-              تغيير رقم الجوال / إعادة الإرسال
+            <button type="button" className="btn-secondary" style={{ width: "100%" }} onClick={restart}>
+              بدء من جديد
             </button>
           </form>
-        )}
+        ) : null}
+
+        {step === "expired" ? (
+          <div className="login-form">
+            <button type="button" className="btn-primary" style={{ width: "100%" }} onClick={restart}>
+              طلب استعادة جديد
+            </button>
+            <Link href="/login" className="btn-secondary" style={{ width: "100%", textAlign: "center" }}>
+              العودة للدخول
+            </Link>
+          </div>
+        ) : null}
       </div>
     </div>
   );

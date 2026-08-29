@@ -38,6 +38,13 @@ export const WRITE_PATHS: WritePathSpec[] = [
   { id: "beneficiary.delete", entityType: "Beneficiary", action: "DELETE", route: "DELETE /api/beneficiaries/[id]", audited: true },
   { id: "user.delete", entityType: "User", action: "USER_DELETE|USER_DEACTIVATE", route: "DELETE /api/users", audited: true },
   { id: "password.reset", entityType: "User", action: "PASSWORD_RESET", route: "POST /api/password/reset", audited: true },
+  {
+    id: "password.resetApprove",
+    entityType: "PasswordResetRequest",
+    action: "PASSWORD_RESET_APPROVE",
+    route: "POST /api/password/requests/approve",
+    audited: true,
+  },
   { id: "whatsapp.settings", entityType: "AppConfig", action: "WHATSAPP_SETTINGS_UPDATE", route: "PUT /api/settings/whatsapp", audited: true },
   { id: "whatsapp.test", entityType: "AppConfig", action: "WHATSAPP_TEST", route: "POST /api/settings/whatsapp/test", audited: true },
   { id: "liveLink.create", entityType: "LiveDisplayLink", action: "LIVE_LINK_CREATE", route: "POST /api/live-links", audited: true },
@@ -58,11 +65,11 @@ export const WRITE_PATHS: WritePathSpec[] = [
   },
   {
     id: "password.forgot",
-    entityType: "PasswordReset",
-    action: "OTP_ISSUE",
+    entityType: "PasswordResetRequest",
+    action: "PASSWORD_RESET_REQUEST",
     route: "POST /api/password/forgot",
     audited: false,
-    excludeReason: "إصدار رمز تحقق قبل التوثيق — الرسالة مسجلة في OutboundMessage والتغيير الفعلي مدقق في PASSWORD_RESET",
+    excludeReason: "طلب استعادة قبل التوثيق — الموافقة والتغيير الفعلي مدقّقان في PASSWORD_RESET_APPROVE و PASSWORD_RESET",
   },
   {
     id: "auth.session",

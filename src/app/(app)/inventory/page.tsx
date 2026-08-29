@@ -49,7 +49,8 @@ export default function InventoryPage() {
   const [copiedSku, setCopiedSku] = useState("");
   const [detailItem, setDetailItem] = useState<Item | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
-  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+  /** 0=مغلق — لا يُفتح حوار الحذف بمجرد فتح تفاصيل الصنف */
+  const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0);
   const toast = useToast();
 
   async function copySku(code: string) {
@@ -236,7 +237,7 @@ export default function InventoryPage() {
       return;
     }
     setDetailItem(null);
-    setDeleteStep(1);
+    setDeleteStep(0);
     setDeleteReason("");
     setMsg("تم حذف الصنف");
     toast.push({ title: "تم حذف الصنف", tone: "success" });
@@ -377,7 +378,11 @@ export default function InventoryPage() {
       <Modal
         open={Boolean(detailItem)}
         title={detailItem ? `تفاصيل الصنف ${detailItem.skuCode ?? ""}` : "تفاصيل الصنف"}
-        onClose={() => setDetailItem(null)}
+        onClose={() => {
+          setDetailItem(null);
+          setDeleteStep(0);
+          setDeleteReason("");
+        }}
         wide
       >
         {detailItem ? (
@@ -441,7 +446,15 @@ export default function InventoryPage() {
                   حذف الصنف
                 </button>
               ) : null}
-              <button type="button" className="btn-secondary btn-sm" onClick={() => setDetailItem(null)}>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => {
+                  setDetailItem(null);
+                  setDeleteStep(0);
+                  setDeleteReason("");
+                }}
+              >
                 إغلاق
               </button>
             </div>
@@ -597,23 +610,26 @@ export default function InventoryPage() {
       </Modal>
 
       <ConfirmDialog
-        open={!!detailItem && deleteStep === 1}
+        open={deleteStep === 1 && !!detailItem}
         title="حذف الصنف"
         body={`حذف الصنف ${detailItem ? itemSummary(detailItem) : ""} نهائياً؟ يجب أن تكون الكمية صفراً.`}
         destructive
         confirmLabel="متابعة"
-        onClose={() => setDeleteStep(1)}
+        onClose={() => {
+          setDeleteStep(0);
+          setDeleteReason("");
+        }}
         onConfirm={() => setDeleteStep(2)}
       />
       <ConfirmDialog
-        open={!!detailItem && deleteStep === 2}
+        open={deleteStep === 2 && !!detailItem}
         title="تأكيد حذف الصنف"
         body="أدخل سبب الحذف ثم أكّد."
         destructive
         confirmLabel="نعم، احذف الصنف"
         busy={busy}
         onClose={() => {
-          setDeleteStep(1);
+          setDeleteStep(0);
           setDeleteReason("");
         }}
         onConfirm={() => {
