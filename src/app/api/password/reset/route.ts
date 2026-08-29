@@ -3,14 +3,14 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { writeAuditLog } from "@/lib/audit";
+import { PasswordResetRequestStatus } from "@/generated/prisma/enums";
 
 const schema = z.object({
-  mobile: z.string().min(9),
-  code: z.string().min(4),
+  requestId: z.string().min(8),
   password: z.string().min(8, "كلمة المرور 8 أحرف على الأقل"),
 });
 
-/** تأكيد رمز الاستعادة وتعيين كلمة مرور جديدة — O(1) */
+/** تعيين كلمة مرور بعد موافقة المدير — O(1) */
 export async function POST(req: NextRequest) {
   const body = schema.safeParse(await req.json().catch(() => ({})));
   if (!body.success) {
@@ -20,38 +20,47 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await prisma.user.findUnique({
-    where: { mobile: body.data.mobile.trim() },
-  });
-  if (!user || !user.active) {
-    return NextResponse.json({ error: "رمز غير صحيح أو منتهي" }, { status: 400 });
+  if (body.data.requestId.startsWith("pending_")) {
+    return NextResponse.json({ error: "الطلب غير صالح أو منتهٍ" }, { status: 400 });
   }
 
-  const reset = await prisma.passwordReset.findFirst({
-    where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: "desc" },
+  const reset = await prisma.passwordResetRequest.findUnique({
+    where: { id: body.data.requestId },
   });
-  if (!reset || !(await bcrypt.compare(body.data.code.trim(), reset.codeHash))) {
-    return NextResponse.json({ error: "رمز غير صحيح أو منتهي" }, { status: 400 });
+  if (
+    !reset ||
+    reset.status !== PasswordResetRequestStatus.APPROVED ||
+    reset.expiresAt.getTime() <= Date.now() ||
+    reset.usedAt
+  ) {
+    return NextResponse.json(
+      { error: "الطلب غير موافق عليه أو منتهٍ — اطلب مجدداً" },
+      { status: 400 },
+    );
   }
 
+  const hash = await bcrypt.hash(body.data.password, 10);
   await prisma.$transaction([
     prisma.user.update({
-      where: { id: user.id },
-      data: { passwordHash: await bcrypt.hash(body.data.password, 10) },
+      where: { id: reset.userId },
+      data: { passwordHash: hash, active: true },
     }),
-    prisma.passwordReset.update({
+    prisma.passwordResetRequest.update({
       where: { id: reset.id },
-      data: { usedAt: new Date() },
+      data: { status: PasswordResetRequestStatus.USED, usedAt: new Date() },
     }),
   ]);
 
   await writeAuditLog({
-    userId: user.id,
+    userId: reset.userId,
     action: "PASSWORD_RESET",
     entityType: "User",
-    entityId: user.id,
-    meta: { via: "whatsapp-otp" },
+    entityId: reset.userId,
+    meta: {
+      via: "admin-approved-request",
+      requestId: reset.id,
+      approvedById: reset.approvedById,
+    },
   });
 
   return NextResponse.json({ ok: true, message: "تم تغيير كلمة المرور — سجّل الدخول الآن" });

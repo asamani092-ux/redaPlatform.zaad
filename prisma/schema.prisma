@@ -71,6 +71,8 @@ model User {
   invitesCreated     ExhibitionInvite[]  @relation("InviteBy")
   outboundMessages   OutboundMessage[]   @relation("MessageBy")
   passwordResets     PasswordReset[]
+  passwordResetRequests PasswordResetRequest[] @relation("PasswordResetRequestUser")
+  passwordResetApprovals PasswordResetRequest[] @relation("PasswordResetApprovedBy")
   volunteersCreated  Volunteer[]         @relation("VolunteerBy")
 
   @@index([role])
@@ -387,6 +389,31 @@ model PasswordReset {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, createdAt])
+}
+
+enum PasswordResetRequestStatus {
+  PENDING
+  APPROVED
+  USED
+  CANCELLED
+}
+
+/// طلب استعادة كلمة المرور بموافقة المدير — صالح 5 دقائق
+model PasswordResetRequest {
+  id           String                      @id @default(cuid())
+  userId       String
+  status       PasswordResetRequestStatus  @default(PENDING)
+  expiresAt    DateTime
+  approvedAt   DateTime?
+  approvedById String?
+  usedAt       DateTime?
+  createdAt    DateTime                    @default(now())
+
+  user       User  @relation("PasswordResetRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy User? @relation("PasswordResetApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([status, expiresAt])
   @@index([userId, createdAt])
 }
 

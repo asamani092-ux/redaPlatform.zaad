@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { randomInt } from "crypto";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
-import { OutboundMessageType } from "@/generated/prisma/enums";
-import { getWhatsAppConfig } from "@/lib/whatsapp-config";
+import { isValidSaudiMobile, MOBILE_ERROR, normalizeMobile } from "@/lib/mobile";
+import { PasswordResetRequestStatus } from "@/generated/prisma/enums";
 
 const schema = z.object({ mobile: z.string().min(9) });
 
+const TTL_MS = 5 * 60_000;
+const RATE_LIMIT_MS = 60_000;
+
+const GENERIC_MSG =
+  "إن كان الجوال مسجلاً فسيظهر طلب للمدير — بلّغه خلال 5 دقائق ثم عيّن كلمة المرور بعد الموافقة";
+
 /**
- * طلب رمز استعادة كلمة المرور — يُرسل عبر واتساب وينتهي خلال 10 دقائق.
- * الرد عام دائماً لمنع تعداد الحسابات. في الوضع التجريبي يُعاد الرمز لفتح شاشة التغيير مباشرة.
- * O(1) استعلامات.
+ * طلب استعادة كلمة المرور — موافقة مدير لاحقاً، بدون OTP واتساب.
+ * رد عام + requestId دائماً. Time O(1).
  */
 export async function POST(req: NextRequest) {
   const body = schema.safeParse(await req.json().catch(() => ({})));
@@ -20,46 +23,59 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "أدخل رقم الجوال" }, { status: 400 });
   }
 
-  const generic = {
-    ok: true,
-    message: "إن كان الجوال مسجلاً فسيصلك رمز تحقق عبر واتساب خلال دقائق",
-    openReset: true as const,
-  };
+  const mobile = normalizeMobile(body.data.mobile);
+  if (!isValidSaudiMobile(mobile)) {
+    return NextResponse.json({ error: MOBILE_ERROR }, { status: 400 });
+  }
 
-  const user = await prisma.user.findUnique({
-    where: { mobile: body.data.mobile.trim() },
-  });
-  if (!user || !user.active) return NextResponse.json(generic);
-
-  // منع الإغراق: رمز واحد كل 60 ثانية
-  const recent = await prisma.passwordReset.findFirst({
-    where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 60_000) } },
-  });
-  if (recent) return NextResponse.json(generic);
-
-  const code = String(randomInt(100000, 1000000));
-  await prisma.passwordReset.create({
-    data: {
-      userId: user.id,
-      codeHash: await bcrypt.hash(code, 10),
-      expiresAt: new Date(Date.now() + 10 * 60_000),
-    },
-  });
-
-  await sendWhatsAppMessage({
-    mobile: user.mobile,
-    body: `رمز استعادة كلمة المرور لمنصة رداء: ${code} — صالح 10 دقائق. تجاهل الرسالة إن لم تطلبها.`,
-    type: OutboundMessageType.OTP,
-  });
-
-  const wa = await getWhatsAppConfig();
-  if (wa.provider === "stub") {
+  const user = await prisma.user.findUnique({ where: { mobile } });
+  if (!user || !user.active) {
     return NextResponse.json({
-      ...generic,
-      message: "تم فتح تعديل كلمة المرور — أدخل الرمز التجريبي الظاهر ثم كلمة المرور الجديدة",
-      trialCode: code,
+      ok: true,
+      message: GENERIC_MSG,
+      requestId: `pending_${randomUUID().replace(/-/g, "")}`,
+      expiresInSec: 300,
     });
   }
 
-  return NextResponse.json(generic);
+  const recent = await prisma.passwordResetRequest.findFirst({
+    where: {
+      userId: user.id,
+      createdAt: { gt: new Date(Date.now() - RATE_LIMIT_MS) },
+      status: { in: [PasswordResetRequestStatus.PENDING, PasswordResetRequestStatus.APPROVED] },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  if (recent && recent.expiresAt > new Date()) {
+    return NextResponse.json({
+      ok: true,
+      message: GENERIC_MSG,
+      requestId: recent.id,
+      expiresInSec: Math.max(0, Math.floor((recent.expiresAt.getTime() - Date.now()) / 1000)),
+    });
+  }
+
+  // إلغاء الطلبات السابقة النشطة لنفس المستخدم — تراكمي بلا حذف
+  await prisma.passwordResetRequest.updateMany({
+    where: {
+      userId: user.id,
+      status: { in: [PasswordResetRequestStatus.PENDING, PasswordResetRequestStatus.APPROVED] },
+    },
+    data: { status: PasswordResetRequestStatus.CANCELLED },
+  });
+
+  const created = await prisma.passwordResetRequest.create({
+    data: {
+      userId: user.id,
+      status: PasswordResetRequestStatus.PENDING,
+      expiresAt: new Date(Date.now() + TTL_MS),
+    },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    message: GENERIC_MSG,
+    requestId: created.id,
+    expiresInSec: 300,
+  });
 }
