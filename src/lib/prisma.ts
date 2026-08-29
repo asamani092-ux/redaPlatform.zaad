@@ -7,10 +7,12 @@ const globalForPrisma = globalThis as unknown as {
   prismaFieldRev?: string;
 };
 
-/** بصمة حقول ExhibitionInvite — O(f log f) عند التحميل فقط */
-const PRISMA_FIELD_REV = Object.keys(Prisma.ExhibitionInviteScalarFieldEnum)
-  .sort()
-  .join(",");
+/** بصمة نماذج/حقول رئيسية — تُبطل الـ singleton بعد prisma generate — O(f log f) */
+const PRISMA_FIELD_REV = [
+  Object.keys(Prisma.ModelName).sort().join(","),
+  Object.keys(Prisma.ExhibitionInviteScalarFieldEnum).sort().join(","),
+  Object.keys(Prisma.PasswordResetRequestScalarFieldEnum).sort().join(","),
+].join("|");
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL;
