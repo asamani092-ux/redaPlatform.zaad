@@ -130,7 +130,8 @@ export async function sendInviteWhatsApp(input: {
 
   const wa = await getWhatsAppConfig();
 
-  // 1) رسالة الدعوة: نص (من الإعدادات) + صورة بوستر
+  // 1) رسالة الدعوة على القالب الحالي — نفس ترتيب المتغيرات السابق
+  // name, exhibition, date, location, qr_url (5) حتى وصول قالبي البوستر/الباركود الجديدين
   const inviteMsg = await sendWhatsAppMessage({
     exhibitionId: input.exhibition.id,
     beneficiaryId: input.beneficiary.id,
@@ -145,6 +146,7 @@ export async function sendInviteWhatsApp(input: {
       input.exhibition.name,
       dateStr,
       location,
+      qrImageUrl,
     ],
   });
 
@@ -155,20 +157,19 @@ export async function sendInviteWhatsApp(input: {
       beneficiaryName: input.beneficiary.name,
       mobile: input.beneficiary.mobile,
       status: "FAILED",
-      reason: inviteMsg.errorMessage || "فشل إرسال رسالة الدعوة (البوستر)",
+      reason: inviteMsg.errorMessage || "فشل إرسال رسالة الدعوة",
     };
   }
 
-  // 2) رسالة الباركود فوراً: نص (من الإعدادات) + صورة QR
+  // 2) رسالة الباركود فقط إن ضُبط قالبها — وإلا نجاح بالرسالة الأولى (القالب السابق)
   const qrTemplateId = wa.inviteQrTemplateId;
   if (!qrTemplateId) {
     return {
       beneficiaryId: input.beneficiary.id,
       beneficiaryName: input.beneficiary.name,
       mobile: input.beneficiary.mobile,
-      status: "PARTIAL",
-      reason:
-        "أُرسلت الدعوة دون الباركود — عيّن WHATSAPP_INVITE_QR_TEMPLATE_ID في البيئة",
+      status: inviteOk,
+      reason: null,
     };
   }
 
