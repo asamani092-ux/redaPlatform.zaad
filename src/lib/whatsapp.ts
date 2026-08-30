@@ -11,21 +11,26 @@ export type WhatsAppSendInput = {
   body: string;
   type: OutboundMessageType;
   createdById?: string;
-  /** رابط صورة عامة (QR) إن دعمها المزوّد العام */
+  /**
+   * رابط صورة عامة للهيدر (بوستر أو باركود PNG).
+   * على ZAD يُمرَّر كـ header image إن وُجد.
+   */
   mediaUrl?: string;
   /**
-   * متغيرات body للقالب بالترتيب (ZAD):
-   * INVITATION: name, exhibition, date, location, qr_url
-   * THANK_YOU: exhibition, name
-   * SURVEY: name, exhibition, survey_url
+   * متغيرات body للقالب بالترتيب (ZAD).
+   * يتجاوز اختيار القالب الافتراضي حسب النوع إن وُجد templateIdOverride.
    */
   templateParams?: string[];
+  /** معرّف قالب صريح (مثلاً قالب باركود الدعوة) */
+  templateIdOverride?: string | null;
 };
 
 function templateIdFor(
   config: WhatsAppConfig,
   type: OutboundMessageType,
+  override?: string | null,
 ): string | null {
+  if (override?.trim()) return override.trim();
   switch (type) {
     case OutboundMessageType.INVITATION:
       return config.inviteTemplateId;
@@ -41,7 +46,8 @@ function templateIdFor(
 type ZadSendResult = { providerRef?: string; raw?: unknown };
 
 /**
- * إرسال قالب ZAD — Time O(1)، Space O(1).
+ * إرسال قالب ZAD — body نصي + header صورة اختيارية.
+ * Time O(1)، Space O(1).
  */
 async function sendZadTemplate(input: {
   apiUrl: string;
@@ -50,21 +56,34 @@ async function sendZadTemplate(input: {
   mobile: string;
   templateId: string;
   params: string[];
+  headerImageUrl?: string | null;
 }): Promise<ZadSendResult> {
   const waId = toWaId(input.mobile);
   const url = new URL(input.apiUrl);
   url.searchParams.set("apiKey", input.apiKey);
 
+  const params: Array<Record<string, unknown>> = [];
+  if (input.headerImageUrl?.trim()) {
+    params.push({
+      type: "header",
+      parameters: [
+        {
+          type: "image",
+          image: { link: input.headerImageUrl.trim() },
+        },
+      ],
+    });
+  }
+  params.push({
+    type: "body",
+    parameters: input.params.map((text) => ({ type: "text", text })),
+  });
+
   const payload = {
     userName: input.userName,
     wa_id: waId,
     templateId: input.templateId,
-    params: [
-      {
-        type: "body",
-        parameters: input.params.map((text) => ({ type: "text", text })),
-      },
-    ],
+    params,
   };
 
   const res = await fetch(url.toString(), {
@@ -117,6 +136,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
     body: input.body,
     mediaUrl: input.mediaUrl ?? null,
     templateParams,
+    templateIdOverride: input.templateIdOverride ?? null,
     provider,
   };
 
@@ -155,7 +175,11 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         throw new Error("رابط ZAD أو apiKey غير مضبوط — من الإعدادات أو متغيرات البيئة");
       }
 
-      const templateId = templateIdFor(config, input.type);
+      const templateId = templateIdFor(
+        config,
+        input.type,
+        input.templateIdOverride,
+      );
       if (!templateId) {
         throw new Error(
           `مزوّد ZAD لا يدعم النوع ${input.type} أو معرّف القالب غير مضبوط في البيئة`,
@@ -172,6 +196,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
         mobile,
         templateId,
         params: templateParams,
+        headerImageUrl: input.mediaUrl,
       });
 
       return prisma.outboundMessage.create({
@@ -185,6 +210,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
             ...basePayload,
             wa_id: toWaId(mobile),
             templateId,
+            headerImageUrl: input.mediaUrl ?? null,
             response: result.raw as Prisma.InputJsonValue,
           } as Prisma.InputJsonValue,
           createdById: input.createdById,

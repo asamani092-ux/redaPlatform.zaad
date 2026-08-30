@@ -11,6 +11,10 @@ export type WhatsAppConfig = {
   sender: string | null;
   source: "database" | "env";
   inviteTemplateId: string | null;
+  /** قالب الرسالة الثانية: نص + صورة الباركود */
+  inviteQrTemplateId: string | null;
+  /** صورة هيدر الدعوة (بوستر) إن كان الهيدر ديناميكياً — وإلا البوستر ثابت في القالب */
+  inviteHeaderImageUrl: string | null;
   thanksTemplateId: string | null;
   surveyTemplateId: string | null;
 };
@@ -25,6 +29,10 @@ const ZAD_DEFAULT_URL =
 function envTemplates() {
   return {
     inviteTemplateId: process.env.WHATSAPP_INVITE_TEMPLATE_ID?.trim() || null,
+    inviteQrTemplateId:
+      process.env.WHATSAPP_INVITE_QR_TEMPLATE_ID?.trim() || null,
+    inviteHeaderImageUrl:
+      process.env.WHATSAPP_INVITE_HEADER_IMAGE_URL?.trim() || null,
     thanksTemplateId: process.env.WHATSAPP_THANKS_TEMPLATE_ID?.trim() || null,
     surveyTemplateId: process.env.WHATSAPP_SURVEY_TEMPLATE_ID?.trim() || null,
   };
