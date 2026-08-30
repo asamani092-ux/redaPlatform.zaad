@@ -1,6 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import {
+  DEFAULT_INVITE_POSTER_TPL,
+  DEFAULT_INVITE_QR_TPL,
+} from "@/lib/invite-message-defaults";
 import { PageHeader } from "@/components/PageHeader";
 import { Modal } from "@/components/Modal";
 import type { InventorySchemaField } from "@/lib/inventory-schema";
@@ -36,6 +40,7 @@ export default function SettingsPage() {
   const [associations, setAssociations] = useState<Association[]>([]);
   const [volunteerRoles, setVolunteerRoles] = useState<VolunteerRole[]>([]);
   const [inviteTpl, setInviteTpl] = useState("");
+  const [inviteQrTpl, setInviteQrTpl] = useState("");
   const [thanksTpl, setThanksTpl] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -88,7 +93,8 @@ export default function SettingsPage() {
             setDependentsEntitlement(String(s.dependentsEntitlement ?? 1));
             setLowStockThreshold(String(s.lowStockThreshold ?? 10));
             if (Array.isArray(s.inventorySchemaJson)) setSchema(s.inventorySchemaJson);
-            setInviteTpl(s.whatsappInviteTpl ?? "");
+            setInviteTpl(s.whatsappInviteTpl?.trim() || DEFAULT_INVITE_POSTER_TPL);
+            setInviteQrTpl(s.whatsappInviteQrTpl?.trim() || DEFAULT_INVITE_QR_TPL);
             setThanksTpl(s.whatsappThanksTpl ?? "");
           }
         }
@@ -125,6 +131,7 @@ export default function SettingsPage() {
         inventorySchema: cleanedSchema,
         associations,
         whatsappInviteTpl: inviteTpl,
+        whatsappInviteQrTpl: inviteQrTpl,
         whatsappThanksTpl: thanksTpl,
       }),
     });
@@ -589,12 +596,13 @@ export default function SettingsPage() {
         <form onSubmit={onSaveSection}>
           <div className="form-grid">
             <div className="full">
-              <label className="label-field">قالب الدعوة</label>
+              <label className="label-field">رسالة الدعوة (نص + صورة البوستر)</label>
               <textarea
                 className="input-field"
-                rows={4}
+                rows={8}
                 value={inviteTpl}
                 onChange={(e) => setInviteTpl(e.target.value)}
+                placeholder="نص الرسالة الأولى مع البوستر"
               />
               <ul className="page-header__desc" style={{ marginTop: "0.5rem", paddingInlineStart: "1.25rem" }}>
                 <li>
@@ -604,18 +612,26 @@ export default function SettingsPage() {
                   <code>{"{{exhibition}}"}</code> — اسم المعرض
                 </li>
                 <li>
-                  <code>{"{{date}}"}</code> — تاريخ المعرض
+                  <code>{"{{date}}"}</code> — تاريخ الحضور
                 </li>
                 <li>
                   <code>{"{{location}}"}</code> — موقع المعرض
                 </li>
-                <li>
-                  <code>{"{{qr}}"}</code> — رمز QR (نص)
-                </li>
-                <li>
-                  <code>{"{{qr_url}}"}</code> — رابط صورة/صفحة QR
-                </li>
               </ul>
+            </div>
+            <div className="full">
+              <label className="label-field">رسالة الباركود (نص + صورة QR)</label>
+              <textarea
+                className="input-field"
+                rows={3}
+                value={inviteQrTpl}
+                onChange={(e) => setInviteQrTpl(e.target.value)}
+                placeholder="عند الحضور للمعرض إبراز الباركود رجاءً لموظفة الاستقبال"
+              />
+              <p className="page-header__desc" style={{ marginTop: "0.5rem" }}>
+                صورة الباركود تُنشأ تلقائياً من المنصة لكل مدعو. المتغيرات المتاحة نفسها (
+                <code>{"{{name}}"}</code> / <code>{"{{exhibition}}"}</code> …).
+              </p>
             </div>
             <div className="full">
               <label className="label-field">قالب الشكر</label>

@@ -222,6 +222,8 @@ model ExhibitionSettings {
   /// مخطط سمات المخزون: [{key,label,options:string[]}] مثل نوع/صنف/لون/وحدة
   inventorySchemaJson  Json
   whatsappInviteTpl    String?
+  /// نص الرسالة الثانية مع صورة الباركود — قابل للتعديل من الإعدادات
+  whatsappInviteQrTpl  String?
   whatsappThanksTpl    String?
   surveyQuestionsJson  Json?
   createdAt            DateTime @default(now())

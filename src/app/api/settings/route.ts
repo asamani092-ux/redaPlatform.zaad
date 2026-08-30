@@ -57,6 +57,7 @@ const settingsSchema = z.object({
   lowStockThreshold: z.number().int().nonnegative().optional(),
   inventorySchema: z.array(schemaField).optional(),
   whatsappInviteTpl: z.string().optional().nullable(),
+  whatsappInviteQrTpl: z.string().optional().nullable(),
   whatsappThanksTpl: z.string().optional().nullable(),
   /** كتالوج استبيانات متعددة */
   surveys: z.array(surveyDefSchema).optional(),
@@ -214,6 +215,7 @@ export async function PUT(req: NextRequest) {
         ? (schemaPayload as unknown as Prisma.InputJsonValue)
         : undefined,
       whatsappInviteTpl: body.data.whatsappInviteTpl,
+      whatsappInviteQrTpl: body.data.whatsappInviteQrTpl,
       whatsappThanksTpl: body.data.whatsappThanksTpl,
       surveyQuestionsJson: surveyPayload,
     },
@@ -224,6 +226,7 @@ export async function PUT(req: NextRequest) {
       lowStockThreshold: body.data.lowStockThreshold ?? 10,
       inventorySchemaJson: (schemaPayload ?? DEFAULT_INVENTORY_SCHEMA) as unknown as Prisma.InputJsonValue,
       whatsappInviteTpl: body.data.whatsappInviteTpl,
+      whatsappInviteQrTpl: body.data.whatsappInviteQrTpl,
       whatsappThanksTpl: body.data.whatsappThanksTpl,
       surveyQuestionsJson: (surveyPayload ?? {
         version: 2,
