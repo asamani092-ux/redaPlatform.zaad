@@ -5,6 +5,7 @@ import { OutboundMessageStatus, OutboundMessageType } from "@/generated/prisma/e
 import type { Prisma } from "@/generated/prisma/client";
 import { appOrigin } from "@/lib/app-url";
 import { isValidSaudiMobile, MOBILE_ERROR, normalizeMobile } from "@/lib/mobile";
+import { getWhatsAppConfig } from "@/lib/whatsapp-config";
 
 type ExhibitionInviteCtx = {
   id: string;
@@ -18,11 +19,11 @@ export type InviteSendResult = {
   beneficiaryId: string;
   beneficiaryName: string;
   mobile: string;
-  status: "SENT" | "STUBBED" | "FAILED";
+  status: "SENT" | "STUBBED" | "FAILED" | "PARTIAL";
   reason: string | null;
 };
 
-/** بناء نص الدعوة مع QR — O(1) */
+/** بناء نص الدعوة — O(1) */
 export function buildInviteBodyText(input: {
   tpl: string;
   name: string;
@@ -42,13 +43,21 @@ export function buildInviteBodyText(input: {
   if (!input.tpl.includes("{{location}}") && input.location) {
     bodyText += `\nالموقع: ${input.location}`;
   }
-  if (!input.tpl.includes("{{qr_url}}") && !bodyText.includes(input.qrUrl)) {
-    bodyText += `\nرمز الحضور (امسحه عند الدخول):\n${input.qrUrl}`;
-  }
   return bodyText;
 }
 
-/** إرسال دعوة واتساب لمستفيد واحد — O(1) */
+function okStatus(status: string): "SENT" | "STUBBED" | null {
+  if (status === "SENT") return "SENT";
+  if (status === "STUBBED") return "STUBBED";
+  return null;
+}
+
+/**
+ * إرسال دعوتي واتساب متتابعتين لنفس المستفيد:
+ * 1) نص + صورة بوستر (هيدر القالب أو WHATSAPP_INVITE_HEADER_IMAGE_URL)
+ * 2) نص + صورة الباركود (PNG عام لكل مدعو)
+ * Time: O(1) لكل مستفيد.
+ */
 export async function sendInviteWhatsApp(input: {
   req: NextRequest;
   exhibition: ExhibitionInviteCtx;
@@ -60,7 +69,6 @@ export async function sendInviteWhatsApp(input: {
 }): Promise<InviteSendResult> {
   const mobile = normalizeMobile(input.beneficiary.mobile);
   if (!isValidSaudiMobile(mobile)) {
-    // نسجّل فشلاً تراكمياً ليظهر في قائمة الدعوات
     await prisma.outboundMessage.create({
       data: {
         exhibitionId: input.exhibition.id,
@@ -73,6 +81,7 @@ export async function sendInviteWhatsApp(input: {
           body: null,
           mediaUrl: null,
           provider: "validation",
+          part: "invite",
         } as Prisma.InputJsonValue,
         createdById: input.createdById,
       },
@@ -87,12 +96,12 @@ export async function sendInviteWhatsApp(input: {
   }
 
   const origin = appOrigin(input.req);
-  const qrUrl = `${origin}/api/qr/public/${input.qrToken}`;
+  /** صورة PNG عامة للهيدر — وليست رابطاً نصياً للمستفيد */
+  const qrImageUrl = `${origin}/api/qr/public/${input.qrToken}`;
   const inviteDateRaw = input.inviteDate?.trim() || "";
-  const dateStr =
-    /^\d{4}-\d{2}-\d{2}$/.test(inviteDateRaw)
-      ? inviteDateRaw
-      : input.exhibition.startsAt?.toISOString().slice(0, 10) ?? "";
+  const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(inviteDateRaw)
+    ? inviteDateRaw
+    : (input.exhibition.startsAt?.toISOString().slice(0, 10) ?? "");
   const location = input.exhibition.location ?? "";
   const tpl =
     input.exhibition.settings?.whatsappInviteTpl ??
@@ -104,40 +113,82 @@ export async function sendInviteWhatsApp(input: {
     date: dateStr,
     location,
     qrToken: input.qrToken,
-    qrUrl,
+    qrUrl: qrImageUrl,
   });
 
-  const msg = await sendWhatsAppMessage({
+  const wa = await getWhatsAppConfig();
+
+  // 1) رسالة الدعوة: نص + صورة بوستر (ثابتة في القالب أو رابط ديناميكي من env)
+  const inviteMsg = await sendWhatsAppMessage({
     exhibitionId: input.exhibition.id,
     beneficiaryId: input.beneficiary.id,
     mobile,
     body: bodyText,
-    mediaUrl: qrUrl,
+    mediaUrl: wa.inviteHeaderImageUrl || undefined,
     type: OutboundMessageType.INVITATION,
     createdById: input.createdById,
+    templateIdOverride: wa.inviteTemplateId,
     templateParams: [
       input.beneficiary.name,
       input.exhibition.name,
       dateStr,
       location,
-      qrUrl,
     ],
   });
 
-  if (msg.status === "FAILED") {
+  const inviteOk = okStatus(inviteMsg.status);
+  if (!inviteOk) {
     return {
       beneficiaryId: input.beneficiary.id,
       beneficiaryName: input.beneficiary.name,
       mobile: input.beneficiary.mobile,
       status: "FAILED",
-      reason: msg.errorMessage || "فشل إرسال واتساب",
+      reason: inviteMsg.errorMessage || "فشل إرسال رسالة الدعوة (البوستر)",
     };
   }
+
+  // 2) رسالة الباركود فوراً: نص + صورة QR
+  const qrTemplateId = wa.inviteQrTemplateId;
+  if (!qrTemplateId) {
+    return {
+      beneficiaryId: input.beneficiary.id,
+      beneficiaryName: input.beneficiary.name,
+      mobile: input.beneficiary.mobile,
+      status: "PARTIAL",
+      reason:
+        "أُرسلت الدعوة دون الباركود — عيّن WHATSAPP_INVITE_QR_TEMPLATE_ID في البيئة",
+    };
+  }
+
+  const qrBody = `مرحباً ${input.beneficiary.name}، هذا رمز حضورك لمعرض ${input.exhibition.name}. أظهره عند الدخول.`;
+  const qrMsg = await sendWhatsAppMessage({
+    exhibitionId: input.exhibition.id,
+    beneficiaryId: input.beneficiary.id,
+    mobile,
+    body: qrBody,
+    mediaUrl: qrImageUrl,
+    type: OutboundMessageType.INVITATION,
+    createdById: input.createdById,
+    templateIdOverride: qrTemplateId,
+    templateParams: [input.beneficiary.name, input.exhibition.name],
+  });
+
+  const qrOk = okStatus(qrMsg.status);
+  if (!qrOk) {
+    return {
+      beneficiaryId: input.beneficiary.id,
+      beneficiaryName: input.beneficiary.name,
+      mobile: input.beneficiary.mobile,
+      status: "PARTIAL",
+      reason: qrMsg.errorMessage || "أُرسلت الدعوة وفشل إرسال صورة الباركود",
+    };
+  }
+
   return {
     beneficiaryId: input.beneficiary.id,
     beneficiaryName: input.beneficiary.name,
     mobile: input.beneficiary.mobile,
-    status: msg.status === "STUBBED" ? "STUBBED" : "SENT",
+    status: inviteOk === "STUBBED" || qrOk === "STUBBED" ? "STUBBED" : "SENT",
     reason: null,
   };
 }

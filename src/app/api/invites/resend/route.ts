@@ -117,6 +117,15 @@ export async function POST(req: NextRequest) {
           mobile: send.mobile,
           reason: send.reason || "فشل إرسال واتساب",
         });
+      } else if (send.status === "PARTIAL") {
+        whatsappSent += 1;
+        whatsappFailed += 1;
+        whatsappErrors.push({
+          beneficiaryId: send.beneficiaryId,
+          beneficiaryName: send.beneficiaryName,
+          mobile: send.mobile,
+          reason: send.reason || "أُرسلت الدعوة جزئياً",
+        });
       } else if (send.status === "STUBBED") {
         whatsappStubbed += 1;
       } else {

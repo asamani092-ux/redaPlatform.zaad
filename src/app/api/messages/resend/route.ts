@@ -95,7 +95,12 @@ export async function POST(req: NextRequest) {
       entityType: "OutboundMessage",
       entityId: beneficiary.id,
       meta: { source: "messages-log", status: send.status, reason: send.reason },
-      status: send.status === "FAILED" ? "FAILED" : "SUCCESS",
+      status:
+        send.status === "FAILED"
+          ? "FAILED"
+          : send.status === "PARTIAL"
+            ? "PARTIAL"
+            : "SUCCESS",
       statusReason: send.reason,
     });
 
