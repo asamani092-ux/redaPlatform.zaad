@@ -6,13 +6,21 @@ import type { Prisma } from "@/generated/prisma/client";
 import { appOrigin } from "@/lib/app-url";
 import { isValidSaudiMobile, MOBILE_ERROR, normalizeMobile } from "@/lib/mobile";
 import { getWhatsAppConfig } from "@/lib/whatsapp-config";
+import {
+  DEFAULT_INVITE_POSTER_TPL,
+  DEFAULT_INVITE_QR_TPL,
+  fillInviteTpl,
+} from "@/lib/invite-message-defaults";
 
 type ExhibitionInviteCtx = {
   id: string;
   name: string;
   location: string | null;
   startsAt: Date | null;
-  settings?: { whatsappInviteTpl?: string | null } | null;
+  settings?: {
+    whatsappInviteTpl?: string | null;
+    whatsappInviteQrTpl?: string | null;
+  } | null;
 };
 
 export type InviteSendResult = {
@@ -103,22 +111,26 @@ export async function sendInviteWhatsApp(input: {
     ? inviteDateRaw
     : (input.exhibition.startsAt?.toISOString().slice(0, 10) ?? "");
   const location = input.exhibition.location ?? "";
-  const tpl =
-    input.exhibition.settings?.whatsappInviteTpl ??
-    "مرحباً {{name}}، أنت مدعو إلى {{exhibition}}. الموعد: {{date}} — الموقع: {{location}}";
-  const bodyText = buildInviteBodyText({
-    tpl,
+  const vars = {
     name: input.beneficiary.name,
-    exhibitionName: input.exhibition.name,
+    exhibition: input.exhibition.name,
     date: dateStr,
     location,
-    qrToken: input.qrToken,
+    qr: input.qrToken,
     qrUrl: qrImageUrl,
-  });
+  };
+  const posterTpl =
+    input.exhibition.settings?.whatsappInviteTpl?.trim() ||
+    DEFAULT_INVITE_POSTER_TPL;
+  const qrTpl =
+    input.exhibition.settings?.whatsappInviteQrTpl?.trim() ||
+    DEFAULT_INVITE_QR_TPL;
+  const bodyText = fillInviteTpl(posterTpl, vars);
+  const qrBody = fillInviteTpl(qrTpl, vars);
 
   const wa = await getWhatsAppConfig();
 
-  // 1) رسالة الدعوة: نص + صورة بوستر (ثابتة في القالب أو رابط ديناميكي من env)
+  // 1) رسالة الدعوة: نص (من الإعدادات) + صورة بوستر
   const inviteMsg = await sendWhatsAppMessage({
     exhibitionId: input.exhibition.id,
     beneficiaryId: input.beneficiary.id,
@@ -147,7 +159,7 @@ export async function sendInviteWhatsApp(input: {
     };
   }
 
-  // 2) رسالة الباركود فوراً: نص + صورة QR
+  // 2) رسالة الباركود فوراً: نص (من الإعدادات) + صورة QR
   const qrTemplateId = wa.inviteQrTemplateId;
   if (!qrTemplateId) {
     return {
@@ -160,7 +172,6 @@ export async function sendInviteWhatsApp(input: {
     };
   }
 
-  const qrBody = `مرحباً ${input.beneficiary.name}، هذا رمز حضورك لمعرض ${input.exhibition.name}. أظهره عند الدخول.`;
   const qrMsg = await sendWhatsAppMessage({
     exhibitionId: input.exhibition.id,
     beneficiaryId: input.beneficiary.id,
