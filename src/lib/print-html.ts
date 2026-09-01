@@ -58,7 +58,7 @@ export function buildPrintDocument(opts: {
 </style>
 </head><body>
   <div class="head">
-    <img src="/logo.webp" alt="رداء" />
+    <img src="/invite-poster.jpg" alt="معرض رداء للأقمشة" />
     <div>
       <h1>${escapeHtml(opts.title)}</h1>
       ${opts.subtitle ? `<p>${escapeHtml(opts.subtitle)}</p>` : ""}
@@ -67,7 +67,7 @@ export function buildPrintDocument(opts: {
   ${tilesHtml ? `<div class="tiles">${tilesHtml}</div>` : ""}
   ${opts.sectionsHtml}
   <div class="foot">
-    <span>منصة معرض رداء</span>
+    <span>المنصة</span>
     <span>تاريخ الطباعة: ${new Date().toLocaleString("ar-SA")}</span>
   </div>
   <script>window.onload = () => window.print();</script>

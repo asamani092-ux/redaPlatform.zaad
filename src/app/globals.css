@@ -144,6 +144,26 @@ button {
   object-fit: contain;
 }
 
+.app-sidebar__brand-logo {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex-shrink: 0;
+}
+
+.app-topbar__brand-logo {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.35rem;
+  object-fit: contain;
+}
+
+.login-brand__poster {
+  width: min(10rem, 42vw);
+  height: auto;
+  border-radius: 0.75rem;
+  object-fit: contain;
+}
+
 .app-sidebar__title {
   font-size: 1.15rem;
   font-weight: 800;
@@ -1275,10 +1295,11 @@ textarea.input-field {
   display: block;
   margin-inline: auto;
   margin-bottom: var(--space-3);
-  width: 5rem;
+  width: min(10rem, 42vw);
   max-width: 100%;
   height: auto;
   object-fit: contain;
+  border-radius: 0.75rem;
 }
 
 .login-brand h1 {
@@ -1509,6 +1530,12 @@ textarea.input-field {
   justify-items: start;
   gap: var(--space-2, 0.5rem);
 }
+.live-screen__logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(0.75rem, 2vw, 1.5rem);
+}
 .live-screen__logo {
   display: block;
   width: clamp(4.5rem, 8vw, 6.5rem);
@@ -1517,6 +1544,10 @@ textarea.input-field {
   background: transparent;
   border: none;
   box-shadow: none;
+}
+.live-screen__logo--poster {
+  width: clamp(5.5rem, 10vw, 7.5rem);
+  border-radius: 0.65rem;
 }
 .live-screen__brand {
   margin: 0;

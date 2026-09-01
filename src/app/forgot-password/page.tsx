@@ -150,7 +150,13 @@ export default function ForgotPasswordPage() {
       <div className="login-card card page-container-narrow">
         <div className="login-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.webp" alt="رداء" width={80} height={48} />
+          <img
+            className="login-brand__poster"
+            src="/invite-poster.jpg"
+            alt="معرض رداء للأقمشة"
+            width={160}
+            height={160}
+          />
           <h1>استعادة كلمة المرور</h1>
           <p>اطلب الاستعادة ثم اطلب من المدير الموافقة خلال 5 دقائق</p>
         </div>
