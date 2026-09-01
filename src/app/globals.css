@@ -1518,23 +1518,26 @@ textarea.input-field {
   font-family: var(--font-arabic);
 }
 .live-screen__header {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 0.75rem;
   margin-bottom: 1.25rem;
+  text-align: center;
 }
 .live-screen__brand-block {
   display: grid;
-  justify-items: start;
+  justify-items: center;
+  width: 100%;
   gap: var(--space-2, 0.5rem);
 }
 .live-screen__logos {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: clamp(0.75rem, 2vw, 1.5rem);
+  justify-content: center;
+  width: 100%;
+  gap: clamp(1rem, 3vw, 2rem);
 }
 .live-screen__logo {
   display: block;
@@ -1547,7 +1550,9 @@ textarea.input-field {
 }
 .live-screen__logo--poster {
   width: clamp(5.5rem, 10vw, 7.5rem);
-  border-radius: 0.65rem;
+  border-radius: 0;
+  background: transparent;
+  mix-blend-mode: normal;
 }
 .live-screen__brand {
   margin: 0;

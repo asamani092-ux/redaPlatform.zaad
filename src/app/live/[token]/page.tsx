@@ -82,7 +82,7 @@ export default function LiveDisplayPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className="live-screen__logo live-screen__logo--poster"
-              src="/invite-poster.jpg"
+              src="/invite-poster.png"
               alt="معرض رداء للأقمشة"
               width={120}
               height={120}
