@@ -25,22 +25,21 @@ RUN (apk add --no-cache bash openssl libc6-compat su-exec postgresql16-client \
   && mkdir -p /data/backups /data/uploads /data/uploads/evidence \
   && chown -R nextjs:nodejs /data
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/assets ./assets
+COPY --chown=nextjs:nodejs --from=builder /app/public ./public
+COPY --chown=nextjs:nodejs --from=builder /app/prisma ./prisma
+COPY --chown=nextjs:nodejs --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --chown=nextjs:nodejs --from=builder /app/package.json ./package.json
+COPY --chown=nextjs:nodejs --from=builder /app/scripts ./scripts
+COPY --chown=nextjs:nodejs --from=builder /app/assets ./assets
 # مطلوب لـ npm run init / reset-admin في الحاوية
-COPY --from=builder /app/src/generated ./src/generated
-COPY --from=builder /app/src/lib ./src/lib
+COPY --chown=nextjs:nodejs --from=builder /app/src/generated ./src/generated
+COPY --chown=nextjs:nodejs --from=builder /app/src/lib ./src/lib
 # standalone أولاً ثم node_modules الكامل (وإلا يُستبدل ويختفي prisma CLI)
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/node_modules ./node_modules
+COPY --chown=nextjs:nodejs --from=builder /app/.next/standalone ./
+COPY --chown=nextjs:nodejs --from=builder /app/.next/static ./.next/static
+COPY --chown=nextjs:nodejs --from=builder /app/node_modules ./node_modules
 
-RUN chmod +x ./scripts/entrypoint.sh ./scripts/apply-pending.sh ./scripts/backup.sh ./scripts/seed-once.sh ./scripts/boot.sh ./scripts/check-storage-persist.sh \
-  && chown -R nextjs:nodejs /app
+RUN chmod +x ./scripts/entrypoint.sh ./scripts/apply-pending.sh ./scripts/backup.sh ./scripts/seed-once.sh ./scripts/boot.sh ./scripts/check-storage-persist.sh
 
 # الإقلاع كـ root لضبط صلاحيات volume /data ثم su-exec → nextjs
 USER root
