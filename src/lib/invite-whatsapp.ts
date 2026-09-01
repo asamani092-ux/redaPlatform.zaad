@@ -60,6 +60,19 @@ function okStatus(status: string): "SENT" | "STUBBED" | null {
   return null;
 }
 
+/** تاريخ الدعوة لمتغير body في قالب exhibition_2 — O(1) */
+function formatInviteDateForWa(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso.trim() || "—";
+  const d = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("ar-SA", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "Asia/Riyadh",
+  });
+}
+
 /**
  * إرسال دعوتي واتساب متتابعتين لنفس المستفيد:
  * 1) نص + صورة بوستر (هيدر القالب أو WHATSAPP_INVITE_HEADER_IMAGE_URL)
@@ -130,7 +143,18 @@ export async function sendInviteWhatsApp(input: {
 
   const wa = await getWhatsAppConfig();
 
-  // 1) بوستر exhibition_2: هيدر صورة + body = اسم المستفيد فقط
+  // exhibition_2: المتغير الأول في القالب المعتمد = التاريخ (ليس الاسم)
+  const waDateParam = formatInviteDateForWa(dateStr);
+  if (!dateStr) {
+    return {
+      beneficiaryId: input.beneficiary.id,
+      beneficiaryName: input.beneficiary.name,
+      mobile: input.beneficiary.mobile,
+      status: "FAILED",
+      reason: "تاريخ الدعوة مطلوب — اختر تاريخ الحضور قبل الإرسال",
+    };
+  }
+
   const inviteMsg = await sendWhatsAppMessage({
     exhibitionId: input.exhibition.id,
     beneficiaryId: input.beneficiary.id,
@@ -140,7 +164,7 @@ export async function sendInviteWhatsApp(input: {
     type: OutboundMessageType.INVITATION,
     createdById: input.createdById,
     templateIdOverride: wa.inviteTemplateId,
-    templateParams: [input.beneficiary.name],
+    templateParams: [waDateParam],
   });
 
   const inviteOk = okStatus(inviteMsg.status);
