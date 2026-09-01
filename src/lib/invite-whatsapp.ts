@@ -143,7 +143,7 @@ export async function sendInviteWhatsApp(input: {
 
   const wa = await getWhatsAppConfig();
 
-  // exhibition_2: المتغير الأول في القالب المعتمد = التاريخ (ليس الاسم)
+  // exhibition_2: {{1}} التاريخ ثم {{2}} الاسم (تجربة — يعتمد على القالب المعتمد)
   const waDateParam = formatInviteDateForWa(dateStr);
   if (!dateStr) {
     return {
@@ -164,7 +164,7 @@ export async function sendInviteWhatsApp(input: {
     type: OutboundMessageType.INVITATION,
     createdById: input.createdById,
     templateIdOverride: wa.inviteTemplateId,
-    templateParams: [waDateParam],
+    templateParams: [waDateParam, input.beneficiary.name],
   });
 
   const inviteOk = okStatus(inviteMsg.status);
