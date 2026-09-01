@@ -10,7 +10,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# Placeholders for next build only — no "@" (Coolify Dockerfile ARG rewriter breaks on "@")
+ENV DOCKER_BUILD=1
+ENV NODE_OPTIONS=--max-old-space-size=3072
+# Placeholders for next build only (Coolify ARG rewriter corrupts lines containing at-sign)
 ENV DATABASE_URL=postgresql://127.0.0.1:5432/build
 ENV AUTH_SECRET=build-time-placeholder-not-used-at-runtime
 RUN npx prisma generate && npm run build
