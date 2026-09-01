@@ -57,9 +57,14 @@ export function AppShell({
       <aside className={`app-sidebar ${open ? "is-open" : ""}`} id="app-sidebar">
         <div className="app-sidebar__brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.webp" alt="رداء" width={40} height={40} />
+          <img
+            className="app-sidebar__brand-logo"
+            src="/invite-poster.jpg"
+            alt="معرض رداء للأقمشة"
+            width={56}
+            height={56}
+          />
           <div>
-            <div className="app-sidebar__title">منصة رداء</div>
             <div className="app-sidebar__meta">{ROLE_LABELS[user.role]}</div>
           </div>
         </div>
@@ -135,8 +140,14 @@ export function AppShell({
           </button>
           <div className="app-topbar__brand">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.webp" alt="" width={28} height={28} />
-            <span>{activeExhibition ? activeExhibition.name : "منصة رداء"}</span>
+            <img
+              className="app-topbar__brand-logo"
+              src="/invite-poster.jpg"
+              alt=""
+              width={36}
+              height={36}
+            />
+            <span>{activeExhibition ? activeExhibition.name : "المنصة"}</span>
           </div>
           <span className="app-topbar__user" title={`${user.name} — ${ROLE_LABELS[user.role]}`}>
             {user.name}

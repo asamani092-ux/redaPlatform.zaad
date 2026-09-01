@@ -130,8 +130,7 @@ export async function sendInviteWhatsApp(input: {
 
   const wa = await getWhatsAppConfig();
 
-  // 1) رسالة الدعوة على القالب الحالي — نفس ترتيب المتغيرات السابق
-  // name, exhibition, date, location, qr_url (5) حتى وصول قالبي البوستر/الباركود الجديدين
+  // 1) بوستر exhibition_2: هيدر صورة + body = اسم المستفيد فقط
   const inviteMsg = await sendWhatsAppMessage({
     exhibitionId: input.exhibition.id,
     beneficiaryId: input.beneficiary.id,
@@ -141,13 +140,7 @@ export async function sendInviteWhatsApp(input: {
     type: OutboundMessageType.INVITATION,
     createdById: input.createdById,
     templateIdOverride: wa.inviteTemplateId,
-    templateParams: [
-      input.beneficiary.name,
-      input.exhibition.name,
-      dateStr,
-      location,
-      qrImageUrl,
-    ],
+    templateParams: [input.beneficiary.name],
   });
 
   const inviteOk = okStatus(inviteMsg.status);
@@ -173,6 +166,7 @@ export async function sendInviteWhatsApp(input: {
     };
   }
 
+  // باركود barqude: هيدر صورة QR فقط — بلا متغيرات body
   const qrMsg = await sendWhatsAppMessage({
     exhibitionId: input.exhibition.id,
     beneficiaryId: input.beneficiary.id,
@@ -182,7 +176,7 @@ export async function sendInviteWhatsApp(input: {
     type: OutboundMessageType.INVITATION,
     createdById: input.createdById,
     templateIdOverride: qrTemplateId,
-    templateParams: [input.beneficiary.name, input.exhibition.name],
+    templateParams: [],
   });
 
   const qrOk = okStatus(qrMsg.status);

@@ -74,10 +74,13 @@ async function sendZadTemplate(input: {
       ],
     });
   }
-  params.push({
-    type: "body",
-    parameters: input.params.map((text) => ({ type: "text", text })),
-  });
+  // قالب الباركود: هيدر صورة فقط — لا نرسل body فارغاً
+  if (input.params.length > 0) {
+    params.push({
+      type: "body",
+      parameters: input.params.map((text) => ({ type: "text", text })),
+    });
+  }
 
   const payload = {
     userName: input.userName,
@@ -185,8 +188,8 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
           `مزوّد ZAD لا يدعم النوع ${input.type} أو معرّف القالب غير مضبوط في البيئة`,
         );
       }
-      if (!templateParams.length) {
-        throw new Error("templateParams مطلوبة لمزوّد ZAD");
+      if (!templateParams.length && !input.mediaUrl?.trim()) {
+        throw new Error("templateParams أو صورة الهيدر مطلوبة لمزوّد ZAD");
       }
 
       const result = await sendZadTemplate({

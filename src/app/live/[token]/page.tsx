@@ -70,15 +70,24 @@ export default function LiveDisplayPage() {
     <main className="live-screen zad-root">
       <header className="live-screen__header">
         <div className="live-screen__brand-block">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="live-screen__logo"
-            src="/zad-presentation/assets/logo-full.png"
-            alt="الزاد"
-            width={96}
-            height={58}
-          />
-          <h1 className="live-screen__title live-screen__title--brand">معرض رداء</h1>
+          <div className="live-screen__logos">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="live-screen__logo live-screen__logo--assoc"
+              src="/zad-presentation/assets/logo-full.png"
+              alt="الزاد"
+              width={96}
+              height={58}
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="live-screen__logo live-screen__logo--poster"
+              src="/invite-poster.jpg"
+              alt="معرض رداء للأقمشة"
+              width={120}
+              height={120}
+            />
+          </div>
         </div>
         <div className="live-screen__meta">
           <div className="live-screen__sub">
