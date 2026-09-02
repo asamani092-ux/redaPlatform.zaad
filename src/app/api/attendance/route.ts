@@ -14,6 +14,8 @@ const checkInSchema = z.object({
   nationalId: z.string().optional(),
   exception: z.boolean().optional(),
   exceptionReason: z.string().optional(),
+  /** عدد التابعين الفعلي عند التحضير — يُحدّث بطاقة المستفيد */
+  dependentsCount: z.number().int().nonnegative(),
 });
 
 export async function GET(req: NextRequest) {
@@ -139,15 +141,22 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const attendance = await prisma.attendance.create({
-      data: {
-        exhibitionId: exhibition.id,
-        beneficiaryId,
-        type: isException ? AttendanceType.EXCEPTION : AttendanceType.NORMAL,
-        exceptionReason: isException ? body.data.exceptionReason!.trim() : null,
-        checkedInById: authz.userId,
-      },
-    });
+    // تحديث التابعين ثم الحضور في معاملة واحدة — O(1)
+    const [updatedBeneficiary, attendance] = await prisma.$transaction([
+      prisma.beneficiary.update({
+        where: { id: beneficiaryId },
+        data: { dependentsCount: body.data.dependentsCount },
+      }),
+      prisma.attendance.create({
+        data: {
+          exhibitionId: exhibition.id,
+          beneficiaryId,
+          type: isException ? AttendanceType.EXCEPTION : AttendanceType.NORMAL,
+          exceptionReason: isException ? body.data.exceptionReason!.trim() : null,
+          checkedInById: authz.userId,
+        },
+      }),
+    ]);
 
     await writeAuditLog({
       userId: authz.userId,
@@ -155,17 +164,23 @@ export async function POST(req: NextRequest) {
       entityType: "Attendance",
       entityId: attendance.id,
       after: attendance,
-      meta: { beneficiaryId, nationalId: beneficiary.nationalId },
+      meta: {
+        beneficiaryId,
+        nationalId: beneficiary.nationalId,
+        dependentsCount: body.data.dependentsCount,
+        dependentsCountBefore: beneficiary.dependentsCount,
+      },
     });
 
     return NextResponse.json({
       data: {
         attendance,
         beneficiary: {
-          id: beneficiary.id,
-          name: beneficiary.name,
-          nationalId: beneficiary.nationalId,
-          mobile: beneficiary.mobile,
+          id: updatedBeneficiary.id,
+          name: updatedBeneficiary.name,
+          nationalId: updatedBeneficiary.nationalId,
+          mobile: updatedBeneficiary.mobile,
+          dependentsCount: updatedBeneficiary.dependentsCount,
         },
       },
     });
