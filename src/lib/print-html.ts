@@ -58,7 +58,7 @@ export function buildPrintDocument(opts: {
 </style>
 </head><body>
   <div class="head">
-    <img src="/invite-poster.jpg" alt="معرض رداء للأقمشة" />
+    <img src="/invite-poster.jpeg" alt="معرض رداء للأقمشة" />
     <div>
       <h1>${escapeHtml(opts.title)}</h1>
       ${opts.subtitle ? `<p>${escapeHtml(opts.subtitle)}</p>` : ""}

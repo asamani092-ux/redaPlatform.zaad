@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
             lowStockThreshold: body.data.lowStockThreshold ?? 10,
             inventorySchemaJson: DEFAULT_INVENTORY_SCHEMA as unknown as Prisma.InputJsonValue,
             whatsappInviteTpl:
-              "معرض رداء\nيسر جمعية الزاد دعوتكم لزيارة {{exhibition}}، الذي يقدّم الملابس والأقمشة ضمن تجربة تسوّق منظمة ومتكاملة.\n📍 الموقع: {{location}}\n🕔 ساعات الزيارة: من 5:00 مساءً إلى 10:00 مساءً\nالتاريخ: {{date}}\nالدخول مخصص للنساء فقط، ولا يسمح بدخول الأطفال.\nمعرض رداء | نحو عطاءٍ أكثر أثرًا",
+              "معرض رداء\nيسر جمعية الزاد دعوتكم لزيارة {{exhibition}}، الذي يقدّم الملابس والأقمشة ضمن تجربة تسوّق منظمة ومتكاملة.\n📍 الموقع: {{location}}\n🕔 ساعات الزيارة: من 4:00 مساءً إلى 10:00 مساءً\nالتاريخ: {{date}}\nالدخول مخصص للنساء فقط، ولا يسمح بدخول الأطفال.\nمعرض رداء | نحو عطاءٍ أكثر أثرًا",
             whatsappInviteQrTpl:
               "عند الحضور للمعرض إبراز الباركود رجاءً لموظفة الاستقبال",
             whatsappThanksTpl: "شكراً لزيارتك {{exhibition}}، {{name}}.",
