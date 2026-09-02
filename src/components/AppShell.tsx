@@ -59,7 +59,7 @@ export function AppShell({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="app-sidebar__brand-logo"
-            src="/invite-poster.jpeg"
+            src="/invite-poster.jpg"
             alt="معرض رداء للأقمشة"
             width={56}
             height={56}
@@ -142,7 +142,7 @@ export function AppShell({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className="app-topbar__brand-logo"
-              src="/invite-poster.jpeg"
+              src="/invite-poster.jpg"
               alt=""
               width={36}
               height={36}
