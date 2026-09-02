@@ -43,7 +43,7 @@ function LoginForm() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="login-brand__poster"
-            src="/invite-poster.jpeg"
+            src="/invite-poster.jpg"
             alt="معرض رداء للأقمشة"
             width={160}
             height={160}
