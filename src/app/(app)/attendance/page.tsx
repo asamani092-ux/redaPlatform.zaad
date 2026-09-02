@@ -16,7 +16,7 @@ type Recent = {
   type: string;
   checkedInAt: string;
   exceptionReason?: string | null;
-  beneficiary: { name: string; nationalId: string };
+  beneficiary: { name: string; nationalId: string; dependentsCount?: number };
 };
 
 type Lookup = {
@@ -26,7 +26,9 @@ type Lookup = {
     nationalId: string;
     mobile: string;
     association?: string | null;
+    dependentsCount?: number;
   };
+  dependentsCount?: number;
   statusLabel: string;
   invite: { invited: boolean; qrToken: string } | null;
   attendance: { type: string } | null;
@@ -47,6 +49,7 @@ export default function AttendancePage() {
   const [q, setQ] = useState("");
   const [needsException, setNeedsException] = useState(false);
   const [exceptionReason, setExceptionReason] = useState("");
+  const [dependentsCount, setDependentsCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
@@ -94,6 +97,10 @@ export default function AttendancePage() {
     setQ(json.beneficiary.nationalId);
     setNeedsException(!json.invite?.invited);
     setExceptionReason("");
+    const deps = Number(
+      json.beneficiary?.dependentsCount ?? json.dependentsCount ?? 0,
+    );
+    setDependentsCount(Number.isFinite(deps) && deps >= 0 ? Math.floor(deps) : 0);
   }, []);
 
   // الكاميرا تبقى تعمل للمسح المتتابع — لا تُغلق بعد كل قراءة
@@ -135,6 +142,7 @@ export default function AttendancePage() {
         beneficiaryId: lookup.beneficiary.id,
         exception: exceptionActive,
         exceptionReason: exceptionActive ? exceptionReason : undefined,
+        dependentsCount,
       }),
     });
     const json = await res.json();
@@ -161,6 +169,7 @@ export default function AttendancePage() {
     setQ("");
     setNeedsException(false);
     setExceptionReason("");
+    setDependentsCount(0);
     refresh();
   }
 
@@ -263,6 +272,29 @@ export default function AttendancePage() {
                 />
               </div>
             ) : null}
+            <div className="full">
+              <label className="label-field" htmlFor="dependentsCount">
+                عدد التابعين الحاضرين معه
+              </label>
+              <input
+                id="dependentsCount"
+                className="input-field"
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                dir="ltr"
+                value={dependentsCount}
+                disabled={alreadyHere}
+                onChange={(e) => {
+                  const n = Number.parseInt(e.target.value || "0", 10);
+                  setDependentsCount(Number.isFinite(n) && n >= 0 ? n : 0);
+                }}
+              />
+              <p className="field-hint" style={{ marginTop: "0.35rem" }}>
+                إجمالي الأفراد: {1 + dependentsCount} (المستفيد + التابعون)
+              </p>
+            </div>
           </div>
           {attendanceBlock ? <p className="msg msg-error">{attendanceBlock}</p> : null}
           <div className="form-actions">
@@ -287,26 +319,33 @@ export default function AttendancePage() {
               <tr>
                 <th>الاسم</th>
                 <th>الهوية</th>
+                <th>عدد التابعين</th>
+                <th>الأفراد</th>
                 <th>النوع</th>
                 <th>الوقت</th>
               </tr>
             </thead>
             <tbody>
-              {recent.map((r) => (
+              {recent.map((r) => {
+                const deps = r.beneficiary.dependentsCount ?? 0;
+                return (
                 <tr key={r.id}>
                   <td data-label="الاسم">{r.beneficiary.name}</td>
                   <td data-label="الهوية" dir="ltr">
                     {r.beneficiary.nationalId}
                   </td>
+                  <td data-label="عدد التابعين">{deps}</td>
+                  <td data-label="الأفراد">{1 + deps}</td>
                   <td data-label="النوع">
                     {r.type === "EXCEPTION" ? `استثناء: ${r.exceptionReason}` : "عادي"}
                   </td>
                   <td data-label="الوقت">{new Date(r.checkedInAt).toLocaleString("ar-SA")}</td>
                 </tr>
-              ))}
+                );
+              })}
               {!recent.length ? (
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={6}>
                     <EmptyState title="لا تسجيلات بعد" body="ستظهر هنا آخر عمليات الحضور." />
                   </td>
                 </tr>
