@@ -87,6 +87,13 @@ export const WRITE_PATHS: WritePathSpec[] = [
     audited: false,
     excludeReason: "أثر جانبي لدعوة/صرف/استبيان المُدقَّقة أصلاً؛ السجل في OutboundMessage كافٍ",
   },
+  {
+    id: "presentation.logoUpload",
+    entityType: "PresentationLogo",
+    action: "PRESENTATION_LOGO_UPLOAD",
+    route: "POST /api/presentation-logos",
+    audited: true,
+  },
 ];
 
 export function auditedWritePaths(): WritePathSpec[] {
