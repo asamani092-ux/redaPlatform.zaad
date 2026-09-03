@@ -30,6 +30,9 @@ type Summary = {
   totalBeneficiaries: number;
   invited: number;
   attended: number;
+  attendedFamilies?: number;
+  attendedIndividuals?: number;
+  remainingIsExhibitionTotal?: boolean;
   received: number;
   volunteers?: number;
   exceptionAttendance?: number;
@@ -135,10 +138,12 @@ export default function ReportsPage() {
   );
   const toast = useToast();
 
-  const load = useCallback(async (id?: string) => {
+  const load = useCallback(async (id?: string, day?: string) => {
     setError("");
     const qs = new URLSearchParams({ format: "json" });
-    if (id) qs.set("exhibitionId", id);
+    const exhibition = id !== undefined ? id : exhibitionId;
+    if (exhibition) qs.set("exhibitionId", exhibition);
+    if (day) qs.set("day", day);
     const res = await fetch(`/api/reports?${qs}`);
     const j = await res.json();
     if (!res.ok) {
@@ -147,9 +152,8 @@ export default function ReportsPage() {
       return;
     }
     setSummary(j.summary);
-    setDayKey("");
-    if (!id && j.summary?.exhibitionId) setExhibitionId(j.summary.exhibitionId);
-  }, []);
+    if (!exhibition && j.summary?.exhibitionId) setExhibitionId(j.summary.exhibitionId);
+  }, [exhibitionId]);
 
   const loadLiveLinks = useCallback(async (exId: string) => {
     if (!exId || !canManageLive) return;
@@ -176,17 +180,22 @@ export default function ReportsPage() {
     if (exhibitionId) void loadLiveLinks(exhibitionId);
   }, [exhibitionId, loadLiveLinks]);
 
-  const exportQs = exhibitionId ? `&exhibitionId=${encodeURIComponent(exhibitionId)}` : "";
+  const exportQs = [
+    exhibitionId ? `exhibitionId=${encodeURIComponent(exhibitionId)}` : "",
+    dayKey ? `day=${encodeURIComponent(dayKey)}` : "",
+  ].filter(Boolean).join("&");
+  const exportSuffix = exportQs ? `&${exportQs}` : "";
 
   const presentationHref = useMemo(() => {
     const slides = PRESENTATION_SLIDE_OPTIONS.map((s) => s.id).filter((id) => presSlides[id]);
     const kpis = PRESENTATION_KPI_OPTIONS.filter((k) => presKpis[k]);
     const qs = new URLSearchParams({ format: "presentation", html: "1" });
     if (exhibitionId) qs.set("exhibitionId", exhibitionId);
+    if (dayKey) qs.set("day", dayKey);
     if (slides.length) qs.set("slides", slides.join(","));
     if (kpis.length) qs.set("kpis", kpis.join(","));
     return `/api/reports?${qs}`;
-  }, [exhibitionId, presSlides, presKpis]);
+  }, [exhibitionId, dayKey, presSlides, presKpis]);
 
   async function createLiveLink() {
     if (!exhibitionId || liveBusy) return;
@@ -247,12 +256,12 @@ export default function ReportsPage() {
         breadcrumb={[{ label: "الرئيسية", href: "/dashboard" }, { label: "التقارير" }]}
         actions={
           <>
-            <a className="btn-secondary btn-sm" href={`/api/reports?format=xlsx${exportQs}`}>
+            <a className="btn-secondary btn-sm" href={`/api/reports?format=xlsx${exportSuffix}`}>
               تصدير Excel
             </a>
             <a
               className="btn-secondary btn-sm"
-              href={`/api/reports?format=pdf${exportQs}`}
+              href={`/api/reports?format=pdf${exportSuffix}`}
               target="_blank"
               rel="noreferrer"
             >
@@ -280,7 +289,8 @@ export default function ReportsPage() {
               onChange={(e) => {
                 const id = e.target.value;
                 setExhibitionId(id);
-                void load(id);
+                setDayKey("");
+                void load(id, "");
               }}
             >
               {exhibitions.map((ex) => (
@@ -301,42 +311,122 @@ export default function ReportsPage() {
 
       {summary ? (
         <>
-          {(summary.byDay ?? []).length ? (
-            <DailyReportPanel
-              days={summary.byDay ?? []}
-              dayKey={dayKey}
-              onSelect={setDayKey}
-              invitedWithoutDate={summary.invitedWithoutDate ?? 0}
-              attendedOutsideDays={summary.attendedOutsideDays ?? 0}
-            />
+          {(summary.days ?? summary.byDay ?? []).length ? (
+            <section className="panel">
+              <h2 className="panel-title">نطاق التقرير</h2>
+              <p className="page-header__desc">
+                اختر الإجمالي أو يوماً محدداً لتحديث جميع المؤشرات والجداول في هذا
+                النطاق.
+              </p>
+              <div className="toolbar" style={{ flexWrap: "wrap", marginTop: "0.75rem" }}>
+                <button
+                  type="button"
+                  className={dayKey === "" ? "btn-primary btn-sm" : "btn-secondary btn-sm"}
+                  onClick={() => {
+                    setDayKey("");
+                    void load(exhibitionId || undefined, "");
+                  }}
+                >
+                  الإجمالي
+                </button>
+                {(summary.days ?? summary.byDay ?? []).map((d) => (
+                  <button
+                    key={d.dateKey}
+                    type="button"
+                    className={
+                      dayKey === d.dateKey ? "btn-primary btn-sm" : "btn-secondary btn-sm"
+                    }
+                    title={d.dateKey}
+                    onClick={() => {
+                      setDayKey(d.dateKey);
+                      void load(exhibitionId || undefined, d.dateKey);
+                    }}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+              {dayKey ? (
+                <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
+                  المعروض:{" "}
+                  {(summary.days ?? summary.byDay ?? []).find((d) => d.dateKey === dayKey)
+                    ?.label ?? dayKey}{" "}
+                  — <span dir="ltr">{dayKey}</span>
+                </p>
+              ) : null}
+              {(summary.invitedWithoutDate || summary.attendedOutsideDays) && !dayKey ? (
+                <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
+                  {summary.invitedWithoutDate
+                    ? `دعوات بلا تاريخ حضور محدد: ${summary.invitedWithoutDate}. `
+                    : ""}
+                  {summary.attendedOutsideDays
+                    ? `حضور خارج أيام المعرض المعرّفة: ${summary.attendedOutsideDays}.`
+                    : ""}
+                </p>
+              ) : null}
+            </section>
           ) : null}
 
           <div className="stat-grid">
-            {[
+            {(
               [
-                "إجمالي المستفيدين",
-                summary.totalIndividuals ?? summary.totalBeneficiaries,
-              ],
-              [
-                "الأسر المستفيدة",
-                summary.beneficiaryFamilies ?? summary.totalBeneficiaries,
-              ],
-              ["المدعوون", summary.invited],
-              ["الحاضرون", summary.attended],
-              ["استلموا", summary.received],
-              ["المتطوعون", summary.volunteers ?? 0],
-              ["القطع المصروفة (إجمالي)", summary.piecesDispensed],
-              ["متبقي المخزون (إجمالي)", summary.inventoryRemainingTotal ?? 0],
-              ["مضاف من المنصة", summary.platformContributed ?? 0],
-              ["مصروف من المنصة", summary.platformDispensed ?? 0],
-              ["متبقي للمنصة", summary.platformRemaining ?? 0],
-              ["مساهمات المتاجر", summary.storeContributed ?? 0],
-              ["مصروف من المتاجر", summary.storeDispensed ?? 0],
-              ["متبقي للمتاجر", summary.storeRemaining ?? 0],
-              ["حضور استثنائي", summary.exceptionAttendance ?? 0],
-              ["صرف استثنائي", summary.overrideDispenses ?? 0],
-            ].map(([label, value]) => (
-              <KpiCard key={String(label)} label={String(label)} value={value as number | string} />
+                [
+                  "إجمالي المستفيدين",
+                  summary.totalIndividuals ?? summary.totalBeneficiaries,
+                ],
+                [
+                  "الأسر المستفيدة",
+                  summary.beneficiaryFamilies ?? summary.totalBeneficiaries,
+                ],
+                ["المدعوون", summary.invited],
+                [
+                  "الحضور من الأسر",
+                  summary.attendedFamilies ?? summary.attended,
+                ],
+                [
+                  "الحضور من الأفراد",
+                  summary.attendedIndividuals ?? summary.attended,
+                ],
+                ["استلموا", summary.received],
+                ["المتطوعون", summary.volunteers ?? 0],
+                ["القطع المصروفة", summary.piecesDispensed],
+                [
+                  summary.remainingIsExhibitionTotal
+                    ? "متبقي المخزون (إجمالي المعرض)"
+                    : "متبقي المخزون (إجمالي)",
+                  summary.inventoryRemainingTotal ?? 0,
+                ],
+                ["مضاف من المنصة", summary.platformContributed ?? 0],
+                ["مصروف من المنصة", summary.platformDispensed ?? 0],
+                [
+                  summary.remainingIsExhibitionTotal
+                    ? "متبقي للمنصة (إجمالي المعرض)"
+                    : "متبقي للمنصة",
+                  summary.platformRemaining ?? 0,
+                ],
+                ["مساهمات المتاجر", summary.storeContributed ?? 0],
+                ["مصروف من المتاجر", summary.storeDispensed ?? 0],
+                [
+                  summary.remainingIsExhibitionTotal
+                    ? "متبقي للمتاجر (إجمالي المعرض)"
+                    : "متبقي للمتاجر",
+                  summary.storeRemaining ?? 0,
+                ],
+                ["حضور استثنائي", summary.exceptionAttendance ?? 0],
+                ["صرف استثنائي", summary.overrideDispenses ?? 0],
+              ] as Array<[string, number | string]>
+            ).map(([label, value]) => (
+              <KpiCard
+                key={String(label)}
+                label={String(label)}
+                value={value}
+                delta={
+                  summary.remainingIsExhibitionTotal &&
+                  String(label).includes("إجمالي المعرض")
+                    ? { value: "إجمالي المعرض", direction: "flat" as const }
+                    : undefined
+                }
+              />
             ))}
           </div>
 
@@ -352,7 +442,7 @@ export default function ReportsPage() {
                     <th>مضاف</th>
                     <th>مصروف</th>
                     <th>مرتجع</th>
-                    <th>متبقي</th>
+                    <th>{summary.remainingIsExhibitionTotal ? "متبقي (إجمالي المعرض)" : "متبقي"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -594,112 +684,6 @@ export default function ReportsPage() {
         </div>
       </Modal>
     </div>
-  );
-}
-
-function DailyReportPanel({
-  days,
-  dayKey,
-  onSelect,
-  invitedWithoutDate,
-  attendedOutsideDays,
-}: {
-  days: DayMetrics[];
-  dayKey: string;
-  onSelect: (key: string) => void;
-  invitedWithoutDate: number;
-  attendedOutsideDays: number;
-}) {
-  const active = dayKey ? days.find((d) => d.dateKey === dayKey) ?? null : null;
-
-  return (
-    <section className="panel">
-      <h2 className="panel-title">التقارير اليومية</h2>
-      <p className="page-header__desc">
-        «حضور اليوم» يُحتسب بتاريخ تسجيل الحضور بتوقيت الرياض، والمطابقة تقارن يوم
-        الدعوة بيوم الحضور الفعلي. المؤشرات العامة أسفل هذا القسم تبقى تراكمية لكل
-        المعرض.
-      </p>
-      <div className="toolbar" style={{ flexWrap: "wrap", marginTop: "0.75rem" }}>
-        <button
-          type="button"
-          className={dayKey === "" ? "btn-primary btn-sm" : "btn-secondary btn-sm"}
-          onClick={() => onSelect("")}
-        >
-          الكل
-        </button>
-        {days.map((d) => (
-          <button
-            key={d.dateKey}
-            type="button"
-            className={
-              dayKey === d.dateKey ? "btn-primary btn-sm" : "btn-secondary btn-sm"
-            }
-            title={d.dateKey}
-            onClick={() => onSelect(d.dateKey)}
-          >
-            {d.label}
-          </button>
-        ))}
-      </div>
-
-      {active ? (
-        <>
-          <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
-            {active.label} — <span dir="ltr">{active.dateKey}</span>
-          </p>
-          <div className="stat-grid" style={{ marginTop: "0.75rem" }}>
-            <KpiCard label="حضور اليوم" value={active.attendedOnDay} />
-            <KpiCard label="مدعوون لهذا اليوم" value={active.invitedForDay} />
-            <KpiCard label="حضروا بنفس يوم الدعوة" value={active.matched} />
-            <KpiCard label="حضروا في يوم آخر" value={active.dayMismatch} />
-            <KpiCard label="لم يحضروا" value={active.absent} />
-          </div>
-        </>
-      ) : (
-        <div className="table-wrap table-wrap--stack" style={{ marginTop: "1rem" }}>
-          <table>
-            <thead>
-              <tr>
-                <th>اليوم</th>
-                <th>التاريخ</th>
-                <th>مدعوون</th>
-                <th>حضور اليوم</th>
-                <th>مطابقون</th>
-                <th>حضروا في يوم آخر</th>
-                <th>لم يحضروا</th>
-              </tr>
-            </thead>
-            <tbody>
-              {days.map((d) => (
-                <tr key={d.dateKey}>
-                  <td data-label="اليوم">{d.label}</td>
-                  <td data-label="التاريخ" dir="ltr">
-                    {d.dateKey}
-                  </td>
-                  <td data-label="مدعوون">{d.invitedForDay}</td>
-                  <td data-label="حضور اليوم">{d.attendedOnDay}</td>
-                  <td data-label="مطابقون">{d.matched}</td>
-                  <td data-label="حضروا في يوم آخر">{d.dayMismatch}</td>
-                  <td data-label="لم يحضروا">{d.absent}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {invitedWithoutDate || attendedOutsideDays ? (
-        <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
-          {invitedWithoutDate
-            ? `دعوات بلا تاريخ حضور محدد: ${invitedWithoutDate}. `
-            : ""}
-          {attendedOutsideDays
-            ? `حضور خارج أيام المعرض المعرّفة: ${attendedOutsideDays} — راجع فترة المعرض من إدارة المعارض.`
-            : ""}
-        </p>
-      ) : null}
-    </section>
   );
 }
 

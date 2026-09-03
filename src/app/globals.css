@@ -411,8 +411,26 @@ button {
 }
 
 .toolbar .input-field {
-  min-width: min(100%, 240px);
   flex: 1;
+  min-width: 0;
+}
+
+.toolbar-label {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toolbar-label .input-field {
+  flex: 0 0 auto;
+  min-width: auto;
+  width: auto;
+}
+
+.toolbar-filter {
+  flex: 1 1 16rem;
+  min-width: 0;
 }
 
 .page-header__actions .btn-sm {

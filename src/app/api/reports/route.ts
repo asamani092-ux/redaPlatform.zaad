@@ -30,9 +30,11 @@ import {
   exhibitionDays,
   findExhibitionDay,
   isDateKey,
+  riyadhDayBounds,
   type ExhibitionDay,
 } from "@/lib/exhibition-days";
 import { buildDailyReportMetrics } from "@/lib/daily-report-metrics";
+import { countAttendanceFamiliesAndIndividuals } from "@/lib/scoped-report-summary";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -315,40 +317,104 @@ export async function GET(req: NextRequest) {
 
   const safeRows = redactIdentityFields(rows, exportFullIdentity);
 
+  /** نطاق اليوم بتوقيت الرياض — إن وُجد يُصفّي كل المؤشرات القابلة للتأريخ */
+  const dayBounds = selectedDayRef
+    ? riyadhDayBounds(selectedDayRef.dateKey)
+    : null;
+  const createdAtDay = dayBounds
+    ? { gte: dayBounds.start, lt: dayBounds.end }
+    : undefined;
+  const inviteDateDay = createdAtDay;
+  const checkedInDay = createdAtDay;
+
   const [
     invited,
-    attended,
+    attendedRows,
     received,
     exceptionAttendance,
     overrideDispenses,
     piecesAgg,
     inventoryRemaining,
     topItems,
-    storeSummary,
-    platformStock,
+    storeSummaryDay,
+    storeSummaryFull,
+    platformStockDay,
+    platformStockFull,
     volunteers,
     dayInvites,
     dayAttendances,
   ] = await Promise.all([
-    prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
-    prisma.attendance.count({ where: { exhibitionId } }),
-    countDistinctReceived(exhibitionId),
+    prisma.exhibitionInvite.count({
+      where: {
+        exhibitionId,
+        invited: true,
+        ...(inviteDateDay ? { inviteDate: inviteDateDay } : {}),
+      },
+    }),
+    prisma.attendance.findMany({
+      where: {
+        exhibitionId,
+        ...(checkedInDay ? { checkedInAt: checkedInDay } : {}),
+      },
+      select: {
+        beneficiaryId: true,
+        type: true,
+        beneficiary: { select: { dependentsCount: true } },
+      },
+    }),
+    countDistinctReceived(
+      exhibitionId,
+      dayBounds
+        ? { dayStart: dayBounds.start, dayEnd: dayBounds.end }
+        : undefined,
+    ),
     prisma.attendance.count({
-      where: { exhibitionId, type: "EXCEPTION" },
+      where: {
+        exhibitionId,
+        type: "EXCEPTION",
+        ...(checkedInDay ? { checkedInAt: checkedInDay } : {}),
+      },
     }),
     prisma.dispenseOrder.count({
-      where: { exhibitionId, entitledOverride: { not: null } },
+      where: {
+        exhibitionId,
+        entitledOverride: { not: null },
+        ...(createdAtDay ? { createdAt: createdAtDay } : {}),
+      },
     }),
     prisma.dispenseOrder.aggregate({
-      where: { exhibitionId },
+      where: {
+        exhibitionId,
+        ...(createdAtDay ? { createdAt: createdAtDay } : {}),
+      },
       _sum: { piecesCount: true },
     }),
     prisma.inventoryItem.findMany({
       where: { exhibitionId },
       select: { attributesJson: true, quantity: true, skuCode: true },
     }),
-    fetchTopDispensedItems(exhibitionId, 5),
+    fetchTopDispensedItems(
+      exhibitionId,
+      5,
+      dayBounds
+        ? { dayStart: dayBounds.start, dayEnd: dayBounds.end }
+        : undefined,
+    ),
+    summarizeStoreStock(
+      prisma,
+      exhibitionId,
+      dayBounds
+        ? { dayStart: dayBounds.start, dayEnd: dayBounds.end }
+        : undefined,
+    ),
     summarizeStoreStock(prisma, exhibitionId),
+    summarizePlatformStock(
+      prisma,
+      exhibitionId,
+      dayBounds
+        ? { dayStart: dayBounds.start, dayEnd: dayBounds.end }
+        : undefined,
+    ),
     summarizePlatformStock(prisma, exhibitionId),
     prisma.volunteer.count({ where: { exhibitionId } }),
     prisma.exhibitionInvite.findMany({
@@ -361,6 +427,12 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
+  const attended = attendedRows.length;
+  const { attendedFamilies, attendedIndividuals } =
+    countAttendanceFamiliesAndIndividuals(
+      attendedRows.map((a) => a.beneficiary.dependentsCount),
+    );
+
   const daily = buildDailyReportMetrics({
     days,
     invites: dayInvites,
@@ -370,13 +442,91 @@ export async function GET(req: NextRequest) {
     ? daily.byDay.find((d) => d.dateKey === selectedDayRef.dateKey) ?? null
     : null;
 
+  /** المتبقي دائماً إجمالي المعرض؛ المضاف/المصروف يتبعان نطاق اليوم */
+  const storeSummary = dayBounds
+    ? storeSummaryDay.map((row) => {
+        const full = storeSummaryFull.find(
+          (f) =>
+            f.storeId === row.storeId &&
+            f.inventoryItemId === row.inventoryItemId,
+        );
+        return { ...row, remaining: full?.remaining ?? row.remaining };
+      })
+    : storeSummaryFull;
+
+  const platformContributed = dayBounds
+    ? platformStockDay.added
+    : platformStockFull.added;
+  const platformDispensed = dayBounds
+    ? platformStockDay.dispensed
+    : platformStockFull.dispensed;
+  const platformRemaining = platformStockFull.remaining;
+  const storeContributed = (dayBounds ? storeSummaryDay : storeSummaryFull).reduce(
+    (s, r) => s + r.added,
+    0,
+  );
+  const storeDispensedQty = (dayBounds ? storeSummaryDay : storeSummaryFull).reduce(
+    (s, r) => s + r.dispensed,
+    0,
+  );
+  const storeRemaining = storeSummaryFull.reduce((s, r) => s + r.remaining, 0);
+
+  let scopedBeneficiaryFamilies = breakdowns.households.beneficiaryFamilies;
+  let scopedTotalIndividuals = breakdowns.households.totalIndividuals;
+  let scopedByGender = byGender;
+  let scopedByCity = byCity;
+  let scopedByNeighborhood = byNeighborhood;
+  let scopedByFamilySize = byFamilySize;
+  let scopedByAssociation = byAssociation;
+  let scopedByGenderShares = breakdowns.byGender;
+  let scopedByCityShares = breakdowns.byCity;
+  let scopedByNeighborhoodShares = breakdowns.byNeighborhood;
+  let scopedByAssociationShares = breakdowns.byAssociation;
+  let scopedByHouseholdSizeShares = breakdowns.households.byHouseholdSize;
+
+  if (dayBounds) {
+    const attendedIds = new Set(attendedRows.map((a) => a.beneficiaryId));
+    const attendedBeneficiaries = beneficiaries.filter((b) =>
+      attendedIds.has(b.id),
+    );
+    const dayBreakdowns = buildBreakdownShares({
+      associations: attendedBeneficiaries.map(
+        (b) => b.association?.name ?? b.associationOther ?? "",
+      ),
+      neighborhoods: attendedBeneficiaries.map((b) => b.neighborhood ?? ""),
+      cities: attendedBeneficiaries.map((b) => b.city ?? ""),
+      genders: attendedBeneficiaries.map((b) =>
+        b.gender === "MALE" ? "ذكر" : b.gender === "FEMALE" ? "أنثى" : "",
+      ),
+      dependentsCounts: attendedBeneficiaries.map((b) => b.dependentsCount),
+    });
+    scopedBeneficiaryFamilies = dayBreakdowns.households.beneficiaryFamilies;
+    scopedTotalIndividuals = dayBreakdowns.households.totalIndividuals;
+    scopedByGender = sharesToRecord(dayBreakdowns.byGender);
+    scopedByCity = sharesToRecord(dayBreakdowns.byCity);
+    scopedByNeighborhood = sharesToRecord(dayBreakdowns.byNeighborhood);
+    scopedByFamilySize = sharesToRecord(
+      dayBreakdowns.households.byHouseholdSize,
+    );
+    scopedByAssociation = sharesToRecord(dayBreakdowns.byAssociation);
+    scopedByGenderShares = dayBreakdowns.byGender;
+    scopedByCityShares = dayBreakdowns.byCity;
+    scopedByNeighborhoodShares = dayBreakdowns.byNeighborhood;
+    scopedByAssociationShares = dayBreakdowns.byAssociation;
+    scopedByHouseholdSizeShares = dayBreakdowns.households.byHouseholdSize;
+  }
+
   const summary = {
     exhibitionId: exhibition.id,
     exhibitionName: exhibition.name,
     exhibitionActive: exhibition.active,
-    totalBeneficiaries: beneficiaries.length,
+    totalBeneficiaries: dayBounds
+      ? scopedBeneficiaryFamilies
+      : beneficiaries.length,
     invited,
     attended,
+    attendedFamilies,
+    attendedIndividuals,
     received,
     volunteers,
     exceptionAttendance,
@@ -387,26 +537,30 @@ export async function GET(req: NextRequest) {
       attributes: i.attributesJson,
       quantity: Number(i.quantity),
     })),
-    inventoryRemainingTotal: inventoryRemaining.reduce((s, i) => s + Number(i.quantity), 0),
+    inventoryRemainingTotal: inventoryRemaining.reduce(
+      (s, i) => s + Number(i.quantity),
+      0,
+    ),
     storeSummary,
-    storeContributed: storeSummary.reduce((s, r) => s + r.added, 0),
-    storeDispensed: storeSummary.reduce((s, r) => s + r.dispensed, 0),
-    storeRemaining: storeSummary.reduce((s, r) => s + r.remaining, 0),
-    platformContributed: platformStock.added,
-    platformDispensed: platformStock.dispensed,
-    platformRemaining: platformStock.remaining,
-    beneficiaryFamilies: breakdowns.households.beneficiaryFamilies,
-    totalIndividuals: breakdowns.households.totalIndividuals,
-    byGender,
-    byCity,
-    byNeighborhood,
-    byFamilySize,
-    byAssociation,
-    byGenderShares: breakdowns.byGender,
-    byCityShares: breakdowns.byCity,
-    byNeighborhoodShares: breakdowns.byNeighborhood,
-    byAssociationShares: breakdowns.byAssociation,
-    byHouseholdSizeShares: breakdowns.households.byHouseholdSize,
+    storeContributed,
+    storeDispensed: storeDispensedQty,
+    storeRemaining,
+    platformContributed,
+    platformDispensed,
+    platformRemaining,
+    remainingIsExhibitionTotal: Boolean(dayBounds),
+    beneficiaryFamilies: scopedBeneficiaryFamilies,
+    totalIndividuals: scopedTotalIndividuals,
+    byGender: scopedByGender,
+    byCity: scopedByCity,
+    byNeighborhood: scopedByNeighborhood,
+    byFamilySize: scopedByFamilySize,
+    byAssociation: scopedByAssociation,
+    byGenderShares: scopedByGenderShares,
+    byCityShares: scopedByCityShares,
+    byNeighborhoodShares: scopedByNeighborhoodShares,
+    byAssociationShares: scopedByAssociationShares,
+    byHouseholdSizeShares: scopedByHouseholdSizeShares,
     topItems,
     attributeLabels: attributeLabelsFromSchema(
       parseInventorySchema(exhibition.settings?.inventorySchemaJson),
@@ -436,7 +590,8 @@ export async function GET(req: NextRequest) {
       ["إجمالي المستفيدين (أفراد)", summary.totalIndividuals],
       ["الأسر المستفيدة", summary.beneficiaryFamilies],
       ["المدعوون", summary.invited],
-      ["الحضور", summary.attended],
+      ["الحضور من الأسر", summary.attendedFamilies ?? summary.attended],
+      ["الحضور من الأفراد", summary.attendedIndividuals ?? summary.attended],
       ["المستلمون", summary.received],
       ["المتطوعون", summary.volunteers ?? 0],
       ["القطع المصروفة (إجمالي)", summary.piecesDispensed],
@@ -624,7 +779,8 @@ export async function GET(req: NextRequest) {
         { label: "إجمالي المستفيدين (أفراد)", value: summary.totalIndividuals },
         { label: "الأسر المستفيدة", value: summary.beneficiaryFamilies },
         { label: "المدعوون", value: summary.invited },
-        { label: "الحاضرون", value: summary.attended },
+        { label: "الحضور من الأسر", value: summary.attendedFamilies ?? summary.attended },
+        { label: "الحضور من الأفراد", value: summary.attendedIndividuals ?? summary.attended },
         { label: "استلموا", value: summary.received },
         { label: "المتطوعون", value: summary.volunteers ?? 0 },
         { label: "القطع المصروفة", value: summary.piecesDispensed },

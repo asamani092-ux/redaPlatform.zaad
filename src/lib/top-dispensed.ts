@@ -5,10 +5,21 @@ import type { TopDispensedItem } from "@/lib/report-metrics";
 export async function fetchTopDispensedItems(
   exhibitionId: string,
   take = 5,
+  opts?: { dayStart?: Date; dayEnd?: Date },
 ): Promise<TopDispensedItem[]> {
+  const createdAt =
+    opts?.dayStart && opts?.dayEnd
+      ? { gte: opts.dayStart, lt: opts.dayEnd }
+      : undefined;
+
   const topItems = await prisma.dispenseLine.groupBy({
     by: ["inventoryItemId"],
-    where: { dispenseOrder: { exhibitionId } },
+    where: {
+      dispenseOrder: {
+        exhibitionId,
+        ...(createdAt ? { createdAt } : {}),
+      },
+    },
     _sum: { quantity: true },
     orderBy: { _sum: { quantity: "desc" } },
     take,
