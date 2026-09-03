@@ -20,6 +20,7 @@ export const ACTION_LABELS: Record<string, string> = {
   STOCK_RETURN: "استرجاع كمية",
   STOCK_REMOVE: "حذف كمية",
   EXHIBITION_CREATE: "إنشاء معرض",
+  EXHIBITION_UPDATE: "تعديل معرض",
   EXHIBITION_ACTIVATE: "تفعيل معرض",
   EXHIBITION_DELETE: "حذف معرض",
   UPDATE_SETTINGS: "تحديث الإعدادات",
