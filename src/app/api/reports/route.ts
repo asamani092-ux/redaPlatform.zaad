@@ -35,6 +35,7 @@ import {
 } from "@/lib/exhibition-days";
 import { buildDailyReportMetrics } from "@/lib/daily-report-metrics";
 import { countAttendanceFamiliesAndIndividuals } from "@/lib/scoped-report-summary";
+import { sumDispensedByKind } from "@/lib/exhibition-kpis";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -343,6 +344,7 @@ export async function GET(req: NextRequest) {
     volunteers,
     dayInvites,
     dayAttendances,
+    dispenseLines,
   ] = await Promise.all([
     prisma.exhibitionInvite.count({
       where: {
@@ -425,7 +427,29 @@ export async function GET(req: NextRequest) {
       where: { exhibitionId },
       select: { beneficiaryId: true, checkedInAt: true },
     }),
+    prisma.dispenseLine.findMany({
+      where: {
+        dispenseOrder: {
+          exhibitionId,
+          ...(createdAtDay ? { createdAt: createdAtDay } : {}),
+        },
+      },
+      select: {
+        quantity: true,
+        inventoryItem: { select: { attributesJson: true } },
+      },
+    }),
   ]);
+
+  const { clothesPieces, fabricMeters } = sumDispensedByKind(
+    dispenseLines.map((line) => ({
+      quantity: line.quantity,
+      attributes: (line.inventoryItem.attributesJson ?? {}) as Record<
+        string,
+        unknown
+      >,
+    })),
+  );
 
   const attended = attendedRows.length;
   const { attendedFamilies, attendedIndividuals } =
@@ -532,6 +556,8 @@ export async function GET(req: NextRequest) {
     exceptionAttendance,
     overrideDispenses,
     piecesDispensed: piecesAgg._sum.piecesCount ?? 0,
+    clothesPieces,
+    fabricMeters,
     inventoryRemaining: inventoryRemaining.map((i) => ({
       skuCode: i.skuCode,
       attributes: i.attributesJson,
@@ -595,6 +621,8 @@ export async function GET(req: NextRequest) {
       ["المستلمون", summary.received],
       ["المتطوعون", summary.volunteers ?? 0],
       ["القطع المصروفة (إجمالي)", summary.piecesDispensed],
+      ["ملابس مصروفة (قطع)", summary.clothesPieces],
+      ["أقمشة مصروفة (متر)", summary.fabricMeters],
       ["مضاف من المنصة", summary.platformContributed],
       ["مصروف من المنصة", summary.platformDispensed],
       ["متبقي للمنصة", summary.platformRemaining],
@@ -784,6 +812,8 @@ export async function GET(req: NextRequest) {
         { label: "استلموا", value: summary.received },
         { label: "المتطوعون", value: summary.volunteers ?? 0 },
         { label: "القطع المصروفة", value: summary.piecesDispensed },
+        { label: "ملابس مصروفة (قطع)", value: summary.clothesPieces },
+        { label: "أقمشة مصروفة (متر)", value: summary.fabricMeters },
         { label: "حضور استثنائي", value: summary.exceptionAttendance },
         { label: "صرف استثنائي", value: summary.overrideDispenses },
       ],

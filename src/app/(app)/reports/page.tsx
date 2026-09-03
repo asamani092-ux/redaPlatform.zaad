@@ -38,6 +38,8 @@ type Summary = {
   exceptionAttendance?: number;
   overrideDispenses?: number;
   piecesDispensed: number;
+  clothesPieces?: number;
+  fabricMeters?: number;
   /** أفراد = المستفيد + التابعون */
   totalIndividuals?: number;
   /** أسر = عدد السجلات */
@@ -390,6 +392,8 @@ export default function ReportsPage() {
                 ["استلموا", summary.received],
                 ["المتطوعون", summary.volunteers ?? 0],
                 ["القطع المصروفة", summary.piecesDispensed],
+                ["ملابس مصروفة (قطع)", summary.clothesPieces ?? 0],
+                ["أقمشة مصروفة (متر)", summary.fabricMeters ?? 0],
                 [
                   summary.remainingIsExhibitionTotal
                     ? "متبقي المخزون (إجمالي المعرض)"

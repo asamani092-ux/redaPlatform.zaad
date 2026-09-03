@@ -19,12 +19,37 @@ export type ExhibitionKpiSections = {
   };
 };
 
-function dispenseKind(attrs: Record<string, unknown>): "clothes" | "fabric" | "other" {
+/** تصنيف بند الصرف: ملابس (قطعة) أو أقمشة (متر) — O(1) */
+export function dispenseKind(
+  attrs: Record<string, unknown>,
+): "clothes" | "fabric" | "other" {
   const type = String(attrs.type ?? "").trim();
   const unit = String(attrs.unit ?? "").trim();
   if (type.includes("ملابس") || unit === "قطعة") return "clothes";
   if (type.includes("قماش") || unit === "متر") return "fabric";
   return "other";
+}
+
+/**
+ * تجميع كميات الصرف حسب النوع.
+ * Time: O(n) — Space: O(1).
+ * غير القماش يُحسب ضمن الملابس (متوافق مع لوحة المؤشرات).
+ */
+export function sumDispensedByKind(
+  lines: Array<{ quantity: unknown; attributes: Record<string, unknown> }>,
+): { clothesPieces: number; fabricMeters: number } {
+  let clothesPieces = 0;
+  let fabricMeters = 0;
+  for (const line of lines) {
+    const qty = Number(line.quantity);
+    if (!Number.isFinite(qty) || qty <= 0) continue;
+    if (dispenseKind(line.attributes) === "fabric") fabricMeters += qty;
+    else clothesPieces += qty;
+  }
+  return {
+    clothesPieces: Math.round(clothesPieces * 1000) / 1000,
+    fabricMeters: Math.round(fabricMeters * 1000) / 1000,
+  };
 }
 
 /** مؤشرات المعرض المجمّعة للداشبورد والعرض الحي — Time O(a+d)، Space O(a)
@@ -57,16 +82,15 @@ export async function buildExhibitionKpiSections(
     prisma.volunteer.count({ where: { exhibitionId } }),
   ]);
 
-  let clothesPieces = 0;
-  let fabricMeters = 0;
-  for (const line of dispenseLines) {
-    const qty = Number(line.quantity);
-    if (!Number.isFinite(qty) || qty <= 0) continue;
-    const attrs = (line.inventoryItem.attributesJson ?? {}) as Record<string, unknown>;
-    const kind = dispenseKind(attrs);
-    if (kind === "fabric") fabricMeters += qty;
-    else clothesPieces += qty;
-  }
+  const { clothesPieces, fabricMeters } = sumDispensedByKind(
+    dispenseLines.map((line) => ({
+      quantity: line.quantity,
+      attributes: (line.inventoryItem.attributesJson ?? {}) as Record<
+        string,
+        unknown
+      >,
+    })),
+  );
 
   const partnerAssociationKeys = new Set<string>();
   let associationFamilies = 0;
@@ -91,8 +115,8 @@ export async function buildExhibitionKpiSections(
       individuals: attendanceIndividuals,
     },
     dispensed: {
-      clothesPieces: Math.round(clothesPieces * 1000) / 1000,
-      fabricMeters: Math.round(fabricMeters * 1000) / 1000,
+      clothesPieces,
+      fabricMeters,
     },
     partnerships: {
       partnerAssociations: partnerAssociationKeys.size,

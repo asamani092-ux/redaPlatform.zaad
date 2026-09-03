@@ -1233,6 +1233,25 @@ textarea.input-field {
     flex: 1 1 100%;
   }
 
+  .toolbar-label {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .toolbar-label .input-field {
+    min-width: 0;
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .toolbar-filter,
+  .toolbar .input-field.toolbar-filter {
+    flex: 1 1 100%;
+    min-width: 100%;
+    width: 100%;
+  }
+
   .login-screen {
     padding: 0.75rem;
     align-items: stretch;
