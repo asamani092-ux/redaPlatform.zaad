@@ -1,6 +1,11 @@
 import { assert } from "./helpers";
-import { exhibitionDays, riyadhDateKey } from "../src/lib/exhibition-days";
+import {
+  exhibitionDays,
+  riyadhDateKey,
+  riyadhDayBounds,
+} from "../src/lib/exhibition-days";
 import { buildDailyReportMetrics } from "../src/lib/daily-report-metrics";
+import { countAttendanceFamiliesAndIndividuals } from "../src/lib/scoped-report-summary";
 
 console.log("=== exhibition days (Asia/Riyadh) ===");
 
@@ -49,13 +54,9 @@ const metrics = buildDailyReportMetrics({
     { beneficiaryId: "b6", inviteDate: new Date("2026-04-20T00:00:00Z") },
   ],
   attendances: [
-    // حضر بنفس يوم دعوته
     { beneficiaryId: "b1", checkedInAt: new Date("2026-03-01T13:00:00Z") },
-    // مدعو لليوم الأول وحضر في اليوم الثاني
     { beneficiaryId: "b2", checkedInAt: new Date("2026-03-02T13:00:00Z") },
-    // حضور بلا دعوة لليوم (استثنائي)
     { beneficiaryId: "b9", checkedInAt: new Date("2026-03-03T13:00:00Z") },
-    // حضور خارج فترة المعرض
     { beneficiaryId: "b8", checkedInAt: new Date("2026-04-20T13:00:00Z") },
   ],
 });
@@ -96,5 +97,33 @@ console.log(
     )
     .join(" | "),
 );
+
+console.log("=== riyadh day bounds ===");
+const bounds = riyadhDayBounds("2026-03-01");
+assert(!!bounds, "bounds must exist");
+assert(
+  bounds!.start.toISOString() === "2026-02-28T21:00:00.000Z",
+  `start ${bounds!.start.toISOString()}`,
+);
+assert(
+  bounds!.end.toISOString() === "2026-03-01T21:00:00.000Z",
+  `end ${bounds!.end.toISOString()}`,
+);
+assert(riyadhDayBounds("bad") === null, "invalid key");
+console.log("OK riyadh day bounds");
+
+console.log("=== attendance families/individuals ===");
+/** Time O(n) Space O(1) — أسر=عدد السجلات؛ أفراد=Σ(1+تابعون) */
+const counts = countAttendanceFamiliesAndIndividuals([0, 2, 3]);
+assert(counts.attendedFamilies === 3, `families ${counts.attendedFamilies}`);
+assert(
+  counts.attendedIndividuals === 1 + 3 + 4,
+  `individuals ${counts.attendedIndividuals}`,
+);
+assert(
+  countAttendanceFamiliesAndIndividuals([]).attendedIndividuals === 0,
+  "empty",
+);
+console.log("OK attendance families/individuals");
 
 console.log("DAILY REPORT UNIT TESTS PASSED");

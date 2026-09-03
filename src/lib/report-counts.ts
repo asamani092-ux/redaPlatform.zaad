@@ -1,10 +1,23 @@
 import { prisma } from "@/lib/prisma";
 
 /**
- * عدد المستفيدين المميّزين الذين لديهم صرف في المعرض.
+ * عدد المستفيدين المميّزين الذين لديهم صرف في المعرض (اختياريًا ضمن يوم).
  * Time: O(1) على الفهرس؛ Space: O(1).
  */
-export async function countDistinctReceived(exhibitionId: string): Promise<number> {
+export async function countDistinctReceived(
+  exhibitionId: string,
+  opts?: { dayStart?: Date; dayEnd?: Date },
+): Promise<number> {
+  if (opts?.dayStart && opts?.dayEnd) {
+    const rows = await prisma.$queryRaw<Array<{ c: bigint | number }>>`
+      SELECT COUNT(DISTINCT "beneficiaryId") AS c
+      FROM "DispenseOrder"
+      WHERE "exhibitionId" = ${exhibitionId}
+        AND "createdAt" >= ${opts.dayStart}
+        AND "createdAt" < ${opts.dayEnd}
+    `;
+    return Number(rows[0]?.c ?? 0);
+  }
   const rows = await prisma.$queryRaw<Array<{ c: bigint | number }>>`
     SELECT COUNT(DISTINCT "beneficiaryId") AS c
     FROM "DispenseOrder"

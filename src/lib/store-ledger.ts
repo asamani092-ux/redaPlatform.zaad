@@ -195,9 +195,14 @@ export type PlatformStockTotals = {
 export async function summarizePlatformStock(
   tx: Db,
   exhibitionId: string,
+  opts?: { dayStart?: Date; dayEnd?: Date },
 ): Promise<PlatformStockTotals> {
+  const dateFilter =
+    opts?.dayStart && opts?.dayEnd
+      ? { createdAt: { gte: opts.dayStart, lt: opts.dayEnd } }
+      : {};
   const movements = await tx.stockMovement.findMany({
-    where: { exhibitionId, storeId: null },
+    where: { exhibitionId, storeId: null, ...dateFilter },
     select: { type: true, quantity: true },
   });
   const totals: PlatformStockTotals = {

@@ -87,3 +87,16 @@ export function findExhibitionDay(
   }
   return null;
 }
+
+/**
+ * حدود يوم تقويمي بتوقيت الرياض كفاصل نصف مفتوح [start, end) بالتوقيت العالمي.
+ * الرياض UTC+3 طوال السنة (بدون توقيت صيفي). Time/Space: O(1).
+ */
+export function riyadhDayBounds(dateKey: string): { start: Date; end: Date } | null {
+  if (!isDateKey(dateKey)) return null;
+  const start = new Date(`${dateKey}T00:00:00+03:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  const end = new Date(start.getTime() + DAY_MS);
+  return { start, end };
+}
+

@@ -422,7 +422,7 @@ export default function InvitesPage() {
 
       <section className="panel">
         <div className="toolbar">
-          <label className="toolbar-label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label className="toolbar-label">
             <span>تاريخ الحضور</span>
             <input
               className="input-field"
@@ -435,7 +435,7 @@ export default function InvitesPage() {
             />
           </label>
           <input
-            className="input-field"
+            className="input-field toolbar-filter"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="تصفية بالاسم أو الهوية"
