@@ -51,6 +51,10 @@ type Summary = {
   byHouseholdSizeShares?: ShareRow[];
   topItems?: TopItem[];
   attributeLabels?: Record<string, string>;
+  days?: ExhibitionDayOpt[];
+  byDay?: DayMetrics[];
+  invitedWithoutDate?: number;
+  attendedOutsideDays?: number;
   inventoryRemainingTotal?: number;
   platformContributed?: number;
   platformDispensed?: number;
@@ -69,6 +73,20 @@ type Summary = {
     returned: number;
     remaining: number;
   }>;
+};
+
+type ExhibitionDayOpt = {
+  dayIndex: number;
+  dateKey: string;
+  label: string;
+};
+
+type DayMetrics = ExhibitionDayOpt & {
+  invitedForDay: number;
+  attendedOnDay: number;
+  matched: number;
+  dayMismatch: number;
+  absent: number;
 };
 
 type ExhibitionOpt = { id: string; name: string; active: boolean };
@@ -96,6 +114,8 @@ export default function ReportsPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [exhibitions, setExhibitions] = useState<ExhibitionOpt[]>([]);
   const [exhibitionId, setExhibitionId] = useState("");
+  /** "" = كل أيام المعرض؛ غير ذلك مفتاح اليوم YYYY-MM-DD */
+  const [dayKey, setDayKey] = useState("");
   const [error, setError] = useState("");
   const [liveLinks, setLiveLinks] = useState<LiveLink[]>([]);
   const [liveMsg, setLiveMsg] = useState("");
@@ -127,6 +147,7 @@ export default function ReportsPage() {
       return;
     }
     setSummary(j.summary);
+    setDayKey("");
     if (!id && j.summary?.exhibitionId) setExhibitionId(j.summary.exhibitionId);
   }, []);
 
@@ -280,6 +301,16 @@ export default function ReportsPage() {
 
       {summary ? (
         <>
+          {(summary.byDay ?? []).length ? (
+            <DailyReportPanel
+              days={summary.byDay ?? []}
+              dayKey={dayKey}
+              onSelect={setDayKey}
+              invitedWithoutDate={summary.invitedWithoutDate ?? 0}
+              attendedOutsideDays={summary.attendedOutsideDays ?? 0}
+            />
+          ) : null}
+
           <div className="stat-grid">
             {[
               [
@@ -563,6 +594,112 @@ export default function ReportsPage() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+function DailyReportPanel({
+  days,
+  dayKey,
+  onSelect,
+  invitedWithoutDate,
+  attendedOutsideDays,
+}: {
+  days: DayMetrics[];
+  dayKey: string;
+  onSelect: (key: string) => void;
+  invitedWithoutDate: number;
+  attendedOutsideDays: number;
+}) {
+  const active = dayKey ? days.find((d) => d.dateKey === dayKey) ?? null : null;
+
+  return (
+    <section className="panel">
+      <h2 className="panel-title">التقارير اليومية</h2>
+      <p className="page-header__desc">
+        «حضور اليوم» يُحتسب بتاريخ تسجيل الحضور بتوقيت الرياض، والمطابقة تقارن يوم
+        الدعوة بيوم الحضور الفعلي. المؤشرات العامة أسفل هذا القسم تبقى تراكمية لكل
+        المعرض.
+      </p>
+      <div className="toolbar" style={{ flexWrap: "wrap", marginTop: "0.75rem" }}>
+        <button
+          type="button"
+          className={dayKey === "" ? "btn-primary btn-sm" : "btn-secondary btn-sm"}
+          onClick={() => onSelect("")}
+        >
+          الكل
+        </button>
+        {days.map((d) => (
+          <button
+            key={d.dateKey}
+            type="button"
+            className={
+              dayKey === d.dateKey ? "btn-primary btn-sm" : "btn-secondary btn-sm"
+            }
+            title={d.dateKey}
+            onClick={() => onSelect(d.dateKey)}
+          >
+            {d.label}
+          </button>
+        ))}
+      </div>
+
+      {active ? (
+        <>
+          <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
+            {active.label} — <span dir="ltr">{active.dateKey}</span>
+          </p>
+          <div className="stat-grid" style={{ marginTop: "0.75rem" }}>
+            <KpiCard label="حضور اليوم" value={active.attendedOnDay} />
+            <KpiCard label="مدعوون لهذا اليوم" value={active.invitedForDay} />
+            <KpiCard label="حضروا بنفس يوم الدعوة" value={active.matched} />
+            <KpiCard label="حضروا في يوم آخر" value={active.dayMismatch} />
+            <KpiCard label="لم يحضروا" value={active.absent} />
+          </div>
+        </>
+      ) : (
+        <div className="table-wrap table-wrap--stack" style={{ marginTop: "1rem" }}>
+          <table>
+            <thead>
+              <tr>
+                <th>اليوم</th>
+                <th>التاريخ</th>
+                <th>مدعوون</th>
+                <th>حضور اليوم</th>
+                <th>مطابقون</th>
+                <th>حضروا في يوم آخر</th>
+                <th>لم يحضروا</th>
+              </tr>
+            </thead>
+            <tbody>
+              {days.map((d) => (
+                <tr key={d.dateKey}>
+                  <td data-label="اليوم">{d.label}</td>
+                  <td data-label="التاريخ" dir="ltr">
+                    {d.dateKey}
+                  </td>
+                  <td data-label="مدعوون">{d.invitedForDay}</td>
+                  <td data-label="حضور اليوم">{d.attendedOnDay}</td>
+                  <td data-label="مطابقون">{d.matched}</td>
+                  <td data-label="حضروا في يوم آخر">{d.dayMismatch}</td>
+                  <td data-label="لم يحضروا">{d.absent}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {invitedWithoutDate || attendedOutsideDays ? (
+        <p className="page-header__desc" style={{ marginTop: "0.75rem" }}>
+          {invitedWithoutDate
+            ? `دعوات بلا تاريخ حضور محدد: ${invitedWithoutDate}. `
+            : ""}
+          {attendedOutsideDays
+            ? `حضور خارج أيام المعرض المعرّفة: ${attendedOutsideDays} — راجع فترة المعرض من إدارة المعارض.`
+            : ""}
+        </p>
+      ) : null}
+    </section>
   );
 }
 
