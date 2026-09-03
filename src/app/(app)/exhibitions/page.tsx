@@ -29,6 +29,11 @@ function statusBadgeClass(status: ExhibitionLifecycle): string {
   return "badge-muted";
 }
 
+/** قيمة حقل input[type=date] من تاريخ مخزَّن — O(1) */
+function dateInputValue(value?: string | null): string {
+  return value ? String(value).slice(0, 10) : "";
+}
+
 export default function ExhibitionsPage() {
   const [rows, setRows] = useState<ExhibitionRow[]>([]);
   const [msg, setMsg] = useState("");
@@ -37,6 +42,7 @@ export default function ExhibitionsPage() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+  const [editRow, setEditRow] = useState<ExhibitionRow | null>(null);
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
   const toast = useToast();
@@ -75,6 +81,35 @@ export default function ExhibitionsPage() {
     if (res.ok) {
       setOpen(false);
       e.currentTarget.reset();
+      load();
+    }
+  }
+
+  async function onEdit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editRow) return;
+    setBusy(true);
+    setMsg("");
+    const fd = new FormData(e.currentTarget);
+    const res = await fetch(`/api/exhibitions/${editRow.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: fd.get("name"),
+        location: fd.get("location") || null,
+        startsAt: fd.get("startsAt") || null,
+        endsAt: fd.get("endsAt") || null,
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    setMsg(res.ok ? "تم تحديث المعرض" : json.error || "فشل التحديث");
+    toast.push({
+      title: res.ok ? "تم تحديث المعرض" : json.error || "فشل التحديث",
+      tone: res.ok ? "success" : "danger",
+    });
+    if (res.ok) {
+      setEditRow(null);
       load();
     }
   }
@@ -158,9 +193,16 @@ export default function ExhibitionsPage() {
                     </td>
                     <td data-label="إجراء">
                       <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
-                        {r.active ? (
-                          "—"
-                        ) : (
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={busy}
+                          onClick={() => setEditRow(r)}
+                          title="تعديل الاسم والموقع وفترة المعرض"
+                        >
+                          تعديل
+                        </button>
+                        {r.active ? null : (
                           <>
                             <button
                               type="button"
@@ -233,6 +275,72 @@ export default function ExhibitionsPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={Boolean(editRow)}
+        title="تعديل المعرض"
+        onClose={() => setEditRow(null)}
+      >
+        {editRow ? (
+          <form onSubmit={onEdit} key={editRow.id}>
+            <div className="form-grid">
+              <div className="full">
+                <label className="label-field">الاسم (فريد)</label>
+                <input
+                  name="name"
+                  className="input-field"
+                  required
+                  minLength={2}
+                  defaultValue={editRow.name}
+                />
+              </div>
+              <div className="full">
+                <label className="label-field">الموقع</label>
+                <input
+                  name="location"
+                  className="input-field"
+                  defaultValue={editRow.location ?? ""}
+                />
+              </div>
+              <div>
+                <label className="label-field">تاريخ البداية</label>
+                <input
+                  name="startsAt"
+                  type="date"
+                  className="input-field"
+                  dir="ltr"
+                  defaultValue={dateInputValue(editRow.startsAt)}
+                />
+              </div>
+              <div>
+                <label className="label-field">تاريخ النهاية</label>
+                <input
+                  name="endsAt"
+                  type="date"
+                  className="input-field"
+                  dir="ltr"
+                  defaultValue={dateInputValue(editRow.endsAt)}
+                />
+              </div>
+              <p className="full page-header__desc">
+                فترة المعرض تحدد أيامه في التقارير اليومية — لا تسبق النهاية البداية.
+              </p>
+            </div>
+            <div className="form-actions">
+              <button className="btn-primary" type="submit" disabled={busy}>
+                {busy ? "جاري الحفظ..." : "حفظ التعديل"}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setEditRow(null)}
+              >
+                إلغاء
+              </button>
+            </div>
+          </form>
+        ) : null}
       </Modal>
 
       <ConfirmDialog

@@ -26,6 +26,13 @@ import {
   parseInventorySchema,
 } from "@/lib/inventory-schema";
 import { summarizePlatformStock, summarizeStoreStock } from "@/lib/store-ledger";
+import {
+  exhibitionDays,
+  findExhibitionDay,
+  isDateKey,
+  type ExhibitionDay,
+} from "@/lib/exhibition-days";
+import { buildDailyReportMetrics } from "@/lib/daily-report-metrics";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -72,6 +79,40 @@ export async function GET(req: NextRequest) {
   }
 
   const exhibitionId = exhibition.id;
+
+  /** أيام المعرض بتوقيت الرياض — أساس التقارير اليومية */
+  const days = exhibitionDays({
+    startsAt: exhibition.startsAt,
+    endsAt: exhibition.endsAt,
+  });
+  const dayParam = req.nextUrl.searchParams.get("day");
+  const dayIndexParam = req.nextUrl.searchParams.get("dayIndex");
+  let selectedDayRef: ExhibitionDay | null = null;
+  if (dayParam || dayIndexParam) {
+    if (dayParam && !isDateKey(dayParam)) {
+      return NextResponse.json(
+        { error: "صيغة اليوم غير صالحة — استخدم YYYY-MM-DD" },
+        { status: 400 },
+      );
+    }
+    const dayIndex = dayIndexParam ? Number(dayIndexParam) : null;
+    if (dayIndexParam && !Number.isInteger(dayIndex)) {
+      return NextResponse.json(
+        { error: "ترتيب اليوم غير صالح" },
+        { status: 400 },
+      );
+    }
+    selectedDayRef = findExhibitionDay(days, {
+      dateKey: dayParam,
+      dayIndex,
+    });
+    if (!selectedDayRef) {
+      return NextResponse.json(
+        { error: "اليوم المطلوب خارج فترة المعرض" },
+        { status: 400 },
+      );
+    }
+  }
 
   /** مسار العرض التقديمي: أعمدة ديموغرافية + تجميعات فقط — بدون شجرة الصرف الكاملة */
   if (format === "presentation") {
@@ -286,6 +327,8 @@ export async function GET(req: NextRequest) {
     storeSummary,
     platformStock,
     volunteers,
+    dayInvites,
+    dayAttendances,
   ] = await Promise.all([
     prisma.exhibitionInvite.count({ where: { exhibitionId, invited: true } }),
     prisma.attendance.count({ where: { exhibitionId } }),
@@ -308,7 +351,24 @@ export async function GET(req: NextRequest) {
     summarizeStoreStock(prisma, exhibitionId),
     summarizePlatformStock(prisma, exhibitionId),
     prisma.volunteer.count({ where: { exhibitionId } }),
+    prisma.exhibitionInvite.findMany({
+      where: { exhibitionId, invited: true },
+      select: { beneficiaryId: true, inviteDate: true },
+    }),
+    prisma.attendance.findMany({
+      where: { exhibitionId },
+      select: { beneficiaryId: true, checkedInAt: true },
+    }),
   ]);
+
+  const daily = buildDailyReportMetrics({
+    days,
+    invites: dayInvites,
+    attendances: dayAttendances,
+  });
+  const selectedDay = selectedDayRef
+    ? daily.byDay.find((d) => d.dateKey === selectedDayRef.dateKey) ?? null
+    : null;
 
   const summary = {
     exhibitionId: exhibition.id,
@@ -351,6 +411,12 @@ export async function GET(req: NextRequest) {
     attributeLabels: attributeLabelsFromSchema(
       parseInventorySchema(exhibition.settings?.inventorySchemaJson),
     ),
+    days,
+    byDay: daily.byDay,
+    invitedWithoutDate: daily.invitedWithoutDate,
+    attendedOutsideDays: daily.attendedOutsideDays,
+    selectedDayKey: selectedDay?.dateKey ?? null,
+    selectedDay,
   };
 
   if (format === "json") {
