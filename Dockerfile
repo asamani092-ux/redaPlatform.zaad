@@ -24,7 +24,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN (apk add --no-cache bash openssl libc6-compat su-exec postgresql16-client \
       || apk add --no-cache bash openssl libc6-compat su-exec postgresql-client) \
   && addgroup -S nodejs && adduser -S nextjs -G nodejs \
-  && mkdir -p /data/backups /data/uploads /data/uploads/evidence \
+  && mkdir -p /data/backups /data/uploads /data/uploads/evidence /data/uploads/presentation-logos \
   && chown -R nextjs:nodejs /data
 
 COPY --chown=nextjs:nodejs --from=builder /app/public ./public

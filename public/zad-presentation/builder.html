@@ -282,6 +282,41 @@
               <input value="{{ deptNameVal }}" onInput="{{ onDeptName }}" placeholder="إدارة الأداء والنمو" style="width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 11px 14px; font-family: inherit; font-size: 14px; outline: none;" style-focus="border-color: #951740;">
               <label style="display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin: 12px 0 6px;">عنوان الخاتمة</label>
               <input value="{{ closingTitleVal }}" onInput="{{ onClosingTitle }}" placeholder="شكراً لكم" style="width: 100%; border-radius: 10px; border: 1px solid #e5e7eb; padding: 11px 14px; font-family: inherit; font-size: 14px; outline: none;" style-focus="border-color: #951740;">
+              <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #f0e7ea;">
+                <div style="font-size: 12px; font-weight: 700; color: #951740; margin-bottom: 10px;">الشعارات (حد أقصى 2)</div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                  <sc-for list="{{ logoEditor }}" as="lg" hint-placeholder-count="2">
+                    <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #fafafa; display: flex; flex-direction: column; gap: 8px;">
+                      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <strong style="font-size: 13px; color: #951740;">شعار {{ lg.n }}</strong>
+                        <button onClick="{{ lg.clear }}" type="button" style="border: none; background: transparent; color: #991b1b; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;">إزالة</button>
+                      </div>
+                      <sc-if value="{{ lg.hasPreview }}" hint-placeholder-val="{{ false }}">
+                        <img src="{{ lg.preview }}" alt="" style="height: 48px; width: auto; max-width: 140px; object-fit: contain; align-self: flex-start; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px;">
+                      </sc-if>
+                      <input value="{{ lg.day }}" onInput="{{ lg.onDay }}" placeholder="رابط الشعار النهاري (URL)" style="width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px 10px; font-family: inherit; font-size: 13px; direction: ltr; text-align: start;">
+                      <input value="{{ lg.night }}" onInput="{{ lg.onNight }}" placeholder="رابط النسخة الليلية (اختياري)" style="width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px 10px; font-family: inherit; font-size: 13px; direction: ltr; text-align: start;">
+                      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                        <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280; cursor: pointer;">
+                          <input type="file" accept="image/*" onChange="{{ lg.onDayFile }}" style="font-size: 12px;">
+                          رفع نهاري
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280; cursor: pointer;">
+                          <input type="file" accept="image/*" onChange="{{ lg.onNightFile }}" style="font-size: 12px;">
+                          رفع ليلي
+                        </label>
+                        <button onClick="{{ lg.adoptPlatform }}" type="button" style="border-radius: 8px; border: 1px solid #951740; background: rgba(149,23,64,0.06); color: #951740; padding: 7px 10px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;">اعتماد شعار المنصة</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="font-size: 12px; font-weight: 700; color: #951740; margin: 14px 0 8px;">موضع الشعارات</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                  <sc-for list="{{ placementOpts }}" as="p" hint-placeholder-count="4">
+                    <button onClick="{{ p.set }}" type="button" style="border-radius: 8px; border: 1px solid {{ p.border }}; background: {{ p.bg }}; color: {{ p.color }}; padding: 8px 10px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;">{{ p.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
             </div>
           </div>
           <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; box-shadow: 0 8px 24px rgba(68,13,34,0.06); display: flex; flex-direction: column; gap: 10px;">
@@ -331,8 +366,11 @@
       <div style="height: 4px; background: rgba(255,255,255,0.12);"><div style="height: 100%; width: {{ progressPct }}; background: #e9b221; transition: width 0.35s ease;"></div></div>
       <!-- slide -->
       <div style="flex: 1; position: relative; overflow: hidden;">
-        <img class="zrp-logo-light" src="/zad-presentation/assets/logo-full.png" alt="جمعية الزاد" style="position: absolute; top: 28px; left: 50%; transform: translateX(-50%); height: 68px; width: auto; z-index: 3; display: {{ logoLightDisp }};">
-        <img class="zrp-logo-dark" src="/zad-presentation/assets/logo-white.png" alt="جمعية الزاد" style="position: absolute; top: 24px; left: 50%; transform: translateX(-50%); height: 72px; width: auto; z-index: 3; display: {{ logoDarkDisp }};">
+        <div class="zrp-logos" style="{{ logosWrapStyle }}">
+          <sc-for list="{{ logoSlots }}" as="lg" hint-placeholder-count="2">
+            <img src="{{ lg.src }}" alt="" style="{{ lg.imgStyle }}">
+          </sc-for>
+        </div>
 
         <div class="zrp-slide" style="position: absolute; inset: 0; padding: 108px 8vw 90px; display: flex; flex-direction: column; justify-content: center; color: {{ textMain }};">
           <sc-if value="{{ sCover }}" hint-placeholder-val="{{ true }}">
@@ -584,7 +622,7 @@
   &quot;theme&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;dark&quot;, &quot;options&quot;: [&quot;dark&quot;, &quot;light&quot;], &quot;tsType&quot;: &quot;\&quot;dark\&quot; | \&quot;light\&quot;&quot;, &quot;section&quot;: &quot;العرض&quot;, &quot;label&quot;: &quot;مظهر العرض&quot; }
 }">
 class Component extends DCLogic {
-  state = { present: false, idx: 0, theme: 'dark', title: 'تقرير الأداء الاستراتيجي', period: 'الربع الثاني 2026م', orgName: 'جمعية الزاد للتمكين المستدام', deptName: 'إدارة الأداء والنمو', closingTitle: 'شكراً لكم', evidenceItems: null, mediaView: null, on: { summary: true, kpi: true, dist: true, funnel: true, progress: true, table: true, timeline: true, evidence: true, disb: true }, reveal: { summary: 'float', kpi: 'float', dist: 'float', funnel: 'float', progress: 'down', table: 'down', timeline: 'down', evidence: 'float', disb: 'float' }, detail: null, openKey: null };
+  state = { present: false, idx: 0, theme: 'dark', title: 'تقرير الأداء الاستراتيجي', period: 'الربع الثاني 2026م', orgName: 'جمعية الزاد للتمكين المستدام', deptName: 'إدارة الأداء والنمو', closingTitle: 'شكراً لكم', evidenceItems: null, mediaView: null, logos: null, logoPlacement: 'center', on: { summary: true, kpi: true, dist: true, funnel: true, progress: true, table: true, timeline: true, evidence: true, disb: true }, reveal: { summary: 'float', kpi: 'float', dist: 'float', funnel: 'float', progress: 'down', table: 'down', timeline: 'down', evidence: 'float', disb: 'float' }, detail: null, openKey: null };
   icon(p, fill) { return React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', width: 20, height: 20, viewBox: '0 0 24 24', fill: fill || 'none', stroke: fill ? 'none' : 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', dangerouslySetInnerHTML: { __html: p } }); }
   deckKeys() { const o = this.state.on; const D = this.reportData(); const evN = this.evidenceList().length; const has = { summary: D.summary.length, kpi: D.kpis.length, dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: evN, disb: D.disb.length }; const order = ['summary','kpi','dist','funnel','progress','table','timeline','evidence','disb']; const mid = order.filter(k => o[k] && has[k]); return ['cover', ...mid, 'closing']; }
   componentDidMount() {
@@ -604,6 +642,13 @@ class Component extends DCLogic {
     if (Object.keys(patch).length) this.setState(patch);
     if (Array.isArray(D.evidence) && D.evidence.length) {
       this.setState({ evidenceItems: D.evidence.map(e => ({ ...e })) });
+    }
+    const logosSrc = Array.isArray(D.logos) ? D.logos : (Array.isArray(raw.logos) ? raw.logos : null);
+    if (logosSrc) this.setState({ logos: this.normalizeLogos(logosSrc) });
+    else this.setState({ logos: this.defaultLogos() });
+    const place = D.logoPlacement || raw.logoPlacement;
+    if (place === 'center' || place === 'topRight' || place === 'split' || place === 'rightCenter') {
+      this.setState({ logoPlacement: place });
     }
     this._key = (e) => {
       if (!this.state.present) return;
@@ -850,6 +895,88 @@ class Component extends DCLogic {
     return { rowsList: d.rows || [], note: noteOut, mode, click,
       isUp: false, isDown: isOpen && (mode === 'down' || mode === 'up') };
   }
+
+  PLATFORM_LOGO() { return '/invite-poster.jpg'; }
+  defaultLogos() {
+    return [
+      { day: '/zad-presentation/assets/logo-full.png', night: '/zad-presentation/assets/logo-white.png' },
+      { day: this.PLATFORM_LOGO(), night: '' },
+    ];
+  }
+  normalizeLogos(list) {
+    const src = Array.isArray(list) ? list.slice(0, 2) : [];
+    const out = src.map((l) => ({ day: (l && l.day) ? String(l.day) : '', night: (l && l.night) ? String(l.night) : '' }));
+    while (out.length < 2) out.push({ day: '', night: '' });
+    return out;
+  }
+  logosList() {
+    return this.normalizeLogos(this.state.logos != null ? this.state.logos : this.defaultLogos());
+  }
+  patchLogo(i, patch) {
+    this.setState((s) => {
+      const logos = this.normalizeLogos(s.logos != null ? s.logos : this.defaultLogos());
+      logos[i] = { ...logos[i], ...patch };
+      return { logos };
+    });
+  }
+  adoptPlatformLogo(i) {
+    this.patchLogo(i, { day: this.PLATFORM_LOGO(), night: '' });
+  }
+  clearLogo(i) {
+    this.patchLogo(i, { day: '', night: '' });
+  }
+  setLogoFromFile(i, field, file) {
+    if (!file) return;
+    const apply = (url) => this.patchLogo(i, { [field]: url });
+    const fd = new FormData();
+    fd.append('file', file);
+    fetch('/api/presentation-logos', { method: 'POST', body: fd, credentials: 'same-origin' })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((j) => { if (j && j.url) apply(j.url); else return Promise.reject(); })
+      .catch(() => {
+        const reader = new FileReader();
+        reader.onload = () => apply(reader.result);
+        reader.readAsDataURL(file);
+      });
+  }
+  buildLogoLayout(dark) {
+    const placement = this.state.logoPlacement || 'center';
+    const h = dark ? '72px' : '68px';
+    const top = dark ? '24px' : '28px';
+    const active = this.logosList().map((l, i) => {
+      const src = dark ? (l.night || l.day) : (l.day || l.night);
+      return src ? { i, src } : null;
+    }).filter(Boolean);
+    const baseImg = 'height: ' + h + '; width: auto; max-width: 160px; object-fit: contain; display: block;';
+    if (!active.length) {
+      return { logosWrapStyle: 'display: none;', logoSlots: [] };
+    }
+    if (placement === 'split') {
+      const slots = active.map((a, idx) => {
+        const side = idx === 0 ? 'right: 4vw; left: auto;' : 'left: 4vw; right: auto;';
+        return { src: a.src, imgStyle: 'position: absolute; top: ' + top + '; ' + side + ' z-index: 3; ' + baseImg };
+      });
+      return { logosWrapStyle: 'position: absolute; inset: 0; pointer-events: none; z-index: 3;', logoSlots: slots };
+    }
+    if (placement === 'rightCenter') {
+      const slots = active.map((a, idx) => {
+        if (idx === 0) return { src: a.src, imgStyle: 'position: absolute; top: ' + top + '; right: 4vw; left: auto; z-index: 3; ' + baseImg };
+        return { src: a.src, imgStyle: 'position: absolute; top: ' + top + '; left: 50%; transform: translateX(-50%); z-index: 3; ' + baseImg };
+      });
+      return { logosWrapStyle: 'position: absolute; inset: 0; pointer-events: none; z-index: 3;', logoSlots: slots };
+    }
+    if (placement === 'topRight') {
+      return {
+        logosWrapStyle: 'position: absolute; top: ' + top + '; right: 4vw; left: auto; transform: none; display: flex; align-items: center; gap: 16px; z-index: 3;',
+        logoSlots: active.map((a) => ({ src: a.src, imgStyle: baseImg })),
+      };
+    }
+    return {
+      logosWrapStyle: 'position: absolute; top: ' + top + '; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; z-index: 3;',
+      logoSlots: active.map((a) => ({ src: a.src, imgStyle: baseImg })),
+    };
+  }
+
   renderVals() {
     const I = (p, f) => this.icon(p, f);
     const D = this.reportData();
@@ -952,7 +1079,38 @@ class Component extends DCLogic {
       textMain: dark ? '#efe4e8' : '#3e3a3c', headMain: dark ? '#ffffff' : '#951740',
       cardBg: dark ? 'rgba(255,255,255,0.06)' : '#faf7f8', borderMain: dark ? 'rgba(255,255,255,0.14)' : '#ecdfe3',
       trackBg: dark ? 'rgba(255,255,255,0.12)' : '#eee0e4', theadBg: dark ? 'rgba(233,178,33,0.14)' : 'rgba(149,23,64,0.06)',
-      logoLightDisp: dark ? 'none' : 'block', logoDarkDisp: dark ? 'block' : 'none',
+      ...this.buildLogoLayout(dark),
+      logoEditor: this.logosList().map((l, i) => {
+        const preview = l.day || l.night || '';
+        return {
+          n: this.arNumSafe(i + 1),
+          day: l.day || '',
+          night: l.night || '',
+          preview,
+          hasPreview: !!preview,
+          onDay: (ev) => this.patchLogo(i, { day: ev.target.value }),
+          onNight: (ev) => this.patchLogo(i, { night: ev.target.value }),
+          onDayFile: (ev) => this.setLogoFromFile(i, 'day', ev.target.files && ev.target.files[0]),
+          onNightFile: (ev) => this.setLogoFromFile(i, 'night', ev.target.files && ev.target.files[0]),
+          adoptPlatform: () => this.adoptPlatformLogo(i),
+          clear: () => this.clearLogo(i),
+        };
+      }),
+      placementOpts: [
+        ['center', 'وسط أعلى معاً'],
+        ['topRight', 'يمين أعلى معاً'],
+        ['split', 'يسار / يمين'],
+        ['rightCenter', 'يمين + وسط'],
+      ].map(([id, label]) => {
+        const on = (this.state.logoPlacement || 'center') === id;
+        return {
+          label,
+          set: () => this.setState({ logoPlacement: id }),
+          bg: on ? '#951740' : '#fff',
+          color: on ? '#fff' : '#6b7280',
+          border: on ? '#951740' : '#e5e7eb',
+        };
+      }),
       // current slide flags
       sCover: cur === 'cover', sSummary: cur === 'summary', sKpi: cur === 'kpi', sDist: cur === 'dist', sFunnel: cur === 'funnel', sProgress: cur === 'progress', sTable: cur === 'table', sTimeline: cur === 'timeline', sEvidence: cur === 'evidence', sDisb: cur === 'disb', sClosing: cur === 'closing',
       // content

@@ -95,6 +95,10 @@ export type ZadPresentationReport = {
     rows: [string, string][];
     note?: string;
   }>;
+  /** شعارات العرض (حد أقصى 2) — day إلزامي عند الاستخدام، night اختياري للوضع الليلي */
+  logos?: Array<{ day: string; night?: string }>;
+  /** موضع الشعارات على الشريحة */
+  logoPlacement?: "center" | "topRight" | "split" | "rightCenter";
   /** اختيار الشرائح من المنصة قبل فتح المنشئ */
   meta?: {
     on?: Partial<Record<PresentationSlideId, boolean>>;
@@ -243,6 +247,14 @@ export function buildZadPresentationReport(
     orgName: "منصة رداء",
     deptName: s.exhibitionName,
     closingTitle: "شكراً لكم",
+    logos: [
+      {
+        day: "/zad-presentation/assets/logo-full.png",
+        night: "/zad-presentation/assets/logo-white.png",
+      },
+      { day: "/invite-poster.jpg" },
+    ],
+    logoPlacement: "center",
     summary: [
       {
         text: `الأسر المستفيدة ${ar(families)} بإجمالي ${ar(individuals)} مستفيداً (أفراد يشملون التابعين).`,

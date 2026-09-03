@@ -7,9 +7,10 @@ set -eu
 DATA_ROOT="${APP_STORAGE:-/data}"
 UPLOADS="${UPLOADS_DIR:-${DATA_ROOT}/uploads}"
 EVIDENCE="${UPLOADS}/evidence"
+LOGOS="${UPLOADS}/presentation-logos"
 
 echo "منصة رداء — فحص ثبات التخزين"
-echo "DATA_ROOT=$DATA_ROOT UPLOADS=$UPLOADS EVIDENCE=$EVIDENCE uid=$(id -u 2>/dev/null || echo '?')"
+echo "DATA_ROOT=$DATA_ROOT UPLOADS=$UPLOADS EVIDENCE=$EVIDENCE LOGOS=$LOGOS uid=$(id -u 2>/dev/null || echo '?')"
 echo
 
 is_persistent_mount() {
@@ -68,7 +69,7 @@ check_one() {
 }
 
 WRITABLE=0
-if [ -d "$UPLOADS" ] && [ -w "$UPLOADS" ] && [ -d "$EVIDENCE" ] && [ -w "$EVIDENCE" ]; then
+if [ -d "$UPLOADS" ] && [ -w "$UPLOADS" ] && [ -d "$EVIDENCE" ] && [ -w "$EVIDENCE" ] && [ -d "$LOGOS" ] && [ -w "$LOGOS" ]; then
   WRITABLE=1
 fi
 
@@ -83,7 +84,7 @@ if [ "$WRITABLE" -eq 1 ]; then
   echo "uploads/evidence: قابلة للكتابة"
 else
   echo "uploads/evidence: غير جاهزة (ناقصة أو بدون صلاحية كتابة)"
-  echo "الحل الفوري كـ root: mkdir -p /data/uploads/evidence /data/backups && chown -R nextjs:nodejs /data/uploads /data/backups"
+  echo "الحل الفوري كـ root: mkdir -p /data/uploads/evidence /data/uploads/presentation-logos /data/backups && chown -R nextjs:nodejs /data/uploads /data/backups"
 fi
 echo
 
