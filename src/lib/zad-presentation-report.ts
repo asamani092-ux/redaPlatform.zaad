@@ -252,7 +252,7 @@ export function buildZadPresentationReport(
         day: "/zad-presentation/assets/logo-full.png",
         night: "/zad-presentation/assets/logo-white.png",
       },
-      { day: "/invite-poster.jpg" },
+      { day: "/invite-poster.png" },
     ],
     logoPlacement: "center",
     summary: [

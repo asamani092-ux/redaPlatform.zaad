@@ -292,7 +292,7 @@
                         <button onClick="{{ lg.clear }}" type="button" style="border: none; background: transparent; color: #991b1b; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;">إزالة</button>
                       </div>
                       <sc-if value="{{ lg.hasPreview }}" hint-placeholder-val="{{ false }}">
-                        <img src="{{ lg.preview }}" alt="" style="height: 48px; width: auto; max-width: 140px; object-fit: contain; align-self: flex-start; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px;">
+                        <span style="width: 72px; height: 72px; flex-shrink: 0; align-self: flex-start; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px; display: block;"><img src="{{ lg.preview }}" alt="" style="width: 100%; height: 100%; object-fit: contain; display: block;"></span>
                       </sc-if>
                       <input value="{{ lg.day }}" onInput="{{ lg.onDay }}" placeholder="رابط الشعار النهاري (URL)" style="width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px 10px; font-family: inherit; font-size: 13px; direction: ltr; text-align: start;">
                       <input value="{{ lg.night }}" onInput="{{ lg.onNight }}" placeholder="رابط النسخة الليلية (اختياري)" style="width: 100%; border-radius: 8px; border: 1px solid #e5e7eb; padding: 8px 10px; font-family: inherit; font-size: 13px; direction: ltr; text-align: start;">
@@ -368,11 +368,11 @@
       <div style="flex: 1; position: relative; overflow: hidden;">
         <div class="zrp-logos" style="{{ logosWrapStyle }}">
           <sc-for list="{{ logoSlots }}" as="lg" hint-placeholder-count="2">
-            <img src="{{ lg.src }}" alt="" style="{{ lg.imgStyle }}">
+            <span style="{{ lg.boxStyle }}"><img src="{{ lg.src }}" alt="" style="{{ lg.imgStyle }}"></span>
           </sc-for>
         </div>
 
-        <div class="zrp-slide" style="position: absolute; inset: 0; padding: 108px 8vw 90px; display: flex; flex-direction: column; justify-content: center; color: {{ textMain }};">
+        <div class="zrp-slide" style="position: absolute; inset: 0; padding: 140px 8vw 90px; display: flex; flex-direction: column; justify-content: {{ slideJustify }}; overflow-y: auto; color: {{ textMain }};">
           <sc-if value="{{ sCover }}" hint-placeholder-val="{{ true }}">
             <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px;">
               <div style="width: 96px; height: 8px; border-radius: 99px; background: #e9b221;"></div>
@@ -896,7 +896,8 @@ class Component extends DCLogic {
       isUp: false, isDown: isOpen && (mode === 'down' || mode === 'up') };
   }
 
-  PLATFORM_LOGO() { return '/invite-poster.jpg'; }
+  PLATFORM_LOGO() { return '/invite-poster.png'; }
+  LOGO_BOX() { return 72; }
   defaultLogos() {
     return [
       { day: '/zad-presentation/assets/logo-full.png', night: '/zad-presentation/assets/logo-white.png' },
@@ -939,41 +940,49 @@ class Component extends DCLogic {
         reader.readAsDataURL(file);
       });
   }
+  /**
+   * تخطيط الشعارات: صندوق ثابت متساوٍ لكل شعار داخل شريط علوي لا يغطي الشريحة.
+   * Time/Space: O(1) — شعاران كحد أقصى.
+   */
   buildLogoLayout(dark) {
     const placement = this.state.logoPlacement || 'center';
-    const h = dark ? '72px' : '68px';
-    const top = dark ? '24px' : '28px';
+    const box = this.LOGO_BOX();
+    const topPx = dark ? 24 : 28;
+    const top = topPx + 'px';
     const active = this.logosList().map((l, i) => {
       const src = dark ? (l.night || l.day) : (l.day || l.night);
       return src ? { i, src } : null;
     }).filter(Boolean);
-    const baseImg = 'height: ' + h + '; width: auto; max-width: 160px; object-fit: contain; display: block;';
+    const boxBase = 'width: ' + box + 'px; height: ' + box + 'px; flex-shrink: 0; display: block;';
+    const imgStyle = 'width: 100%; height: 100%; object-fit: contain; display: block;';
+    // شريط الشعارات يشغل أعلى الشريحة فقط — يمنع تغطية المحتوى تحته
+    const bandStyle = 'position: absolute; top: 0; left: 0; right: 0; height: ' + (topPx + box + 16) + 'px; pointer-events: none; z-index: 3;';
     if (!active.length) {
       return { logosWrapStyle: 'display: none;', logoSlots: [] };
     }
     if (placement === 'split') {
       const slots = active.map((a, idx) => {
         const side = idx === 0 ? 'right: 4vw; left: auto;' : 'left: 4vw; right: auto;';
-        return { src: a.src, imgStyle: 'position: absolute; top: ' + top + '; ' + side + ' z-index: 3; ' + baseImg };
+        return { src: a.src, boxStyle: 'position: absolute; top: ' + top + '; ' + side + ' ' + boxBase, imgStyle };
       });
-      return { logosWrapStyle: 'position: absolute; inset: 0; pointer-events: none; z-index: 3;', logoSlots: slots };
+      return { logosWrapStyle: bandStyle, logoSlots: slots };
     }
     if (placement === 'rightCenter') {
       const slots = active.map((a, idx) => {
-        if (idx === 0) return { src: a.src, imgStyle: 'position: absolute; top: ' + top + '; right: 4vw; left: auto; z-index: 3; ' + baseImg };
-        return { src: a.src, imgStyle: 'position: absolute; top: ' + top + '; left: 50%; transform: translateX(-50%); z-index: 3; ' + baseImg };
+        if (idx === 0) return { src: a.src, boxStyle: 'position: absolute; top: ' + top + '; right: 4vw; left: auto; ' + boxBase, imgStyle };
+        return { src: a.src, boxStyle: 'position: absolute; top: ' + top + '; left: 50%; transform: translateX(-50%); ' + boxBase, imgStyle };
       });
-      return { logosWrapStyle: 'position: absolute; inset: 0; pointer-events: none; z-index: 3;', logoSlots: slots };
+      return { logosWrapStyle: bandStyle, logoSlots: slots };
     }
     if (placement === 'topRight') {
       return {
-        logosWrapStyle: 'position: absolute; top: ' + top + '; right: 4vw; left: auto; transform: none; display: flex; align-items: center; gap: 16px; z-index: 3;',
-        logoSlots: active.map((a) => ({ src: a.src, imgStyle: baseImg })),
+        logosWrapStyle: 'position: absolute; top: ' + top + '; right: 4vw; left: auto; transform: none; display: flex; align-items: center; gap: 16px; pointer-events: none; z-index: 3;',
+        logoSlots: active.map((a) => ({ src: a.src, boxStyle: boxBase, imgStyle })),
       };
     }
     return {
-      logosWrapStyle: 'position: absolute; top: ' + top + '; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; z-index: 3;',
-      logoSlots: active.map((a) => ({ src: a.src, imgStyle: baseImg })),
+      logosWrapStyle: 'position: absolute; top: ' + top + '; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; pointer-events: none; z-index: 3;',
+      logoSlots: active.map((a) => ({ src: a.src, boxStyle: boxBase, imgStyle })),
     };
   }
 
@@ -1113,6 +1122,8 @@ class Component extends DCLogic {
       }),
       // current slide flags
       sCover: cur === 'cover', sSummary: cur === 'summary', sKpi: cur === 'kpi', sDist: cur === 'dist', sFunnel: cur === 'funnel', sProgress: cur === 'progress', sTable: cur === 'table', sTimeline: cur === 'timeline', sEvidence: cur === 'evidence', sDisb: cur === 'disb', sClosing: cur === 'closing',
+      // الشرائح المعنونة تبدأ من أعلى حتى لا يرتفع العنوان إلى شريط الشعارات
+      slideJustify: (cur === 'cover' || cur === 'closing') ? 'center' : 'flex-start',
       // content
       summaryPoints: D.summary.map((p,i) => ({ ...p, ...this.decorate('summary', i, { title: 'تفصيل النقطة', head: p.text, value: '', delta: '', rows: this.rowObjs(p.rows || []), note: p.note }) })),
       kpis: D.kpis.map((k,i) => ({ ...k, ...this.decorate('kpi', i, { title: k.label, head: '', value: k.value, delta: k.delta, rows: this.rowObjs(k.rows || []), note: k.note }) })),
