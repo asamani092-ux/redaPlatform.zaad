@@ -38,6 +38,7 @@ function grepNoPiiLogs() {
 }
 
 run("D0 daily reports (unit)", "npx", ["tsx", "tests/daily-report.unit.ts"]);
+run("D0 survey delivery (unit)", "npx", ["tsx", "tests/survey-delivery.unit.ts"]);
 run("D1 entitlement", "npx", ["tsx", "tests/entitlement.integration.ts"]);
 run("D1 attendance/dispense", "npx", ["tsx", "tests/attendance-dispense.integration.ts"]);
 run("D2 audit coverage", "npx", ["tsx", "tests/audit-coverage.integration.ts"]);

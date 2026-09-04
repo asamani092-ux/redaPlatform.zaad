@@ -18,6 +18,7 @@ import {
   type SurveyAudience,
   type SurveyDefinition,
 } from "@/lib/survey-questions";
+import { validateSurveyExclusivity } from "@/lib/survey-link";
 import { Prisma } from "@/generated/prisma/client";
 
 const schemaField = z.object({
@@ -164,8 +165,15 @@ export async function PUT(req: NextRequest) {
   // كتالوج الاستبيانات — تراكمي عبر surveys[] مع توافق الشكل القديم
   let surveyPayload: Prisma.InputJsonValue | undefined;
   if (body.data.surveys !== undefined) {
+    const catalog = parseSurveyCatalog({ version: 2, surveys: body.data.surveys });
+    for (const s of catalog.surveys) {
+      const err = validateSurveyExclusivity(s);
+      if (err) {
+        return NextResponse.json({ error: err }, { status: 400 });
+      }
+    }
     surveyPayload = serializeSurveyCatalog(
-      parseSurveyCatalog({ version: 2, surveys: body.data.surveys }),
+      catalog,
     ) as unknown as Prisma.InputJsonValue;
   } else if (
     body.data.surveyQuestions !== undefined ||
