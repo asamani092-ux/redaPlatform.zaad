@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
-import { Modal } from "@/components/Modal";
 import {
   SURVEY_AUDIENCE_OPTIONS,
   audienceLabel,
@@ -21,9 +20,6 @@ import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Chip } from "@/components/ui/Chip";
 import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
-import { SurveyPublicForm } from "@/components/SurveyPublicForm";
-import { resolveSurveyMode } from "@/lib/survey-link";
-import { buildSurveyMessage } from "@/lib/survey-message";
 
 type ResponseRow = {
   id: string;
@@ -31,6 +27,16 @@ type ResponseRow = {
   answersJson: Record<string, unknown>;
   createdAt: string;
   beneficiary: { name: string; nationalId: string };
+};
+
+type TrialBeneficiary = {
+  id: string;
+  name: string;
+  nationalId: string;
+  mobile: string | null;
+  association?: { id: string; name: string } | null;
+  associationOther?: string | null;
+  statusLabel?: string;
 };
 
 /**
@@ -51,7 +57,10 @@ export default function SurveyPage() {
   const [total, setTotal] = useState(0);
   const [msg, setMsg] = useState("");
   const [msgError, setMsgError] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [trialQuery, setTrialQuery] = useState("");
+  const [trialResults, setTrialResults] = useState<TrialBeneficiary[]>([]);
+  const [trialSelected, setTrialSelected] = useState<TrialBeneficiary | null>(null);
+  const [trialBusy, setTrialBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"responses" | "admin">(isAdmin ? "admin" : "responses");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
@@ -210,6 +219,72 @@ export default function SurveyPage() {
     });
   }
 
+
+  async function searchTrialBeneficiaries(q: string) {
+    setTrialQuery(q);
+    if (q.trim().length < 2) {
+      setTrialResults([]);
+      return;
+    }
+    const res = await fetch(
+      `/api/beneficiaries?q=${encodeURIComponent(q.trim())}&page=1&pageSize=10`,
+    );
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setTrialResults([]);
+      return;
+    }
+    const rows = (json.data ?? json.beneficiaries ?? []) as TrialBeneficiary[];
+    setTrialResults(rows);
+  }
+
+  async function sendTrialSurvey() {
+    if (!selected || !trialSelected || trialBusy) return;
+    if (!trialSelected.mobile) {
+      toast.push({ title: "لا يوجد جوال للمستفيد", tone: "danger" });
+      return;
+    }
+    setTrialBusy(true);
+    const res = await fetch("/api/survey", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        beneficiaryId: trialSelected.id,
+        surveyId: selected.id,
+        answers: {},
+        sendLink: true,
+      }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setTrialBusy(false);
+    if (!res.ok) {
+      toast.push({
+        title: "فشل إرسال التجربة",
+        body: String(json.error || "تعذّر الإرسال"),
+        tone: "danger",
+      });
+      setMsg(String(json.error || "فشل إرسال التجربة"));
+      setMsgError(true);
+      return;
+    }
+    toast.push({
+      title: "تم إرسال الاستبيان تجريبياً",
+      body: `أُرسل إلى ${trialSelected.name}`,
+      tone: "success",
+    });
+    setMsg(`أُرسل الاستبيان تجريبياً إلى ${trialSelected.name}`);
+    setMsgError(false);
+  }
+
+  function openFullPreview() {
+    if (!selected) return;
+    window.open(
+      `/s/preview/${encodeURIComponent(selected.id)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
+
   const tabItems = [
     { id: "responses", label: "الردود" },
     ...(isAdmin ? [{ id: "admin", label: "إدارة الاستبيانات" }] : []),
@@ -227,9 +302,9 @@ export default function SurveyPage() {
               type="button"
               className="btn-secondary"
               disabled={!selected}
-              onClick={() => setPreviewOpen(true)}
+              onClick={openFullPreview}
             >
-              معاينة
+              معاينة كاملة
             </button>
             <button
               type="button"
@@ -481,6 +556,74 @@ export default function SurveyPage() {
                 ) : null}
               </div>
 
+
+              <div className="panel" style={{ marginTop: "var(--space-4)" }}>
+                <h3 className="panel-title">إرسال تجريبي لمستفيد</h3>
+                <p className="page-header__desc">
+                  ابحث عن مستفيد من قاعدة البيانات ثم أرسل له رابط الاستبيان عبر واتساب للتجربة.
+                </p>
+                <div className="form-grid form-grid--single">
+                  <div className="full">
+                    <label className="label-field">بحث بالاسم أو الهوية أو الجوال</label>
+                    <input
+                      className="input-field"
+                      value={trialQuery}
+                      placeholder="اكتب حرفين على الأقل…"
+                      onChange={(e) => void searchTrialBeneficiaries(e.target.value)}
+                    />
+                  </div>
+                </div>
+                {trialResults.length ? (
+                  <ul className="stack-gap" style={{ listStyle: "none", padding: 0, marginTop: "var(--space-3)" }}>
+                    {trialResults.map((b) => (
+                      <li key={b.id}>
+                        <button
+                          type="button"
+                          className={`btn-secondary${trialSelected?.id === b.id ? " is-active" : ""}`}
+                          style={{ width: "100%", justifyContent: "flex-start", textAlign: "right" }}
+                          onClick={() => setTrialSelected(b)}
+                        >
+                          <strong>{b.name}</strong>
+                          <span className="meta-ltr" style={{ marginInlineStart: "0.5rem" }}>
+                            {b.nationalId} — {b.mobile || "بلا جوال"}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {trialSelected ? (
+                  <div className="stack-gap" style={{ marginTop: "var(--space-3)" }}>
+                    <p className="msg">
+                      المستفيد المختار: <strong>{trialSelected.name}</strong>
+                      <br />
+                      الهوية: <span className="meta-ltr">{trialSelected.nationalId}</span>
+                      <br />
+                      الجوال: <span className="meta-ltr">{trialSelected.mobile || "—"}</span>
+                      <br />
+                      الجهة:{" "}
+                      {trialSelected.association?.name ||
+                        trialSelected.associationOther ||
+                        "—"}
+                      {trialSelected.statusLabel ? (
+                        <>
+                          <br />
+                          الحالة: {trialSelected.statusLabel}
+                        </>
+                      ) : null}
+                    </p>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      disabled={trialBusy || !trialSelected.mobile}
+                      onClick={() => void sendTrialSurvey()}
+                    >
+                      {trialBusy ? "جاري الإرسال…" : "إرسال الاستبيان لهذا المستفيد"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
               <div className="form-actions">
                 <button
                   type="button"
@@ -588,66 +731,6 @@ export default function SurveyPage() {
         </section>
       ) : null}
 
-      <Modal open={previewOpen} title={selected?.title ?? "معاينة"} onClose={() => setPreviewOpen(false)}>
-        {selected ? (
-          <div className="stack-gap">
-            <p className="msg">
-              الوضع:{" "}
-              {resolveSurveyMode(selected) === "external"
-                ? "رابط خارجي — الردود على المنصة الخارجية"
-                : resolveSurveyMode(selected) === "internal"
-                  ? "نموذج داخلي — الردود تُحفظ هنا"
-                  : "غير مكتمل — أضف أسئلة أو رابطاً خارجياً"}
-            </p>
-            {resolveSurveyMode(selected) === "external" ? (
-              <>
-                <p className="page-header__desc">الرابط الذي سيُرسل للمستفيد:</p>
-                <p className="msg" dir="ltr">
-                  {selected.externalUrl}
-                </p>
-                <p className="page-header__desc">معاينة نص الرسالة:</p>
-                <p className="msg">
-                  {buildSurveyMessage(
-                    "محمد",
-                    exhibitionName,
-                    selected.externalUrl,
-                    selected.title,
-                  )}
-                </p>
-              </>
-            ) : resolveSurveyMode(selected) === "internal" ? (
-              <>
-                <SurveyPublicForm
-                  preview
-                  title={selected.title}
-                  exhibitionName={exhibitionName}
-                  questions={selected.questions}
-                />
-                <div className="stack-gap" style={{ marginTop: "var(--space-3)" }}>
-                    <p className="page-header__desc">
-                      عند الإرسال يُنشأ رابط فريد لكل مستفيد على المسار{" "}
-                      <span dir="ltr">/s/[token]</span> ويُحفظ الرد في المنصة.
-                    </p>
-                    <p className="page-header__desc">معاينة نص الرسالة:</p>
-                    <p className="msg">
-                      {buildSurveyMessage(
-                        "محمد",
-                        exhibitionName,
-                        `${typeof window !== "undefined" ? window.location.origin : ""}/s/…`,
-                        selected.title,
-                      )}
-                    </p>
-                  </div>
-              </>
-            ) : (
-              <EmptyState
-                title="لا معاينة بعد"
-                body="أضف أسئلة داخلية أو رابط نموذج خارجي (دون الجمع بينهما)."
-              />
-            )}
-          </div>
-        ) : null}
-      </Modal>
 
       <ConfirmDialog
         open={broadcastOpen}
