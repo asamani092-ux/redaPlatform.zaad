@@ -1,4 +1,10 @@
 import type { ShareRow, TopDispensedItem } from "@/lib/report-metrics";
+import {
+  FUNNEL_NOTE,
+  FUNNEL_STAGE_LABELS,
+  PRESENTATION_KPI_OPTIONS as KPI_OPTION_LIST,
+  REPORT_KPI_LABELS,
+} from "@/lib/report-kpi-labels";
 
 /** مفاتيح شرائح منشئ العرض (بدون الغلاف/الخاتمة الثابتين) */
 export const PRESENTATION_SLIDE_OPTIONS = [
@@ -15,17 +21,8 @@ export const PRESENTATION_SLIDE_OPTIONS = [
 
 export type PresentationSlideId = (typeof PRESENTATION_SLIDE_OPTIONS)[number]["id"];
 
-/** تسميات مؤشرات KPI كما تُبنى في التقرير */
-export const PRESENTATION_KPI_OPTIONS = [
-  "إجمالي المستفيدين",
-  "الأسر المستفيدة",
-  "المدعوون",
-  "الحضور",
-  "المستلمون",
-  "القطع المصروفة",
-  "مخزون المنصة",
-  "مساهمات المتاجر",
-] as const;
+/** تسميات مؤشرات KPI كما تُبنى في التقرير — مصدر موحّد */
+export const PRESENTATION_KPI_OPTIONS = KPI_OPTION_LIST;
 
 /** عقد بيانات منشئ العرض التقديمي (نظام التصميم v1.2.11 — window.ZAD_REPORT) */
 export type ZadPresentationReport = {
@@ -117,6 +114,15 @@ export type PresentationSummaryInput = {
   piecesDispensed: number;
   beneficiaryFamilies?: number;
   totalIndividuals?: number;
+  invitedIndividuals?: number;
+  attendedIndividuals?: number;
+  receivedIndividuals?: number;
+  attendedNotReceived?: number;
+  attendanceFromInvitedPct?: number;
+  receivedFromAttendedPct?: number;
+  clothesPieces?: number;
+  fabricMeters?: number;
+  repeatDispenseFamilies?: number;
   byGenderShares?: ShareRow[];
   byCityShares?: ShareRow[];
   byNeighborhoodShares?: ShareRow[];
@@ -241,6 +247,19 @@ export function buildZadPresentationReport(
 
   const ar = (n: string | number) => toArabicDigits(n);
 
+  const invitedIndividuals = s.invitedIndividuals ?? s.invited;
+  const attendedIndividuals = s.attendedIndividuals ?? s.attended;
+  const receivedIndividuals = s.receivedIndividuals ?? s.received;
+  const attendedNotReceived =
+    s.attendedNotReceived ?? Math.max(0, s.attended - s.received);
+  const attendanceFromInvitedPct =
+    s.attendanceFromInvitedPct ?? attendPct;
+  const receivedFromAttendedPct =
+    s.receivedFromAttendedPct ?? receiveFromAttendPct;
+  const clothesPieces = s.clothesPieces ?? 0;
+  const fabricMeters = s.fabricMeters ?? 0;
+  const repeatDispenseFamilies = s.repeatDispenseFamilies ?? 0;
+
   return {
     title: `تقرير معرض ${s.exhibitionName}`,
     period: s.exhibitionActive ? "المعرض النشط — لقطة تشغيل" : `معرض: ${s.exhibitionName}`,
@@ -257,21 +276,22 @@ export function buildZadPresentationReport(
     logoPlacement: "center",
     summary: [
       {
-        text: `الأسر المستفيدة ${ar(families)} بإجمالي ${ar(individuals)} مستفيداً (أفراد يشملون التابعين).`,
+        text: `${REPORT_KPI_LABELS.registeredFamilies} ${ar(families)} بإجمالي ${ar(individuals)} (${REPORT_KPI_LABELS.totalIndividuals}).`,
         rows: [
-          ["الأسر المستفيدة", ar(families)],
-          ["إجمالي المستفيدين (أفراد)", ar(individuals)],
+          [REPORT_KPI_LABELS.registeredFamilies, ar(families)],
+          [REPORT_KPI_LABELS.totalIndividuals, ar(individuals)],
         ],
         note: "الأسرة = سجل مستفيد واحد؛ الأفراد = المستفيد + التابعون.",
       },
       {
-        text: `دُعي ${ar(s.invited)} وحضر ${ar(s.attended)} واستلم ${ar(s.received)} مستفيداً.`,
+        text: `دُعيت ${ar(s.invited)} أسرة وحضرت ${ar(s.attended)} واستلمت ${ar(s.received)}.`,
         rows: [
-          ["المدعوون", ar(s.invited)],
-          ["الحضور", ar(s.attended)],
-          ["المستلمون", ar(s.received)],
+          [REPORT_KPI_LABELS.invitedFamilies, ar(s.invited)],
+          [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
+          [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
+          [REPORT_KPI_LABELS.attendedNotReceived, ar(attendedNotReceived)],
         ],
-        note: "مسار الدعوة → الحضور → الاستلام.",
+        note: "مسار الدعوة → الحضور → الاستلام (أسر).",
       },
       {
         text: `صُرف إجمالي ${ar(s.piecesDispensed)} قطعة خلال المعرض.`,
@@ -336,56 +356,94 @@ export function buildZadPresentationReport(
     ],
     kpis: [
       {
-        label: "إجمالي المستفيدين",
+        label: REPORT_KPI_LABELS.totalIndividuals,
         value: ar(individuals),
         delta: `${ar(families)} أسرة`,
         rows: [
-          ["الأسر المستفيدة", ar(families)],
-          ["إجمالي الأفراد", ar(individuals)],
+          [REPORT_KPI_LABELS.registeredFamilies, ar(families)],
+          [REPORT_KPI_LABELS.totalIndividuals, ar(individuals)],
         ],
         note: "الأفراد = المستفيد + التابعون لكل أسرة.",
       },
       {
-        label: "الأسر المستفيدة",
+        label: REPORT_KPI_LABELS.registeredFamilies,
         value: ar(families),
         rows: [
-          ["الأسر", ar(families)],
-          ["إجمالي الأفراد", ar(individuals)],
+          [REPORT_KPI_LABELS.registeredFamilies, ar(families)],
+          [REPORT_KPI_LABELS.totalIndividuals, ar(individuals)],
         ],
         note: "كل سجل مستفيد يُحسب أسرة واحدة.",
       },
       {
-        label: "المدعوون",
+        label: REPORT_KPI_LABELS.invitedFamilies,
         value: ar(s.invited),
         delta: families
           ? `${ar(pctOf(s.invited, families))}٪ من الأسر`
           : undefined,
-        rows: [["المدعوون", ar(s.invited)], ["الأسر", ar(families)]],
-        note: "دعوات المعرض النشطة.",
+        rows: [
+          [REPORT_KPI_LABELS.invitedFamilies, ar(s.invited)],
+          ["أفراد مدعوون", ar(invitedIndividuals)],
+        ],
+        note: "دعوات المعرض النشطة (أسر).",
       },
       {
-        label: "الحضور",
+        label: REPORT_KPI_LABELS.attendedFamilies,
         value: ar(s.attended),
-        delta: s.invited ? `${ar(attendPct)}٪ من المدعوين` : undefined,
+        delta: s.invited ? `${ar(attendanceFromInvitedPct)}٪ من المدعوّة` : undefined,
         rows: [
-          ["الحضور", ar(s.attended)],
-          ["استثنائي", ar(s.exceptionAttendance ?? 0)],
+          [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
+          [REPORT_KPI_LABELS.attendedIndividuals, ar(attendedIndividuals)],
         ],
         note: "يشمل الحضور العادي والاستثنائي.",
       },
       {
-        label: "المستلمون",
+        label: REPORT_KPI_LABELS.receivedFamilies,
         value: ar(s.received),
-        delta: s.attended ? `${ar(receiveFromAttendPct)}٪ من الحضور` : undefined,
+        delta: s.attended ? `${ar(receivedFromAttendedPct)}٪ من الحاضرة` : undefined,
         rows: [
-          ["المستلمون", ar(s.received)],
-          ["القطع", ar(s.piecesDispensed)],
-          ["صرف استثنائي", ar(s.overrideDispenses ?? 0)],
+          [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
+          [REPORT_KPI_LABELS.piecesDispensed, ar(s.piecesDispensed)],
         ],
-        note: "مستفيدون لديهم أمر صرف واحد على الأقل.",
+        note: "أسر لديها أمر صرف واحد على الأقل.",
       },
       {
-        label: "القطع المصروفة",
+        label: REPORT_KPI_LABELS.receivedIndividuals,
+        value: ar(receivedIndividuals),
+        rows: [
+          [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
+          [REPORT_KPI_LABELS.receivedIndividuals, ar(receivedIndividuals)],
+        ],
+        note: "مجموع أحجام أسر المستلِمين.",
+      },
+      {
+        label: REPORT_KPI_LABELS.attendedNotReceived,
+        value: ar(attendedNotReceived),
+        rows: [
+          [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
+          [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
+        ],
+        note: "حضور − استلام (أسر).",
+      },
+      {
+        label: REPORT_KPI_LABELS.attendanceFromInvitedPct,
+        value: `${ar(attendanceFromInvitedPct)}٪`,
+        rows: [
+          [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
+          [REPORT_KPI_LABELS.invitedFamilies, ar(s.invited)],
+        ],
+        note: "نسبة الأسر الحاضرة من المدعوّة.",
+      },
+      {
+        label: REPORT_KPI_LABELS.receivedFromAttendedPct,
+        value: `${ar(receivedFromAttendedPct)}٪`,
+        rows: [
+          [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
+          [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
+        ],
+        note: "نسبة الأسر المستلِمة من الحاضرة.",
+      },
+      {
+        label: REPORT_KPI_LABELS.piecesDispensed,
         value: ar(s.piecesDispensed),
         rows: top
           .slice(0, 5)
@@ -398,24 +456,51 @@ export function buildZadPresentationReport(
         note: top.length ? "أعلى الأصناف المصروفة." : "لا أصناف بعد.",
       },
       {
-        label: "مخزون المنصة",
+        label: REPORT_KPI_LABELS.clothesPieces,
+        value: ar(clothesPieces),
+        rows: [
+          [REPORT_KPI_LABELS.clothesPieces, ar(clothesPieces)],
+          [REPORT_KPI_LABELS.fabricMeters, ar(fabricMeters)],
+        ],
+        note: "من تصنيف سمات المخزون كما في العرض الحي.",
+      },
+      {
+        label: REPORT_KPI_LABELS.fabricMeters,
+        value: ar(fabricMeters),
+        rows: [
+          [REPORT_KPI_LABELS.fabricMeters, ar(fabricMeters)],
+          [REPORT_KPI_LABELS.clothesPieces, ar(clothesPieces)],
+        ],
+        note: "من تصنيف سمات المخزون كما في العرض الحي.",
+      },
+      {
+        label: REPORT_KPI_LABELS.repeatDispenseFamilies,
+        value: ar(repeatDispenseFamilies),
+        rows: [
+          [REPORT_KPI_LABELS.repeatDispenseFamilies, ar(repeatDispenseFamilies)],
+          [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
+        ],
+        note: "أسر لها أكثر من أمر صرف في المعرض.",
+      },
+      {
+        label: REPORT_KPI_LABELS.platformRemaining,
         value: ar(s.platformRemaining ?? 0),
         delta: `مصروف ${ar(s.platformDispensed ?? 0)}`,
         rows: [
-          ["المضاف من المنصة", ar(s.platformContributed ?? 0)],
-          ["المصروف من المنصة", ar(s.platformDispensed ?? 0)],
-          ["المتبقي للمنصة", ar(s.platformRemaining ?? 0)],
+          [REPORT_KPI_LABELS.platformContributed, ar(s.platformContributed ?? 0)],
+          [REPORT_KPI_LABELS.platformDispensed, ar(s.platformDispensed ?? 0)],
+          [REPORT_KPI_LABELS.platformRemaining, ar(s.platformRemaining ?? 0)],
         ] as [string, string][],
         note: "منتجات وإضافات المنصة خارج مساهمات المتاجر.",
       },
       {
-        label: "مساهمات المتاجر",
+        label: REPORT_KPI_LABELS.storeContributed,
         value: ar(s.storeContributed ?? 0),
         delta: `متبقي ${ar(s.storeRemaining ?? 0)}`,
         rows: [
-          ["المضاف من المتاجر", ar(s.storeContributed ?? 0)],
-          ["المصروف من المتاجر", ar(s.storeDispensed ?? 0)],
-          ["المتبقي للمتاجر", ar(s.storeRemaining ?? 0)],
+          [REPORT_KPI_LABELS.storeContributed, ar(s.storeContributed ?? 0)],
+          [REPORT_KPI_LABELS.storeDispensed, ar(s.storeDispensed ?? 0)],
+          [REPORT_KPI_LABELS.storeRemaining, ar(s.storeRemaining ?? 0)],
         ] as [string, string][],
         note: "حصر مساهمات المتاجر المشاركة في المخزون الموحّد.",
       },
@@ -432,70 +517,76 @@ export function buildZadPresentationReport(
     })),
     funnel: [
       {
-        stage: "مسجّلون",
-        count: s.totalBeneficiaries,
+        stage: FUNNEL_STAGE_LABELS.registered,
+        count: families,
         pct: 100,
-        rows: [["العدد", ar(s.totalBeneficiaries)]],
-        note: "قاعدة المستفيدين المرتبطة بالتقرير.",
+        rows: [
+          ["أسر", ar(families)],
+          ["أفراد", ar(individuals)],
+        ],
+        note: FUNNEL_NOTE,
       },
       {
-        stage: "مدعوون",
+        stage: FUNNEL_STAGE_LABELS.invited,
         count: s.invited,
-        pct: pctOf(s.invited, Math.max(s.totalBeneficiaries, 1)),
+        pct: pctOf(s.invited, Math.max(families, 1)),
         rows: [
-          ["العدد", ar(s.invited)],
-          ["من المسجّلين", `${ar(pctOf(s.invited, Math.max(s.totalBeneficiaries, 1)))}٪`],
+          ["أسر", ar(s.invited)],
+          ["أفراد", ar(invitedIndividuals)],
+          ["من المسجّلين", `${ar(pctOf(s.invited, Math.max(families, 1)))}٪`],
         ],
-        note: "أُرسلت لهم دعوة للمعرض.",
+        note: FUNNEL_NOTE,
       },
       {
-        stage: "حضور",
+        stage: FUNNEL_STAGE_LABELS.attended,
         count: s.attended,
-        pct: pctOf(s.attended, Math.max(s.totalBeneficiaries, 1)),
+        pct: pctOf(s.attended, Math.max(families, 1)),
         rows: [
-          ["العدد", ar(s.attended)],
-          ["من المدعوين", `${ar(attendPct)}٪`],
+          ["أسر", ar(s.attended)],
+          ["أفراد", ar(attendedIndividuals)],
+          ["من المدعوّة", `${ar(attendanceFromInvitedPct)}٪`],
         ],
-        note: "تسجيل حضور في المعرض.",
+        note: FUNNEL_NOTE,
       },
       {
-        stage: "استلام",
+        stage: FUNNEL_STAGE_LABELS.received,
         count: s.received,
-        pct: receiveFromTotalPct,
+        pct: pctOf(s.received, Math.max(families, 1)),
         rows: [
-          ["العدد", ar(s.received)],
-          ["من الحضور", `${ar(receiveFromAttendPct)}٪`],
+          ["أسر", ar(s.received)],
+          ["أفراد", ar(receivedIndividuals)],
+          ["من الحاضرة", `${ar(receivedFromAttendedPct)}٪`],
         ],
-        note: "تم صرف قطعة واحدة على الأقل.",
+        note: FUNNEL_NOTE,
       },
     ],
     progress: [
       {
-        label: "نسبة الحضور من المدعوين",
-        pct: Math.min(100, attendPct),
+        label: REPORT_KPI_LABELS.attendanceFromInvitedPct,
+        pct: Math.min(100, attendanceFromInvitedPct),
         rows: [
-          ["الحضور", ar(s.attended)],
-          ["المدعوون", ar(s.invited)],
+          [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
+          [REPORT_KPI_LABELS.invitedFamilies, ar(s.invited)],
         ],
-        note: "مؤشر استجابة الدعوة.",
+        note: "مؤشر استجابة الدعوة (أسر).",
       },
       {
-        label: "نسبة الاستلام من الحضور",
-        pct: Math.min(100, receiveFromAttendPct),
+        label: REPORT_KPI_LABELS.receivedFromAttendedPct,
+        pct: Math.min(100, receivedFromAttendedPct),
         rows: [
-          ["المستلمون", ar(s.received)],
-          ["الحضور", ar(s.attended)],
+          [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
+          [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
         ],
-        note: "اكتمال مسار الصرف بعد الحضور.",
+        note: "اكتمال مسار الصرف بعد الحضور (أسر).",
       },
       {
-        label: "نسبة الاستلام من المسجّلين",
-        pct: Math.min(100, receiveFromTotalPct),
+        label: "نسبة الأسر المستلِمة من المسجّلة",
+        pct: Math.min(100, pctOf(s.received, Math.max(families, 1))),
         rows: [
-          ["المستلمون", ar(s.received)],
-          ["المسجّلون", ar(s.totalBeneficiaries)],
+          [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
+          [REPORT_KPI_LABELS.registeredFamilies, ar(families)],
         ],
-        note: "تغطية الصرف على القاعدة كاملة.",
+        note: "تغطية الصرف على القاعدة (أسر).",
       },
     ],
     programs: top.map((t) => {

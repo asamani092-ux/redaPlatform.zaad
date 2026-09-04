@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { householdSize } from "@/lib/report-metrics";
+import { dispenseKind } from "@/lib/dispense-kind";
 
 export type ExhibitionKpiSections = {
   attendance: {
@@ -18,14 +19,6 @@ export type ExhibitionKpiSections = {
     count: number;
   };
 };
-
-function dispenseKind(attrs: Record<string, unknown>): "clothes" | "fabric" | "other" {
-  const type = String(attrs.type ?? "").trim();
-  const unit = String(attrs.unit ?? "").trim();
-  if (type.includes("ملابس") || unit === "قطعة") return "clothes";
-  if (type.includes("قماش") || unit === "متر") return "fabric";
-  return "other";
-}
 
 /** مؤشرات المعرض المجمّعة للداشبورد والعرض الحي — Time O(a+d)، Space O(a)
  *  الحساب: src/lib/exhibition-kpis.ts
