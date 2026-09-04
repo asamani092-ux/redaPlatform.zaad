@@ -40,19 +40,25 @@ export function SurveyPublicForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (preview || done) return;
-    if (!token) {
-      setError("رابط الاستبيان غير صالح");
-      return;
-    }
+    if (done) return;
     for (const q of ordered) {
       if (!String(answers[q.id] ?? "").trim()) {
         setError("يرجى الإجابة على جميع الأسئلة");
         return;
       }
     }
-    setBusy(true);
     setError("");
+    // معاينة تفاعلية بدون حفظ في قاعدة البيانات
+    if (preview) {
+      setDone(true);
+      onSubmitted?.();
+      return;
+    }
+    if (!token) {
+      setError("رابط الاستبيان غير صالح");
+      return;
+    }
+    setBusy(true);
     const res = await fetch(`/api/s/${encodeURIComponent(token)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -68,11 +74,15 @@ export function SurveyPublicForm({
     onSubmitted?.();
   }
 
-  if (done && !preview) {
+  if (done) {
     return (
       <div className="survey-public">
         <SurveyPublicBrand title={title} exhibitionName={exhibitionName} />
-        <p className="survey-public__thanks">شكراً لمشاركتك — تم حفظ إجاباتك.</p>
+        <p className="survey-public__thanks">
+          {preview
+            ? "شكراً — تم الإرسال (معاينة فقط، لم يُحفظ في المنصة)."
+            : "شكراً لمشاركتك — تم حفظ إجاباتك."}
+        </p>
       </div>
     );
   }
@@ -82,7 +92,7 @@ export function SurveyPublicForm({
       <SurveyPublicBrand title={title} exhibitionName={exhibitionName} />
       {preview ? (
         <p className="survey-public__badge" role="status">
-          معاينة — كما يراها المستفيد
+          معاينة كاملة — يمكنك تجربة الإجابة من الجوال دون حفظ
         </p>
       ) : null}
       <form className="survey-public__form" onSubmit={(e) => void submit(e)}>
@@ -109,7 +119,6 @@ export function SurveyPublicForm({
                         type="button"
                         className={`survey-public__scale-btn${selected ? " is-selected" : ""}`}
                         aria-pressed={selected}
-                        disabled={preview}
                         onClick={() =>
                           setAnswers((a) => ({ ...a, [q.id]: String(n) }))
                         }
@@ -124,7 +133,6 @@ export function SurveyPublicForm({
                   className="survey-public__text"
                   rows={3}
                   value={answers[q.id] ?? ""}
-                  disabled={preview}
                   placeholder="اكتب إجابتك هنا"
                   onChange={(e) =>
                     setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
@@ -138,15 +146,13 @@ export function SurveyPublicForm({
           <p className="survey-public__empty">لا أسئلة في هذا الاستبيان.</p>
         ) : null}
         {error ? <p className="survey-public__error">{error}</p> : null}
-        {!preview ? (
-          <button
-            type="submit"
-            className="survey-public__submit"
-            disabled={busy || !ordered.length}
-          >
-            {busy ? "جاري الإرسال…" : "إرسال الإجابات"}
-          </button>
-        ) : null}
+        <button
+          type="submit"
+          className="survey-public__submit"
+          disabled={busy || !ordered.length}
+        >
+          {busy ? "جاري الإرسال…" : preview ? "إرسال (معاينة)" : "إرسال الإجابات"}
+        </button>
       </form>
     </div>
   );
@@ -161,16 +167,28 @@ function SurveyPublicBrand({
 }) {
   return (
     <header className="survey-public__brand">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        className="survey-public__logo"
-        src="/zad-presentation/assets/logo-full.png"
-        alt="شعار المنصة"
-        width={160}
-        height={96}
-      />
+      <div className="survey-public__logos" aria-label="شعارات الجمعية والمعرض">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="survey-public__logo survey-public__logo--assoc"
+          src="/zad-presentation/assets/logo-full.png"
+          alt="شعار الجمعية"
+          width={160}
+          height={96}
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="survey-public__logo survey-public__logo--poster"
+          src="/invite-poster.png"
+          alt="شعار المعرض"
+          width={160}
+          height={96}
+        />
+      </div>
       <h1 className="survey-public__title">{title}</h1>
       <p className="survey-public__exhibition">{exhibitionName}</p>
     </header>
   );
 }
+
+export { SurveyPublicBrand };

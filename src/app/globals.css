@@ -1805,14 +1805,28 @@ textarea.input-field {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.65rem;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
+.survey-public__logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: clamp(1rem, 4vw, 2rem);
+}
+
 .survey-public__logo {
+  display: block;
   width: auto;
-  height: 4.5rem;
+  height: clamp(3.5rem, 12vw, 5rem);
   object-fit: contain;
+}
+
+.survey-public__logo--poster {
+  height: clamp(4rem, 14vw, 5.75rem);
 }
 
 .survey-public__title {
@@ -1834,6 +1848,14 @@ textarea.input-field {
   text-align: center;
   font-size: 0.95rem;
   color: var(--text-secondary, #667);
+}
+
+.survey-public__external-url {
+  margin: 0 0 1rem;
+  text-align: center;
+  word-break: break-all;
+  font-size: 1rem;
+  color: var(--text-primary, #222);
 }
 
 .survey-public__form {
@@ -1949,7 +1971,10 @@ textarea.input-field {
     border-radius: 1rem;
   }
   .survey-public__logo {
-    height: 3.75rem;
+    height: clamp(3rem, 16vw, 4rem);
+  }
+  .survey-public__logo--poster {
+    height: clamp(3.5rem, 18vw, 4.5rem);
   }
   .survey-public__q-label {
     font-size: 1.12rem;
