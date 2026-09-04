@@ -21,6 +21,9 @@ import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Chip } from "@/components/ui/Chip";
 import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
+import { SurveyPublicForm } from "@/components/SurveyPublicForm";
+import { resolveSurveyMode } from "@/lib/survey-link";
+import { buildSurveyMessage } from "@/lib/survey-message";
 
 type ResponseRow = {
   id: string;
@@ -39,6 +42,8 @@ export default function SurveyPage() {
   const isAdmin = session?.user?.role === "ADMIN";
 
   const [surveys, setSurveys] = useState<SurveyDefinition[]>([]);
+  const [exhibitionName, setExhibitionName] = useState("المعرض");
+  const [exhibitionId, setExhibitionId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [page, setPage] = useState(1);
@@ -67,6 +72,8 @@ export default function SurveyPage() {
     if (res.ok) {
       const list = (json.surveys ?? []) as SurveyDefinition[];
       setSurveys(list);
+      if (json.exhibitionName) setExhibitionName(String(json.exhibitionName));
+      if (json.exhibitionId) setExhibitionId(String(json.exhibitionId));
       const nextId = (json.selectedSurveyId as string | null) ?? list[0]?.id ?? null;
       setSelectedId(nextId);
       setResponses(json.responses ?? []);
@@ -88,7 +95,25 @@ export default function SurveyPage() {
   function patchSelected(patch: Partial<SurveyDefinition>) {
     if (!selected) return;
     setSurveys((list) =>
-      list.map((s) => (s.id === selected.id ? { ...s, ...patch } : s)),
+      list.map((s) => {
+        if (s.id !== selected.id) return s;
+        let next: SurveyDefinition = { ...s, ...patch };
+        const url = (patch.externalUrl !== undefined ? patch.externalUrl : next.externalUrl)?.trim() || null;
+        const questions = patch.questions !== undefined ? patch.questions : next.questions;
+        const hasUrl = Boolean(url);
+        const hasQuestions = questions.some((q) => q.text.trim());
+        if (hasUrl && hasQuestions) {
+          // آخر تعديل يفوز: إن مُرّر رابط صُفّرت الأسئلة، وإن مُرّرت أسئلة صُفّر الرابط
+          if (patch.externalUrl !== undefined && hasUrl) {
+            next = { ...next, externalUrl: url, questions: [] };
+          } else if (patch.questions !== undefined) {
+            next = { ...next, questions, externalUrl: null };
+          }
+        } else {
+          next = { ...next, externalUrl: url, questions };
+        }
+        return next;
+      }),
     );
   }
 
@@ -319,10 +344,20 @@ export default function SurveyPage() {
                     dir="ltr"
                     placeholder="https://forms.gle/..."
                     value={selected.externalUrl ?? ""}
+                    disabled={selected.questions.some((q) => q.text.trim())}
                     onChange={(e) =>
                       patchSelected({ externalUrl: e.target.value || null })
                     }
                   />
+                  {selected.questions.some((q) => q.text.trim()) ? (
+                    <p className="page-header__desc">
+                      معطّل لأن الاستبيان يحتوي أسئلة داخلية — احذف الأسئلة لاستخدام رابط خارجي.
+                    </p>
+                  ) : (
+                    <p className="page-header__desc">
+                      إن وُضع رابط خارجي تُرسله الرسالة مباشرة ولا تُحفظ الردود في المنصة.
+                    </p>
+                  )}
                 </div>
                 {selected.audience === "received" ? (
                   <div className="full">
@@ -437,13 +472,22 @@ export default function SurveyPage() {
                 {!selected.questions.length ? (
                   <EmptyState
                     title="لا أسئلة بعد"
-                    body="أضف أسئلة داخلية أو ضع رابط نموذج خارجي."
+                    body={
+                      selected.externalUrl?.trim()
+                        ? "هذا الاستبيان على وضع الرابط الخارجي — احذف الرابط لإضافة أسئلة داخلية."
+                        : "أضف أسئلة داخلية أو ضع رابط نموذج خارجي (لا يمكن الجمع)."
+                    }
                   />
                 ) : null}
               </div>
 
               <div className="form-actions">
-                <button type="button" className="btn-secondary" onClick={addQuestion}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={addQuestion}
+                  disabled={Boolean(selected.externalUrl?.trim())}
+                >
                   إضافة سؤال
                 </button>
                 <button
@@ -545,36 +589,63 @@ export default function SurveyPage() {
       ) : null}
 
       <Modal open={previewOpen} title={selected?.title ?? "معاينة"} onClose={() => setPreviewOpen(false)}>
-        {selected?.questions.length ? (
-          <div className="form-grid form-grid--single">
-            <p className="page-header__desc">
-              المستفيدون: {audienceLabel(selected.audience)}
+        {selected ? (
+          <div className="stack-gap">
+            <p className="msg">
+              الوضع:{" "}
+              {resolveSurveyMode(selected) === "external"
+                ? "رابط خارجي — الردود على المنصة الخارجية"
+                : resolveSurveyMode(selected) === "internal"
+                  ? "نموذج داخلي — الردود تُحفظ هنا"
+                  : "غير مكتمل — أضف أسئلة أو رابطاً خارجياً"}
             </p>
-            {selected.questions.map((qq) => (
-              <div key={qq.id} className="full">
-                <label className="label-field">{qq.text}</label>
-                {qq.type === "scale" ? (
-                  <input
-                    className="input-field"
-                    type="number"
-                    min={qq.min ?? 1}
-                    max={qq.max ?? 5}
-                    placeholder={`${qq.min ?? 1} - ${qq.max ?? 5}`}
-                    readOnly
-                  />
-                ) : (
-                  <input className="input-field" placeholder="إجابة نصية" readOnly />
-                )}
-              </div>
-            ))}
+            {resolveSurveyMode(selected) === "external" ? (
+              <>
+                <p className="page-header__desc">الرابط الذي سيُرسل للمستفيد:</p>
+                <p className="msg" dir="ltr">
+                  {selected.externalUrl}
+                </p>
+                <p className="page-header__desc">معاينة نص الرسالة:</p>
+                <p className="msg">
+                  {buildSurveyMessage(
+                    "محمد",
+                    exhibitionName,
+                    selected.externalUrl,
+                    selected.title,
+                  )}
+                </p>
+              </>
+            ) : resolveSurveyMode(selected) === "internal" ? (
+              <>
+                <SurveyPublicForm
+                  preview
+                  title={selected.title}
+                  exhibitionName={exhibitionName}
+                  questions={selected.questions}
+                />
+                <div className="stack-gap" style={{ marginTop: "var(--space-3)" }}>
+                    <p className="page-header__desc">
+                      عند الإرسال يُنشأ رابط فريد لكل مستفيد على المسار{" "}
+                      <span dir="ltr">/s/[token]</span> ويُحفظ الرد في المنصة.
+                    </p>
+                    <p className="page-header__desc">معاينة نص الرسالة:</p>
+                    <p className="msg">
+                      {buildSurveyMessage(
+                        "محمد",
+                        exhibitionName,
+                        `${typeof window !== "undefined" ? window.location.origin : ""}/s/…`,
+                        selected.title,
+                      )}
+                    </p>
+                  </div>
+              </>
+            ) : (
+              <EmptyState
+                title="لا معاينة بعد"
+                body="أضف أسئلة داخلية أو رابط نموذج خارجي (دون الجمع بينهما)."
+              />
+            )}
           </div>
-        ) : (
-          <EmptyState title="لا أسئلة بعد" body="أضف أسئلة من تبويب إدارة الاستبيانات." />
-        )}
-        {selected?.externalUrl ? (
-          <p className="msg" style={{ marginTop: "var(--space-3)" }} dir="ltr">
-            {selected.externalUrl}
-          </p>
         ) : null}
       </Modal>
 

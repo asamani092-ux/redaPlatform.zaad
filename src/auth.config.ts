@@ -17,6 +17,8 @@ export const authConfig = {
       if (
         pathname.startsWith("/api/auth") ||
         pathname.startsWith("/api/password") ||
+        pathname.startsWith("/api/s/") ||
+        pathname.startsWith("/s/") ||
         pathname.startsWith("/forgot-password") ||
         pathname.startsWith("/_next") ||
         pathname.startsWith("/favicon") ||

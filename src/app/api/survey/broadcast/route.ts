@@ -13,6 +13,8 @@ import {
 } from "@/lib/survey-questions";
 import { resolveSurveyAudience } from "@/lib/survey-audience";
 import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
+import { resolveSurveyDelivery } from "@/lib/survey-link";
+import { appOrigin } from "@/lib/app-url";
 
 const schema = z.object({
   surveyId: z.string().min(1),
@@ -80,6 +82,22 @@ export async function POST(req: NextRequest) {
       });
       continue;
     }
+    const delivery = resolveSurveyDelivery({
+      survey,
+      exhibitionId: exhibition.id,
+      beneficiaryId: b.id,
+      origin: appOrigin(req),
+    });
+    if (!delivery.ok) {
+      failed++;
+      errors.push({
+        beneficiaryId: b.id,
+        beneficiaryName: b.name,
+        mobile: b.mobile,
+        reason: delivery.error,
+      });
+      continue;
+    }
     const msg = await sendWhatsAppMessage({
       exhibitionId: exhibition.id,
       beneficiaryId: b.id,
@@ -87,7 +105,7 @@ export async function POST(req: NextRequest) {
       body: buildSurveyMessage(
         b.name,
         exhibition.name,
-        survey.externalUrl,
+        delivery.url,
         survey.title,
       ),
       type: OutboundMessageType.SURVEY,
@@ -95,7 +113,7 @@ export async function POST(req: NextRequest) {
       templateParams: surveyTemplateParams(
         b.name,
         exhibition.name,
-        survey.externalUrl,
+        delivery.url,
       ),
     });
     if (msg.status === "FAILED") {

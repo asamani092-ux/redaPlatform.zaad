@@ -165,13 +165,21 @@ export function parseSurveyCatalog(raw: unknown): SurveyCatalog {
 export function serializeSurveyCatalog(catalog: SurveyCatalog): SurveyCatalog {
   return {
     version: 2,
-    surveys: catalog.surveys.map((s) => ({
-      ...s,
-      title: s.title.trim() || "استبيان",
-      questions: s.questions.filter((q) => q.text.trim()),
-      externalUrl: s.externalUrl?.trim() || null,
-      autoSendOnDispense: s.audience === "received" ? s.autoSendOnDispense : false,
-    })),
+    surveys: catalog.surveys.map((s) => {
+      const externalUrl = s.externalUrl?.trim() || null;
+      const questions = s.questions.filter((q) => q.text.trim());
+      // حصرية: رابط خارجي أو أسئلة داخلية — لا جمع
+      const exclusiveQuestions = externalUrl ? [] : questions;
+      const exclusiveUrl = exclusiveQuestions.length ? null : externalUrl;
+      return {
+        ...s,
+        title: s.title.trim() || "استبيان",
+        questions: exclusiveQuestions,
+        externalUrl: exclusiveUrl,
+        autoSendOnDispense:
+          s.audience === "received" ? s.autoSendOnDispense : false,
+      };
+    }),
   };
 }
 

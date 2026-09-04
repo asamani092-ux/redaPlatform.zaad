@@ -13,6 +13,8 @@ import {
   SURVEY_AUDIENCE_OPTIONS,
 } from "@/lib/survey-questions";
 import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
+import { resolveSurveyDelivery } from "@/lib/survey-link";
+import { appOrigin } from "@/lib/app-url";
 import { buildPageMeta, parsePageParams } from "@/lib/pagination";
 
 const submitSchema = z.object({
@@ -56,6 +58,8 @@ export async function GET(req: NextRequest) {
   ]);
 
   return NextResponse.json({
+    exhibitionId: exhibition.id,
+    exhibitionName: exhibition.name,
     surveys: catalog.surveys,
     audienceOptions: SURVEY_AUDIENCE_OPTIONS,
     selectedSurveyId: selected?.id ?? null,
@@ -95,6 +99,15 @@ export async function POST(req: NextRequest) {
     if (!beneficiary.mobile) {
       return NextResponse.json({ error: "لا يوجد رقم جوال للمستفيد" }, { status: 400 });
     }
+    const delivery = resolveSurveyDelivery({
+      survey,
+      exhibitionId: exhibition.id,
+      beneficiaryId: beneficiary.id,
+      origin: appOrigin(req),
+    });
+    if (!delivery.ok) {
+      return NextResponse.json({ error: delivery.error }, { status: 400 });
+    }
     const msg = await sendWhatsAppMessage({
       exhibitionId: exhibition.id,
       beneficiaryId: beneficiary.id,
@@ -102,7 +115,7 @@ export async function POST(req: NextRequest) {
       body: buildSurveyMessage(
         beneficiary.name,
         exhibition.name,
-        survey.externalUrl,
+        delivery.url,
         survey.title,
       ),
       type: OutboundMessageType.SURVEY,
@@ -110,7 +123,7 @@ export async function POST(req: NextRequest) {
       templateParams: surveyTemplateParams(
         beneficiary.name,
         exhibition.name,
-        survey.externalUrl,
+        delivery.url,
       ),
     });
     if (msg.status === "FAILED") {

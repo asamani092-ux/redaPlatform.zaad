@@ -18,6 +18,8 @@ import {
   parseSurveyConfig,
 } from "@/lib/survey-questions";
 import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
+import { resolveSurveyDelivery } from "@/lib/survey-link";
+import { appOrigin } from "@/lib/app-url";
 import { priorDispenseStats } from "@/lib/report-counts";
 import { createDispenseMovementsFifo } from "@/lib/store-ledger";
 
@@ -387,6 +389,17 @@ export async function POST(req: NextRequest) {
         const errors: string[] = [];
         let lastStatus: string | null = null;
         for (const survey of toSend) {
+          const delivery = resolveSurveyDelivery({
+            survey,
+            exhibitionId: exhibition.id,
+            beneficiaryId: order.beneficiaryId,
+            origin: appOrigin(req),
+          });
+          if (!delivery.ok) {
+            errors.push(`${survey.title}: ${delivery.error}`);
+            lastStatus = "FAILED";
+            continue;
+          }
           const surveyMsg = await sendWhatsAppMessage({
             exhibitionId: exhibition.id,
             beneficiaryId: order.beneficiaryId,
@@ -394,7 +407,7 @@ export async function POST(req: NextRequest) {
             body: buildSurveyMessage(
               order.beneficiary.name,
               exhibition.name,
-              survey.externalUrl,
+              delivery.url,
               survey.title,
             ),
             type: OutboundMessageType.SURVEY,
@@ -402,7 +415,7 @@ export async function POST(req: NextRequest) {
             templateParams: surveyTemplateParams(
               order.beneficiary.name,
               exhibition.name,
-              survey.externalUrl,
+              delivery.url,
             ),
           });
           lastStatus = surveyMsg.status;
