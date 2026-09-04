@@ -16,6 +16,7 @@ import {
   PRESENTATION_KPI_OPTIONS,
   PRESENTATION_SLIDE_OPTIONS,
 } from "@/lib/zad-presentation-report";
+import { REPORT_KPI_LABELS } from "@/lib/report-kpi-labels";
 
 type TopItem = {
   inventoryItemId: string;
@@ -38,6 +39,16 @@ type Summary = {
   exceptionAttendance?: number;
   overrideDispenses?: number;
   piecesDispensed: number;
+  invitedIndividuals?: number;
+  receivedIndividuals?: number;
+  attendedNotReceived?: number;
+  attendanceFromInvitedPct?: number;
+  receivedFromAttendedPct?: number;
+  clothesPieces?: number;
+  fabricMeters?: number;
+  repeatDispenseFamilies?: number;
+  attendanceByHour?: number[];
+  attendanceByHourRows?: Array<{ hour: number; count: number; label: string }>;
   /** أفراد = المستفيد + التابعون */
   totalIndividuals?: number;
   /** أسر = عدد السجلات */
@@ -371,51 +382,89 @@ export default function ReportsPage() {
             {(
               [
                 [
-                  "إجمالي المستفيدين",
+                  REPORT_KPI_LABELS.totalIndividuals,
                   summary.totalIndividuals ?? summary.totalBeneficiaries,
                 ],
                 [
-                  "الأسر المستفيدة",
+                  REPORT_KPI_LABELS.registeredFamilies,
                   summary.beneficiaryFamilies ?? summary.totalBeneficiaries,
                 ],
-                ["المدعوون", summary.invited],
+                [REPORT_KPI_LABELS.invitedFamilies, summary.invited],
                 [
-                  "الحضور من الأسر",
+                  REPORT_KPI_LABELS.attendedFamilies,
                   summary.attendedFamilies ?? summary.attended,
                 ],
                 [
-                  "الحضور من الأفراد",
+                  REPORT_KPI_LABELS.attendedIndividuals,
                   summary.attendedIndividuals ?? summary.attended,
                 ],
-                ["استلموا", summary.received],
-                ["المتطوعون", summary.volunteers ?? 0],
-                ["القطع المصروفة", summary.piecesDispensed],
+                [REPORT_KPI_LABELS.receivedFamilies, summary.received],
+                [
+                  REPORT_KPI_LABELS.receivedIndividuals,
+                  summary.receivedIndividuals ?? summary.received,
+                ],
+                [
+                  REPORT_KPI_LABELS.attendedNotReceived,
+                  summary.attendedNotReceived ?? 0,
+                ],
+                [
+                  REPORT_KPI_LABELS.attendanceFromInvitedPct,
+                  `${summary.attendanceFromInvitedPct ?? 0}%`,
+                ],
+                [
+                  REPORT_KPI_LABELS.receivedFromAttendedPct,
+                  `${summary.receivedFromAttendedPct ?? 0}%`,
+                ],
+                [REPORT_KPI_LABELS.volunteers, summary.volunteers ?? 0],
+                [REPORT_KPI_LABELS.piecesDispensed, summary.piecesDispensed],
+                [REPORT_KPI_LABELS.clothesPieces, summary.clothesPieces ?? 0],
+                [REPORT_KPI_LABELS.fabricMeters, summary.fabricMeters ?? 0],
+                [
+                  REPORT_KPI_LABELS.repeatDispenseFamilies,
+                  summary.repeatDispenseFamilies ?? 0,
+                ],
                 [
                   summary.remainingIsExhibitionTotal
-                    ? "متبقي المخزون (إجمالي المعرض)"
-                    : "متبقي المخزون (إجمالي)",
+                    ? REPORT_KPI_LABELS.inventoryRemainingExhibition
+                    : REPORT_KPI_LABELS.inventoryRemaining,
                   summary.inventoryRemainingTotal ?? 0,
                 ],
-                ["مضاف من المنصة", summary.platformContributed ?? 0],
-                ["مصروف من المنصة", summary.platformDispensed ?? 0],
+                [
+                  REPORT_KPI_LABELS.platformContributed,
+                  summary.platformContributed ?? 0,
+                ],
+                [
+                  REPORT_KPI_LABELS.platformDispensed,
+                  summary.platformDispensed ?? 0,
+                ],
                 [
                   summary.remainingIsExhibitionTotal
-                    ? "متبقي للمنصة (إجمالي المعرض)"
-                    : "متبقي للمنصة",
+                    ? REPORT_KPI_LABELS.platformRemainingExhibition
+                    : REPORT_KPI_LABELS.platformRemaining,
                   summary.platformRemaining ?? 0,
                 ],
-                ["مساهمات المتاجر", summary.storeContributed ?? 0],
-                ["مصروف من المتاجر", summary.storeDispensed ?? 0],
+                [
+                  REPORT_KPI_LABELS.storeContributed,
+                  summary.storeContributed ?? 0,
+                ],
+                [REPORT_KPI_LABELS.storeDispensed, summary.storeDispensed ?? 0],
                 [
                   summary.remainingIsExhibitionTotal
-                    ? "متبقي للمتاجر (إجمالي المعرض)"
-                    : "متبقي للمتاجر",
+                    ? REPORT_KPI_LABELS.storeRemainingExhibition
+                    : REPORT_KPI_LABELS.storeRemaining,
                   summary.storeRemaining ?? 0,
                 ],
-                ["حضور استثنائي", summary.exceptionAttendance ?? 0],
-                ["صرف استثنائي", summary.overrideDispenses ?? 0],
+                [
+                  REPORT_KPI_LABELS.exceptionAttendance,
+                  summary.exceptionAttendance ?? 0,
+                ],
+                [
+                  REPORT_KPI_LABELS.overrideDispenses,
+                  summary.overrideDispenses ?? 0,
+                ],
               ] as Array<[string, number | string]>
             ).map(([label, value]) => (
+
               <KpiCard
                 key={String(label)}
                 label={String(label)}
@@ -429,6 +478,35 @@ export default function ReportsPage() {
               />
             ))}
           </div>
+
+          {(summary.attendanceByHourRows ?? []).some((r) => r.count > 0) ? (
+            <section className="panel">
+              <h2 className="panel-title">{REPORT_KPI_LABELS.attendanceByHour}</h2>
+              <p className="page-header__desc">ذروة التشغيل حسب ساعة الحضور بتوقيت الرياض.</p>
+              <div className="table-wrap table-wrap--stack" style={{ marginTop: "0.75rem" }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>الساعة</th>
+                      <th>عدد الأسر</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(summary.attendanceByHourRows ?? [])
+                      .filter((r) => r.count > 0)
+                      .map((r) => (
+                        <tr key={r.hour}>
+                          <td data-label="الساعة" dir="ltr">
+                            {r.label}
+                          </td>
+                          <td data-label="عدد الأسر">{r.count}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
 
           <section className="panel">
             <h2 className="panel-title">حصر المتاجر المشاركة</h2>

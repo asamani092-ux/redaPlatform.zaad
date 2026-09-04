@@ -35,6 +35,16 @@ import {
 } from "@/lib/exhibition-days";
 import { buildDailyReportMetrics } from "@/lib/daily-report-metrics";
 import { countAttendanceFamiliesAndIndividuals } from "@/lib/scoped-report-summary";
+import { sumClothesAndFabric } from "@/lib/dispense-kind";
+import {
+  attendedNotReceivedCount,
+  attendanceByHourRows,
+  buildAttendanceByHour,
+  countRepeatDispenseFamilies,
+  pctRate,
+  sumIndividualsFromDependents,
+} from "@/lib/report-extended-metrics";
+import { REPORT_KPI_LABELS } from "@/lib/report-kpi-labels";
 
 export async function GET(req: NextRequest) {
   const authz = await requirePermission("reports:view");
@@ -210,6 +220,84 @@ export async function GET(req: NextRequest) {
         parseInventorySchema(exhibition.settings?.inventorySchemaJson),
       ),
     };
+
+    const [
+      receivedBeneficiaryRows,
+      invitedBeneficiaryRows,
+      dispenseKindLines,
+      repeatOrderGroups,
+      attendanceRowsForHours,
+      attendedDependents,
+    ] = await Promise.all([
+      prisma.dispenseOrder.findMany({
+        where: { exhibitionId },
+        distinct: ["beneficiaryId"],
+        select: {
+          beneficiary: { select: { dependentsCount: true } },
+        },
+      }),
+      prisma.exhibitionInvite.findMany({
+        where: { exhibitionId, invited: true },
+        select: { beneficiary: { select: { dependentsCount: true } } },
+      }),
+      prisma.dispenseLine.findMany({
+        where: { dispenseOrder: { exhibitionId } },
+        select: {
+          quantity: true,
+          inventoryItem: { select: { attributesJson: true } },
+        },
+      }),
+      prisma.dispenseOrder.groupBy({
+        by: ["beneficiaryId"],
+        where: { exhibitionId },
+        _count: { _all: true },
+      }),
+      prisma.attendance.findMany({
+        where: { exhibitionId },
+        select: { checkedInAt: true },
+      }),
+      prisma.attendance.findMany({
+        where: { exhibitionId },
+        select: { beneficiary: { select: { dependentsCount: true } } },
+      }),
+    ]);
+    const receivedIndividuals = sumIndividualsFromDependents(
+      receivedBeneficiaryRows.map((r) => r.beneficiary.dependentsCount),
+    );
+    const invitedIndividuals = sumIndividualsFromDependents(
+      invitedBeneficiaryRows.map((r) => r.beneficiary.dependentsCount),
+    );
+    const attendedIndividuals = sumIndividualsFromDependents(
+      attendedDependents.map((a) => a.beneficiary.dependentsCount),
+    );
+    const { clothesPieces, fabricMeters } = sumClothesAndFabric(
+      dispenseKindLines.map((l) => ({
+        quantity: Number(l.quantity),
+        attributes: (l.inventoryItem.attributesJson ?? {}) as Record<
+          string,
+          unknown
+        >,
+      })),
+    );
+    const repeatDispenseFamilies = countRepeatDispenseFamilies(
+      repeatOrderGroups.map((g) => g._count._all),
+    );
+    const attendanceByHour = buildAttendanceByHour(
+      attendanceRowsForHours.map((a) => a.checkedInAt),
+    );
+    const attendedNotReceived = attendedNotReceivedCount(attended, received);
+    Object.assign(summary, {
+      invitedIndividuals,
+      receivedIndividuals,
+      attendedIndividuals,
+      attendedNotReceived,
+      attendanceFromInvitedPct: pctRate(attended, invited),
+      receivedFromAttendedPct: pctRate(received, attended),
+      clothesPieces,
+      fabricMeters,
+      repeatDispenseFamilies,
+      attendanceByHour,
+    });
 
     const slidesParam = req.nextUrl.searchParams.get("slides");
     const kpisParam = req.nextUrl.searchParams.get("kpis");
@@ -442,6 +530,83 @@ export async function GET(req: NextRequest) {
     ? daily.byDay.find((d) => d.dateKey === selectedDayRef.dateKey) ?? null
     : null;
 
+  /** مؤشرات موسّعة: أفراد مستلِمون/مدعوون، ملابس/أقمشة، صرف متكرر، توزيع الساعة */
+  const [
+    receivedBeneficiaryRows,
+    invitedBeneficiaryRows,
+    dispenseKindLines,
+    repeatOrderGroups,
+  ] = await Promise.all([
+    prisma.dispenseOrder.findMany({
+      where: {
+        exhibitionId,
+        ...(createdAtDay ? { createdAt: createdAtDay } : {}),
+      },
+      distinct: ["beneficiaryId"],
+      select: {
+        beneficiaryId: true,
+        beneficiary: { select: { dependentsCount: true } },
+      },
+    }),
+    prisma.exhibitionInvite.findMany({
+      where: {
+        exhibitionId,
+        invited: true,
+        ...(inviteDateDay ? { inviteDate: inviteDateDay } : {}),
+      },
+      select: {
+        beneficiary: { select: { dependentsCount: true } },
+      },
+    }),
+    prisma.dispenseLine.findMany({
+      where: {
+        dispenseOrder: {
+          exhibitionId,
+          ...(createdAtDay ? { createdAt: createdAtDay } : {}),
+        },
+      },
+      select: {
+        quantity: true,
+        inventoryItem: { select: { attributesJson: true } },
+      },
+    }),
+    prisma.dispenseOrder.groupBy({
+      by: ["beneficiaryId"],
+      where: {
+        exhibitionId,
+        ...(createdAtDay ? { createdAt: createdAtDay } : {}),
+      },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const receivedIndividuals = sumIndividualsFromDependents(
+    receivedBeneficiaryRows.map((r) => r.beneficiary.dependentsCount),
+  );
+  const invitedIndividuals = sumIndividualsFromDependents(
+    invitedBeneficiaryRows.map((r) => r.beneficiary.dependentsCount),
+  );
+  const { clothesPieces, fabricMeters } = sumClothesAndFabric(
+    dispenseKindLines.map((l) => ({
+      quantity: Number(l.quantity),
+      attributes: (l.inventoryItem.attributesJson ?? {}) as Record<string, unknown>,
+    })),
+  );
+  const repeatDispenseFamilies = countRepeatDispenseFamilies(
+    repeatOrderGroups.map((g) => g._count._all),
+  );
+  const attendanceHourSource = dayBounds
+    ? dayAttendances.filter(
+        (a) => a.checkedInAt >= dayBounds.start && a.checkedInAt < dayBounds.end,
+      )
+    : dayAttendances;
+  const attendanceByHour = buildAttendanceByHour(
+    attendanceHourSource.map((a) => a.checkedInAt),
+  );
+  const attendedNotReceived = attendedNotReceivedCount(attendedFamilies, received);
+  const attendanceFromInvitedPct = pctRate(attendedFamilies, invited);
+  const receivedFromAttendedPct = pctRate(received, attendedFamilies);
+
   /** المتبقي دائماً إجمالي المعرض؛ المضاف/المصروف يتبعان نطاق اليوم */
   const storeSummary = dayBounds
     ? storeSummaryDay.map((row) => {
@@ -571,6 +736,16 @@ export async function GET(req: NextRequest) {
     attendedOutsideDays: daily.attendedOutsideDays,
     selectedDayKey: selectedDay?.dateKey ?? null,
     selectedDay,
+    invitedIndividuals,
+    receivedIndividuals,
+    attendedNotReceived,
+    attendanceFromInvitedPct,
+    receivedFromAttendedPct,
+    clothesPieces,
+    fabricMeters,
+    repeatDispenseFamilies,
+    attendanceByHour,
+    attendanceByHourRows: attendanceByHourRows(attendanceByHour),
   };
 
   if (format === "json") {
@@ -587,21 +762,28 @@ export async function GET(req: NextRequest) {
     summarySheet.addRows([
       ["المؤشر", "القيمة"],
       ["المعرض", exhibition.name],
-      ["إجمالي المستفيدين (أفراد)", summary.totalIndividuals],
-      ["الأسر المستفيدة", summary.beneficiaryFamilies],
-      ["المدعوون", summary.invited],
-      ["الحضور من الأسر", summary.attendedFamilies ?? summary.attended],
-      ["الحضور من الأفراد", summary.attendedIndividuals ?? summary.attended],
-      ["المستلمون", summary.received],
-      ["المتطوعون", summary.volunteers ?? 0],
-      ["القطع المصروفة (إجمالي)", summary.piecesDispensed],
-      ["مضاف من المنصة", summary.platformContributed],
-      ["مصروف من المنصة", summary.platformDispensed],
-      ["متبقي للمنصة", summary.platformRemaining],
-      ["مساهمات المتاجر (مضاف)", summary.storeContributed],
-      ["مصروف من المتاجر", summary.storeDispensed],
-      ["متبقي للمتاجر", summary.storeRemaining],
-      ["متبقي المخزون (إجمالي)", summary.inventoryRemainingTotal],
+      [REPORT_KPI_LABELS.totalIndividuals, summary.totalIndividuals],
+      [REPORT_KPI_LABELS.registeredFamilies, summary.beneficiaryFamilies],
+      [REPORT_KPI_LABELS.invitedFamilies, summary.invited],
+      [REPORT_KPI_LABELS.attendedFamilies, summary.attendedFamilies ?? summary.attended],
+      [REPORT_KPI_LABELS.attendedIndividuals, summary.attendedIndividuals ?? summary.attended],
+      [REPORT_KPI_LABELS.receivedFamilies, summary.received],
+      [REPORT_KPI_LABELS.receivedIndividuals, summary.receivedIndividuals],
+      [REPORT_KPI_LABELS.attendedNotReceived, summary.attendedNotReceived],
+      [REPORT_KPI_LABELS.attendanceFromInvitedPct, summary.attendanceFromInvitedPct],
+      [REPORT_KPI_LABELS.receivedFromAttendedPct, summary.receivedFromAttendedPct],
+      [REPORT_KPI_LABELS.volunteers, summary.volunteers ?? 0],
+      [REPORT_KPI_LABELS.piecesDispensed, summary.piecesDispensed],
+      [REPORT_KPI_LABELS.clothesPieces, summary.clothesPieces],
+      [REPORT_KPI_LABELS.fabricMeters, summary.fabricMeters],
+      [REPORT_KPI_LABELS.repeatDispenseFamilies, summary.repeatDispenseFamilies],
+      [REPORT_KPI_LABELS.platformContributed, summary.platformContributed],
+      [REPORT_KPI_LABELS.platformDispensed, summary.platformDispensed],
+      [REPORT_KPI_LABELS.platformRemaining, summary.platformRemaining],
+      [REPORT_KPI_LABELS.storeContributed, summary.storeContributed],
+      [REPORT_KPI_LABELS.storeDispensed, summary.storeDispensed],
+      [REPORT_KPI_LABELS.storeRemaining, summary.storeRemaining],
+      [REPORT_KPI_LABELS.inventoryRemaining, summary.inventoryRemainingTotal],
     ]);
 
     const storesSheet = wb.addWorksheet("المتاجر");
@@ -776,16 +958,23 @@ export async function GET(req: NextRequest) {
       title: `تقرير معرض: ${exhibition.name}`,
       subtitle: exhibition.active ? "المعرض النشط حالياً" : "معرض غير نشط (أرشيف)",
       tiles: [
-        { label: "إجمالي المستفيدين (أفراد)", value: summary.totalIndividuals },
-        { label: "الأسر المستفيدة", value: summary.beneficiaryFamilies },
-        { label: "المدعوون", value: summary.invited },
-        { label: "الحضور من الأسر", value: summary.attendedFamilies ?? summary.attended },
-        { label: "الحضور من الأفراد", value: summary.attendedIndividuals ?? summary.attended },
-        { label: "استلموا", value: summary.received },
-        { label: "المتطوعون", value: summary.volunteers ?? 0 },
-        { label: "القطع المصروفة", value: summary.piecesDispensed },
-        { label: "حضور استثنائي", value: summary.exceptionAttendance },
-        { label: "صرف استثنائي", value: summary.overrideDispenses },
+        { label: REPORT_KPI_LABELS.totalIndividuals, value: summary.totalIndividuals },
+        { label: REPORT_KPI_LABELS.registeredFamilies, value: summary.beneficiaryFamilies },
+        { label: REPORT_KPI_LABELS.invitedFamilies, value: summary.invited },
+        { label: REPORT_KPI_LABELS.attendedFamilies, value: summary.attendedFamilies ?? summary.attended },
+        { label: REPORT_KPI_LABELS.attendedIndividuals, value: summary.attendedIndividuals ?? summary.attended },
+        { label: REPORT_KPI_LABELS.receivedFamilies, value: summary.received },
+        { label: REPORT_KPI_LABELS.receivedIndividuals, value: summary.receivedIndividuals },
+        { label: REPORT_KPI_LABELS.attendedNotReceived, value: summary.attendedNotReceived },
+        { label: REPORT_KPI_LABELS.attendanceFromInvitedPct, value: `${summary.attendanceFromInvitedPct}%` },
+        { label: REPORT_KPI_LABELS.receivedFromAttendedPct, value: `${summary.receivedFromAttendedPct}%` },
+        { label: REPORT_KPI_LABELS.volunteers, value: summary.volunteers ?? 0 },
+        { label: REPORT_KPI_LABELS.piecesDispensed, value: summary.piecesDispensed },
+        { label: REPORT_KPI_LABELS.clothesPieces, value: summary.clothesPieces },
+        { label: REPORT_KPI_LABELS.fabricMeters, value: summary.fabricMeters },
+        { label: REPORT_KPI_LABELS.repeatDispenseFamilies, value: summary.repeatDispenseFamilies },
+        { label: REPORT_KPI_LABELS.exceptionAttendance, value: summary.exceptionAttendance },
+        { label: REPORT_KPI_LABELS.overrideDispenses, value: summary.overrideDispenses },
       ],
       sectionsHtml: sections.join("\n"),
     });

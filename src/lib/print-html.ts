@@ -1,5 +1,5 @@
 /**
- * قالب طباعة HTML موحّد بهوية المنصة (شعار + ألوان) للتقارير وسجل العمليات.
+ * قالب طباعة HTML موحّد بهوية المنصة (شعار الجمعية + شعار رداء) للتقارير وسجل العمليات.
  * O(n) بعدد الصفوف.
  */
 export function escapeHtml(s: string): string {
@@ -32,15 +32,51 @@ export function buildPrintDocument(opts: {
 <meta charset="utf-8"/>
 <title>${escapeHtml(opts.title)}</title>
 <style>
+  @font-face {
+    font-family: "Noto Naskh Arabic";
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: local("Noto Naskh Arabic"), local("Tahoma");
+  }
   :root { --brand: #8b1538; --gold: #f2b824; --border: #e3dcd4; --muted: #6b6b6b; }
   * { box-sizing: border-box; }
-  body { font-family: Tahoma, Arial, sans-serif; margin: 0; padding: 24px; color: #222; }
-  .head { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid var(--brand); padding-bottom: 14px; margin-bottom: 18px; }
-  .head img { width: 56px; height: 56px; }
+  body {
+    font-family: "Noto Naskh Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+    margin: 0;
+    padding: 24px;
+    color: #222;
+    line-height: 1.55;
+  }
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 3px solid var(--brand);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+  .head-logos { display: flex; align-items: center; gap: 12px; }
+  .head-logos img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .head-text { flex: 1; text-align: center; }
   .head h1 { margin: 0; font-size: 20px; color: var(--brand); }
-  .head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  .head p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
   .tiles { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
-  .tile { flex: 1 1 130px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; text-align: center; background: #fbf9f6; }
+  .tile {
+    flex: 1 1 140px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    text-align: center;
+    background: #fbf9f6;
+  }
   .tile-value { font-size: 20px; font-weight: 800; color: var(--brand); }
   .tile-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
   h2 { color: var(--brand); font-size: 15px; margin: 20px 0 8px; }
@@ -49,7 +85,15 @@ export function buildPrintDocument(opts: {
   th { background: #f7eef1; color: var(--brand); }
   tr:nth-child(even) td { background: #fbf9f6; }
   td.ltr { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; }
-  .foot { margin-top: 22px; padding-top: 8px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; display: flex; justify-content: space-between; }
+  .foot {
+    margin-top: 22px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+  }
   @media print {
     body { padding: 10mm; }
     .no-print { display: none !important; }
@@ -58,8 +102,11 @@ export function buildPrintDocument(opts: {
 </style>
 </head><body>
   <div class="head">
-    <img src="/invite-poster.jpg" alt="معرض رداء للأقمشة" />
-    <div>
+    <div class="head-logos">
+      <img src="/zad-presentation/assets/logo-full.png" alt="شعار الجمعية" />
+      <img src="/invite-poster.png" alt="شعار معرض رداء" />
+    </div>
+    <div class="head-text">
       <h1>${escapeHtml(opts.title)}</h1>
       ${opts.subtitle ? `<p>${escapeHtml(opts.subtitle)}</p>` : ""}
     </div>
@@ -67,7 +114,7 @@ export function buildPrintDocument(opts: {
   ${tilesHtml ? `<div class="tiles">${tilesHtml}</div>` : ""}
   ${opts.sectionsHtml}
   <div class="foot">
-    <span>المنصة</span>
+    <span>منصة رداء</span>
     <span>تاريخ الطباعة: ${new Date().toLocaleString("ar-SA")}</span>
   </div>
   <script>window.onload = () => window.print();</script>
