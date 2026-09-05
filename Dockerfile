@@ -17,11 +17,12 @@ ENV DATABASE_URL=postgresql://127.0.0.1:5432/build
 ENV AUTH_SECRET=build-time-placeholder-not-used-at-runtime
 RUN npx prisma generate && npm run build
 
-# Prisma CLI + tsx فقط — الإصدارات داخل JSON (Coolify يفسد أي سطر فيه رمز at-sign)
+# Prisma CLI + tsx — إصدارات داخل JSON، ثم أرشيف واحد (بدون رمز at-sign في الملف)
 FROM node:22-alpine AS tools
 WORKDIR /tools
-RUN printf '%s' '{"private":true,"dependencies":{"prisma":"7.9.1","tsx":"4.23.1","typescript":"5.9.3"}}' > package.json \
-  && npm install --ignore-scripts
+RUN printf '%s' '{"private":true,"dependencies":{"prisma":"7.9.1","tsx":"4.23.1"}}' > package.json \
+  && npm install --ignore-scripts \
+  && tar -czf /tools/nm.tgz -C /tools/node_modules .
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -43,13 +44,12 @@ COPY --from=builder /app/assets ./assets
 # مطلوب لـ npm run init / reset-admin في الحاوية
 COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/src/lib ./src/lib
-# standalone يحوي اعتماديات التشغيل المتتبَّعة — بلا نسخ node_modules الكامل
+# standalone يحوي اعتماديات التشغيل المتتبَّعة
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-# دمج Prisma/tsx فوق standalone (حجم أصغر بكثير من prod node_modules)
-COPY --from=tools /tools/node_modules /tmp/tools-nm
-RUN cp -a /tmp/tools-nm/. ./node_modules/ \
-  && rm -rf /tmp/tools-nm \
+# فك أرشيف الأدوات مباشرة عبر mount — بلا مضاعفة /tmp على القرص
+RUN --mount=type=bind,from=tools,source=/tools/nm.tgz,target=/mnt/nm.tgz \
+  tar -xzf /mnt/nm.tgz -C ./node_modules \
   && chmod +x ./scripts/entrypoint.sh ./scripts/apply-pending.sh ./scripts/backup.sh \
       ./scripts/seed-once.sh ./scripts/boot.sh ./scripts/check-storage-persist.sh \
   && chown -R nextjs:nodejs ./src/generated ./prisma
