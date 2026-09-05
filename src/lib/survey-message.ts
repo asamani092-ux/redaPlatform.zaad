@@ -39,8 +39,9 @@ export function resolveSurveyUrl(surveyUrl: string | null | undefined): string {
 }
 
 /**
- * صورة هيدر قالب الاستبيان (ميتا يتوقع IMAGE مع القالب حتى لو «ثابتة» ظاهرياً).
- * الأولوية: SURVEY_HEADER → INVITE_HEADER → أصل التطبيق + invite-poster.jpeg
+ * صورة هيدر قالب الاستبيان (ميتا يتوقع IMAGE مع الإرسال).
+ * الملف المطلوب: public/invite-poster.jpg — لا نرث بوستر الدعوة .jpeg.
+ * الأولوية: SURVEY_HEADER → أصل التطبيق + /invite-poster.jpg
  */
 export function resolveSurveyHeaderImageUrl(
   configured?: string | null,
@@ -49,15 +50,13 @@ export function resolveSurveyHeaderImageUrl(
   if (fromArg) return fromArg;
   const surveyEnv = process.env.WHATSAPP_SURVEY_HEADER_IMAGE_URL?.trim();
   if (surveyEnv) return surveyEnv;
-  const inviteEnv = process.env.WHATSAPP_INVITE_HEADER_IMAGE_URL?.trim();
-  if (inviteEnv) return inviteEnv;
   const origin = (
     process.env.AUTH_URL?.trim() ||
     process.env.NEXTAUTH_URL?.trim() ||
     ""
   ).replace(/\/$/, "");
   if (origin.startsWith("http")) {
-    return `${origin}/invite-poster.jpeg`;
+    return `${origin}/invite-poster.jpg`;
   }
   return null;
 }
