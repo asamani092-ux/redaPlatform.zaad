@@ -76,3 +76,23 @@ function dedupe(
   }
   return out;
 }
+
+/**
+ * عدد مستهدفي الإرسال لفئة الاستبيان — مع/بدون جوال.
+ * Time: O(n) — Space: O(n).
+ */
+export async function countSurveyAudience(
+  exhibitionId: string,
+  audience: SurveyAudience,
+): Promise<{ total: number; withMobile: number; withoutMobile: number }> {
+  const list = await resolveSurveyAudience(exhibitionId, audience);
+  let withMobile = 0;
+  for (const b of list) {
+    if (b.mobile?.trim()) withMobile++;
+  }
+  return {
+    total: list.length,
+    withMobile,
+    withoutMobile: list.length - withMobile,
+  };
+}

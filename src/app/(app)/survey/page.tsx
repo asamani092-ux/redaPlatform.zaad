@@ -67,6 +67,13 @@ export default function SurveyPage() {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"responses" | "admin">(isAdmin ? "admin" : "responses");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastCount, setBroadcastCount] = useState<{
+    total: number;
+    withMobile: number;
+    withoutMobile: number;
+    audienceLabel: string;
+  } | null>(null);
+  const [broadcastCountBusy, setBroadcastCountBusy] = useState(false);
   const [waLogOpen, setWaLogOpen] = useState(false);
   const toast = useToast();
 
@@ -196,6 +203,33 @@ export default function SurveyPage() {
     if (res.ok) void load(page, selectedId);
   }
 
+  async function openBroadcast() {
+    if (!selected) return;
+    setBroadcastOpen(true);
+    setBroadcastCount(null);
+    setBroadcastCountBusy(true);
+    const res = await fetch(
+      `/api/survey/broadcast?surveyId=${encodeURIComponent(selected.id)}`,
+    );
+    const json = await res.json().catch(() => ({}));
+    setBroadcastCountBusy(false);
+    if (!res.ok) {
+      setBroadcastCount(null);
+      toast.push({
+        title: "تعذّر حساب المستهدفين",
+        body: String(json.error || "حاول مرة أخرى"),
+        tone: "danger",
+      });
+      return;
+    }
+    setBroadcastCount({
+      total: Number(json.total ?? 0),
+      withMobile: Number(json.withMobile ?? 0),
+      withoutMobile: Number(json.withoutMobile ?? 0),
+      audienceLabel: String(json.audienceLabel ?? audienceLabel(selected.audience)),
+    });
+  }
+
   async function broadcast() {
     if (!selected || busy) return;
     setBusy(true);
@@ -313,7 +347,7 @@ export default function SurveyPage() {
               type="button"
               className="btn-recommend"
               disabled={busy || !selected}
-              onClick={() => setBroadcastOpen(true)}
+              onClick={() => void openBroadcast()}
             >
               إرسال للمستفيدين
             </button>
@@ -923,13 +957,32 @@ export default function SurveyPage() {
         title="إرسال الاستبيان للمستفيدين"
         body={
           selected
-            ? `سيتم إرسال «${selected.title}» إلى: ${audienceLabel(selected.audience)}. هل تريد المتابعة؟`
+            ? broadcastCountBusy
+              ? `جاري حساب عدد مستهدفي «${selected.title}»…`
+              : broadcastCount
+                ? `سيتم إرسال «${selected.title}» إلى فئة «${broadcastCount.audienceLabel}»: ${broadcastCount.withMobile} مستفيداً بجوال` +
+                  (broadcastCount.withoutMobile > 0
+                    ? ` (و${broadcastCount.withoutMobile} بلا جوال سيُتخطَّون كفشل).`
+                    : ".") +
+                  (broadcastCount.withMobile === 0
+                    ? " لا يوجد من يُرسل له حالياً."
+                    : " هل تريد المتابعة؟")
+                : `سيتم إرسال «${selected.title}» إلى: ${audienceLabel(selected.audience)}. هل تريد المتابعة؟`
             : ""
         }
         confirmLabel="إرسال"
-        busy={busy}
-        onClose={() => setBroadcastOpen(false)}
-        onConfirm={() => void broadcast()}
+        busy={busy || broadcastCountBusy}
+        onClose={() => {
+          setBroadcastOpen(false);
+          setBroadcastCount(null);
+        }}
+        onConfirm={() => {
+          if (broadcastCount && broadcastCount.withMobile === 0) {
+            setBroadcastOpen(false);
+            return;
+          }
+          void broadcast();
+        }}
       />
     </div>
   );

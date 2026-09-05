@@ -11,7 +11,10 @@ import {
   findSurvey,
   parseSurveyCatalog,
 } from "@/lib/survey-questions";
-import { resolveSurveyAudience } from "@/lib/survey-audience";
+import {
+  countSurveyAudience,
+  resolveSurveyAudience,
+} from "@/lib/survey-audience";
 import { buildSurveyMessage, resolveSurveyHeaderImageUrl, surveyTemplateParams } from "@/lib/survey-message";
 import { resolveSurveyDelivery } from "@/lib/survey-link";
 import { appOrigin } from "@/lib/app-url";
@@ -24,6 +27,62 @@ const schema = z.object({
     .enum(["attended", "received", "attended_only", "invited_absent"])
     .optional(),
 });
+
+function resolveAudienceFromBody(
+  surveyAudience: import("@/lib/survey-questions").SurveyAudience,
+  override?: string,
+) {
+  let audience = surveyAudience;
+  if (override === "received") audience = "received";
+  if (override === "attended" || override === "attended_only") {
+    audience = "attended_only";
+  }
+  if (override === "invited_absent") audience = "invited_absent";
+  return audience;
+}
+
+/**
+ * معاينة عدد المستهدفين قبل الإرسال الجماعي — O(n).
+ */
+export async function GET(req: NextRequest) {
+  const authz = await requirePermission("survey:manage");
+  if ("error" in authz) return authz.error;
+
+  let exhibition;
+  try {
+    exhibition = await requireActiveExhibition();
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "لا يوجد معرض نشط" },
+      { status: 400 },
+    );
+  }
+
+  const surveyId = req.nextUrl.searchParams.get("surveyId")?.trim();
+  if (!surveyId) {
+    return NextResponse.json({ error: "حدد الاستبيان" }, { status: 400 });
+  }
+
+  const catalog = parseSurveyCatalog(exhibition.settings?.surveyQuestionsJson);
+  const survey = findSurvey(catalog, surveyId);
+  if (!survey || !survey.active) {
+    return NextResponse.json({ error: "الاستبيان غير موجود أو غير مفعّل" }, { status: 404 });
+  }
+
+  const audience = resolveAudienceFromBody(
+    survey.audience,
+    req.nextUrl.searchParams.get("audience") ?? undefined,
+  );
+  const counts = await countSurveyAudience(exhibition.id, audience);
+
+  return NextResponse.json({
+    surveyId: survey.id,
+    surveyTitle: survey.title,
+    audience,
+    audienceLabel: audienceLabel(audience),
+    ...counts,
+  });
+}
 
 /**
  * إرسال جماعي لاستبيان محدد حسب مستفيديه — O(n) بعدد المستهدفين.
@@ -53,12 +112,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "الاستبيان غير موجود أو غير مفعّل" }, { status: 404 });
   }
 
-  let audience = survey.audience;
-  if (body.data.audience === "received") audience = "received";
-  if (body.data.audience === "attended" || body.data.audience === "attended_only") {
-    audience = "attended_only";
-  }
-  if (body.data.audience === "invited_absent") audience = "invited_absent";
+  let audience = resolveAudienceFromBody(survey.audience, body.data.audience);
 
   const beneficiaries = await resolveSurveyAudience(exhibition.id, audience);
 
