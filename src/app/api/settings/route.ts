@@ -27,21 +27,28 @@ const schemaField = z.object({
   options: z.array(z.string()).default([]),
 });
 
+/** سؤال استبيان — يشمل الأنواع الجديدة؛ Time O(1) لكل سؤال */
+const surveyQuestionSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  type: z
+    .enum(["scale", "text", "rated_options", "choice_with_other"])
+    .optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  options: z.array(z.string()).optional(),
+  allowOther: z.boolean().optional(),
+  maxLength: z.number().int().positive().optional(),
+  textExpand: z.boolean().optional(),
+  minRows: z.number().int().positive().optional(),
+  maxRows: z.number().int().positive().optional(),
+});
+
 const surveyDefSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   audience: z.enum(["attended_only", "received", "invited_absent"]),
-  questions: z
-    .array(
-      z.object({
-        id: z.string(),
-        text: z.string(),
-        type: z.enum(["scale", "text"]).optional(),
-        min: z.number().optional(),
-        max: z.number().optional(),
-      }),
-    )
-    .default([]),
+  questions: z.array(surveyQuestionSchema).default([]),
   externalUrl: z.string().nullable().optional(),
   autoSendOnDispense: z.boolean().optional(),
   active: z.boolean().optional(),

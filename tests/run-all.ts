@@ -42,6 +42,7 @@ run("D0 report extended metrics (unit)", "npx", ["tsx", "tests/report-extended-m
 run("D0 presentation kpi kinds (unit)", "npx", ["tsx", "tests/presentation-kpi-kinds.unit.ts"]);
 run("D0 survey delivery (unit)", "npx", ["tsx", "tests/survey-delivery.unit.ts"]);
 run("D0 survey question types (unit)", "npx", ["tsx", "tests/survey-question-types.unit.ts"]);
+run("D0 survey settings schema (unit)", "npx", ["tsx", "tests/survey-settings-schema.unit.ts"]);
 run("D1 entitlement", "npx", ["tsx", "tests/entitlement.integration.ts"]);
 run("D1 attendance/dispense", "npx", ["tsx", "tests/attendance-dispense.integration.ts"]);
 run("D2 audit coverage", "npx", ["tsx", "tests/audit-coverage.integration.ts"]);
