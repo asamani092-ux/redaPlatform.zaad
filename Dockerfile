@@ -17,6 +17,16 @@ ENV DATABASE_URL=postgresql://127.0.0.1:5432/build
 ENV AUTH_SECRET=build-time-placeholder-not-used-at-runtime
 RUN npx prisma generate && npm run build
 
+# اعتماديات تشغيل فقط + Prisma/tsx للترحيل والبذرة (بدون eslint/tailwind/dev)
+FROM node:22-alpine AS prod-deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+RUN npm ci --omit=dev --ignore-scripts \
+  && npm install prisma@7.9.1 tsx@4.23.1 typescript@5 --no-save --ignore-scripts \
+  && npx prisma generate
+
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
@@ -37,13 +47,14 @@ COPY --from=builder /app/assets ./assets
 # مطلوب لـ npm run init / reset-admin في الحاوية
 COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/src/lib ./src/lib
-# standalone أولاً ثم node_modules الكامل (وإلا يُستبدل ويختفي prisma CLI)
+# standalone أولاً ثم node_modules الإنتاج (وإلا يُستبدل ويختفي prisma CLI)
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 
-RUN chmod +x ./scripts/entrypoint.sh ./scripts/apply-pending.sh ./scripts/backup.sh ./scripts/seed-once.sh ./scripts/boot.sh ./scripts/check-storage-persist.sh \
-  && chmod -R a+rX /app/public /app/prisma /app/scripts /app/assets /app/src /app/.next /app/node_modules /app/package.json /app/prisma.config.ts
+# صلاحيات السكربتات فقط — بدون chmod -R على node_modules (يفجّر القرص/الذاكرة في Coolify)
+RUN chmod +x ./scripts/entrypoint.sh ./scripts/apply-pending.sh ./scripts/backup.sh \
+      ./scripts/seed-once.sh ./scripts/boot.sh ./scripts/check-storage-persist.sh
 
 # الإقلاع كـ root لضبط صلاحيات volume /data ثم su-exec → nextjs
 USER root
