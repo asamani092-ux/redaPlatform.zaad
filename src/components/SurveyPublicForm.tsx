@@ -169,27 +169,23 @@ function QuestionInput({
   if (q.type === "scale") {
     const min = q.min ?? 1;
     const max = q.max ?? 5;
-    const scaleValues = Array.from(
-      { length: Math.max(0, max - min + 1) },
-      (_, i) => min + i,
-    );
-    const selected = value != null ? String(value) : "";
+    const selectedNum =
+      typeof value === "number"
+        ? value
+        : value != null && String(value).trim() !== ""
+          ? Number(value)
+          : 0;
     return (
-      <div className="survey-public__scale" role="group">
-        {scaleValues.map((n) => {
-          const isSel = selected === String(n);
-          return (
-            <button
-              key={n}
-              type="button"
-              className={`survey-public__scale-btn${isSel ? " is-selected" : ""}`}
-              aria-pressed={isSel}
-              onClick={() => onChange(String(n))}
-            >
-              {n}
-            </button>
-          );
-        })}
+      <div className="survey-public__scale survey-public__scale--stars">
+        <StarRating
+          label={q.text}
+          value={Number.isFinite(selectedNum) ? selectedNum : 0}
+          min={min}
+          max={max}
+          size="lg"
+          centered
+          onChange={(n) => onChange(n)}
+        />
       </div>
     );
   }
@@ -293,37 +289,54 @@ function QuestionInput({
 }
 
 /**
- * تقييم نجوم تفاعلي 1–5 — يدعم RTL واللمس.
- * Time: O(1) — Space: O(1).
+ * تقييم نجوم تفاعلي — يدعم RTL واللمس.
+ * Time: O(max-min) — Space: O(1).
  */
 function StarRating({
   label,
   value,
   onChange,
+  min = 1,
+  max = 5,
+  size = "md",
+  centered = false,
 }: {
   label: string;
   value: number;
   onChange: (n: number) => void;
+  min?: number;
+  max?: number;
+  size?: "md" | "lg";
+  centered?: boolean;
 }) {
+  const lo = Math.min(min, max);
+  const hi = Math.max(min, max);
+  const values = Array.from({ length: Math.max(0, hi - lo + 1) }, (_, i) => lo + i);
+  const icon = size === "lg" ? 34 : 22;
   return (
     <div
-      className="survey-public__stars"
+      className={`survey-public__stars${size === "lg" ? " survey-public__stars--lg" : ""}${centered ? " survey-public__stars--center" : ""}`}
       role="group"
       aria-label={`تقييم ${label}`}
       dir="rtl"
     >
-      {[1, 2, 3, 4, 5].map((n) => {
+      {values.map((n) => {
         const filled = value >= n;
         return (
           <button
             key={n}
             type="button"
             className={`survey-public__star${filled ? " is-filled" : ""}`}
-            aria-label={`${n} من 5`}
-            aria-pressed={filled && value === n}
+            aria-label={`${n} من ${hi}`}
+            aria-pressed={value === n}
             onClick={() => onChange(n)}
           >
-            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width={icon}
+              height={icon}
+              aria-hidden="true"
+            >
               <path
                 d="M12 2.8l2.9 5.88 6.5.95-4.7 4.58 1.11 6.47L12 17.77 6.19 20.68l1.11-6.47-4.7-4.58 6.5-.95L12 2.8z"
                 fill={filled ? "currentColor" : "none"}
