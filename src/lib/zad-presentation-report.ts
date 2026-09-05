@@ -24,6 +24,43 @@ export type PresentationSlideId = (typeof PRESENTATION_SLIDE_OPTIONS)[number]["i
 /** تسميات مؤشرات KPI كما تُبنى في التقرير — مصدر موحّد */
 export const PRESENTATION_KPI_OPTIONS = KPI_OPTION_LIST;
 
+/** أنواع عرض مؤشر KPI في منشئ العرض */
+export type PresentationKpiKind =
+  | "hero"
+  | "pair"
+  | "progress"
+  | "miniGrid"
+  | "ranking"
+  | "card";
+
+/** بطاقة مؤشر — label/value/rows/note تُستخدم لمطابقة PRESENTATION_KPI_OPTIONS */
+export type PresentationKpi = {
+  label: string;
+  value: string;
+  delta?: string;
+  rows: [string, string][];
+  note?: string;
+  kind?: PresentationKpiKind;
+  families?: number;
+  individuals?: number;
+  pct?: number;
+  items?: [string, string][];
+};
+
+export type PresentationSummaryCard = {
+  text: string;
+  rows: [string, string][];
+  note?: string;
+};
+
+/** حدود التقسيم لشرائح العرض */
+export const PRESENTATION_SLIDE_LIMITS = {
+  summaryCards: 3,
+  miniGridItems: 6,
+  rankingRows: 8,
+  kpiCards: 3,
+} as const;
+
 /** عقد بيانات منشئ العرض التقديمي (نظام التصميم v1.2.11 — window.ZAD_REPORT) */
 export type ZadPresentationReport = {
   title: string;
@@ -35,14 +72,8 @@ export type ZadPresentationReport = {
   orgLine?: string;
   closingLine?: string;
   closingTitle?: string;
-  summary: Array<{ text: string; rows: [string, string][]; note?: string }>;
-  kpis: Array<{
-    label: string;
-    value: string;
-    delta?: string;
-    rows: [string, string][];
-    note?: string;
-  }>;
+  summary: PresentationSummaryCard[];
+  kpis: PresentationKpi[];
   dist: Array<{
     label: string;
     pct: number;
@@ -195,6 +226,230 @@ export type PresentationSelection = {
 };
 
 /**
+ * تقسيم مصفوفة إلى صفحات بحجم ثابت مع لاحقة "(ن)" على التسمية إن وُجدت.
+ * Time: O(n) — Space: O(n).
+ */
+export function chunkWithPageSuffix<T>(
+  items: T[],
+  limit: number,
+  labelOf?: (item: T) => string,
+  withLabel?: (item: T, label: string) => T,
+): T[] {
+  if (limit <= 0 || items.length <= limit) return items;
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += limit) {
+    pages.push(items.slice(i, i + limit));
+  }
+  if (!labelOf || !withLabel || pages.length <= 1) {
+    return pages.flat();
+  }
+  return pages.flatMap((page, pageIdx) => {
+    if (pageIdx === 0) return page;
+    const suffix = ` (${toArabicDigits(pageIdx + 1)})`;
+    return page.map((item) => withLabel(item, `${labelOf(item)}${suffix}`));
+  });
+}
+
+/**
+ * تقسيم عناصر لشرائح متعددة (كل شريحة مصفوفة).
+ * Time: O(n) — Space: O(n).
+ */
+export function chunkPages<T>(items: T[], limit: number): T[][] {
+  if (!items.length) return [];
+  if (limit <= 0 || items.length <= limit) return [items];
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += limit) {
+    pages.push(items.slice(i, i + limit));
+  }
+  return pages;
+}
+
+function parseNumericValue(value: string | undefined): number | null {
+  if (value == null || value === "") return null;
+  const western = String(value)
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+    .replace(/[٪%\s,]/g, "")
+    .replace(/[^\d.-]/g, "");
+  if (!western) return null;
+  const n = Number(western);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * هل المؤشر فارغ/صفري ويجب إخفاؤه؟
+ * Time: O(r) حيث r = عدد الصفوف؛ Space: O(1).
+ */
+export function isEmptyPresentationKpi(k: PresentationKpi): boolean {
+  const kind = k.kind ?? "card";
+  if (kind === "progress") {
+    if (k.pct == null || !Number.isFinite(k.pct)) return true;
+    // مقام صفري يُتخطى عبر pct غير صالح أو صفوف صفرية
+    const nums = (k.rows ?? [])
+      .map((r) => parseNumericValue(r[1]))
+      .filter((n): n is number => n != null);
+    if (nums.length >= 2 && nums[1] === 0) return true;
+    return false;
+  }
+  if (kind === "ranking" || kind === "miniGrid") {
+    return !(k.items?.length || k.rows?.length);
+  }
+  if (kind === "pair") {
+    const f = k.families ?? parseNumericValue(k.rows?.[0]?.[1]);
+    const ind = k.individuals ?? parseNumericValue(k.rows?.[1]?.[1]);
+    return (f == null || f === 0) && (ind == null || ind === 0);
+  }
+  const n = parseNumericValue(k.value);
+  if (n != null && n === 0) return true;
+  if (k.value === "" || k.value == null) return true;
+  return false;
+}
+
+/**
+ * تكييف نوع عرض المؤشر وفق المحتوى.
+ * pair: أسرة+أفراد؛ progress: نسبة؛ ranking: قائمة مرتبة؛
+ * miniGrid: 3–6 عناصر متجانسة؛ hero: رقم مفتاحي؛ وإلا card.
+ * عنصر واحد → hero؛ ترتيب فارغ → يُخفى لاحقاً.
+ * Time: O(r) — Space: O(r).
+ */
+export function adaptPresentationKpiKind(
+  k: Omit<PresentationKpi, "kind"> & { kind?: PresentationKpiKind },
+): PresentationKpi {
+  const rows = k.rows ?? [];
+  const items = k.items ?? (rows.length ? rows : undefined);
+  const itemCount = items?.length ?? 0;
+
+  // نسب صريحة
+  if (
+    k.pct != null ||
+    (typeof k.value === "string" && /[٪%]/.test(k.value)) ||
+    /نسبة|٪|%/.test(k.label)
+  ) {
+    const pct =
+      k.pct ??
+      parseNumericValue(k.value) ??
+      0;
+    return { ...k, kind: "progress", pct, items: items ?? rows };
+  }
+
+  // زوج أسرة/أفراد
+  if (
+    k.families != null ||
+    k.individuals != null ||
+    (rows.length >= 2 &&
+      /أسر|أسرة/.test(rows[0]?.[0] ?? "") &&
+      /أفراد|فرد/.test(rows[1]?.[0] ?? ""))
+  ) {
+    const families =
+      k.families ?? parseNumericValue(rows[0]?.[1]) ?? undefined;
+    const individuals =
+      k.individuals ?? parseNumericValue(rows[1]?.[1]) ?? undefined;
+    if (families != null && individuals != null) {
+      return { ...k, kind: "pair", families, individuals, items: items ?? rows };
+    }
+  }
+
+  // قائمة مرتبة (أصناف/ترتيب)
+  if (
+    itemCount >= 2 &&
+    (/أعلى|ترتيب|أصناف|قائمة/.test(k.label + (k.note ?? "")) ||
+      (k.note && /أعلى الأصناف/.test(k.note)))
+  ) {
+    if (itemCount === 1) {
+      return {
+        ...k,
+        kind: "hero",
+        value: items![0]![1],
+        items,
+      };
+    }
+    return { ...k, kind: "ranking", items: items! };
+  }
+
+  // شبكة مصغّرة 3–6 عناصر متجانسة
+  if (itemCount >= 3 && itemCount <= 6) {
+    return { ...k, kind: "miniGrid", items: items! };
+  }
+  if (itemCount > 6) {
+    return { ...k, kind: "miniGrid", items: items! };
+  }
+
+  // رقم مفرد
+  if (itemCount <= 1 || rows.length <= 1) {
+    return { ...k, kind: "hero", items };
+  }
+
+  return { ...k, kind: "card", items: items ?? rows };
+}
+
+/**
+ * تكييف قائمة المؤشرات: تعيين kind، إخفاء الفارغ، وتقسيم overflow.
+ * Time: O(n·r) — Space: O(n·r).
+ */
+export function finalizePresentationKpis(raw: PresentationKpi[]): PresentationKpi[] {
+  const adapted = raw.map((k) => adaptPresentationKpiKind(k));
+  const visible = adapted.filter((k) => !isEmptyPresentationKpi(k));
+
+  const out: PresentationKpi[] = [];
+  for (const k of visible) {
+    if (k.kind === "miniGrid") {
+      const items = k.items ?? k.rows ?? [];
+      if (!items.length) continue;
+      if (items.length === 1) {
+        out.push({
+          ...k,
+          kind: "hero",
+          value: items[0]![1],
+          items,
+        });
+        continue;
+      }
+      const pages = chunkPages(items, PRESENTATION_SLIDE_LIMITS.miniGridItems);
+      pages.forEach((page, idx) => {
+        const label =
+          idx === 0 ? k.label : `${k.label} (${toArabicDigits(idx + 1)})`;
+        out.push({
+          ...k,
+          label,
+          kind: page.length === 1 ? "hero" : "miniGrid",
+          value: page.length === 1 ? page[0]![1] : k.value,
+          items: page,
+          rows: page,
+        });
+      });
+      continue;
+    }
+    if (k.kind === "ranking") {
+      const items = k.items ?? k.rows ?? [];
+      if (!items.length) continue;
+      if (items.length === 1) {
+        out.push({
+          ...k,
+          kind: "hero",
+          value: items[0]![1],
+          items,
+        });
+        continue;
+      }
+      const pages = chunkPages(items, PRESENTATION_SLIDE_LIMITS.rankingRows);
+      pages.forEach((page, idx) => {
+        const label =
+          idx === 0 ? k.label : `${k.label} (${toArabicDigits(idx + 1)})`;
+        out.push({
+          ...k,
+          label,
+          kind: "ranking",
+          items: page,
+          rows: page,
+        });
+      });
+      continue;
+    }
+    out.push(k);
+  }
+  return out;
+}
+
+/**
  * تطبيق اختيار الشرائح/المؤشرات على عقد العرض.
  * Time: O(k) — Space: O(k).
  */
@@ -215,7 +470,12 @@ export function applyPresentationSelection(
   let kpis = report.kpis;
   if (selection?.kpis?.length) {
     const want = new Set(selection.kpis);
-    kpis = report.kpis.filter((k) => want.has(k.label));
+    // مطابقة الاسم الأساسي مع تجاهل لاحقة الصفحة "(٢)" — O(k)
+    kpis = report.kpis.filter((k) => {
+      if (want.has(k.label)) return true;
+      const base = k.label.replace(/\s*\([٠-٩0-9]+\)\s*$/, "").trim();
+      return want.has(base);
+    });
   }
 
   return {
@@ -354,11 +614,13 @@ export function buildZadPresentationReport(
           ] as ZadPresentationReport["summary"])
         : []),
     ],
-    kpis: [
+    kpis: finalizePresentationKpis([
       {
         label: REPORT_KPI_LABELS.totalIndividuals,
         value: ar(individuals),
         delta: `${ar(families)} أسرة`,
+        families,
+        individuals,
         rows: [
           [REPORT_KPI_LABELS.registeredFamilies, ar(families)],
           [REPORT_KPI_LABELS.totalIndividuals, ar(individuals)],
@@ -368,6 +630,8 @@ export function buildZadPresentationReport(
       {
         label: REPORT_KPI_LABELS.registeredFamilies,
         value: ar(families),
+        families,
+        individuals,
         rows: [
           [REPORT_KPI_LABELS.registeredFamilies, ar(families)],
           [REPORT_KPI_LABELS.totalIndividuals, ar(individuals)],
@@ -380,6 +644,8 @@ export function buildZadPresentationReport(
         delta: families
           ? `${ar(pctOf(s.invited, families))}٪ من الأسر`
           : undefined,
+        families: s.invited,
+        individuals: invitedIndividuals,
         rows: [
           [REPORT_KPI_LABELS.invitedFamilies, ar(s.invited)],
           ["أفراد مدعوون", ar(invitedIndividuals)],
@@ -390,6 +656,8 @@ export function buildZadPresentationReport(
         label: REPORT_KPI_LABELS.attendedFamilies,
         value: ar(s.attended),
         delta: s.invited ? `${ar(attendanceFromInvitedPct)}٪ من المدعوّة` : undefined,
+        families: s.attended,
+        individuals: attendedIndividuals,
         rows: [
           [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
           [REPORT_KPI_LABELS.attendedIndividuals, ar(attendedIndividuals)],
@@ -400,6 +668,8 @@ export function buildZadPresentationReport(
         label: REPORT_KPI_LABELS.receivedFamilies,
         value: ar(s.received),
         delta: s.attended ? `${ar(receivedFromAttendedPct)}٪ من الحاضرة` : undefined,
+        families: s.received,
+        individuals: receivedIndividuals,
         rows: [
           [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
           [REPORT_KPI_LABELS.piecesDispensed, ar(s.piecesDispensed)],
@@ -409,6 +679,8 @@ export function buildZadPresentationReport(
       {
         label: REPORT_KPI_LABELS.receivedIndividuals,
         value: ar(receivedIndividuals),
+        families: s.received,
+        individuals: receivedIndividuals,
         rows: [
           [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
           [REPORT_KPI_LABELS.receivedIndividuals, ar(receivedIndividuals)],
@@ -427,6 +699,7 @@ export function buildZadPresentationReport(
       {
         label: REPORT_KPI_LABELS.attendanceFromInvitedPct,
         value: `${ar(attendanceFromInvitedPct)}٪`,
+        pct: s.invited > 0 ? attendanceFromInvitedPct : Number.NaN,
         rows: [
           [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
           [REPORT_KPI_LABELS.invitedFamilies, ar(s.invited)],
@@ -436,6 +709,7 @@ export function buildZadPresentationReport(
       {
         label: REPORT_KPI_LABELS.receivedFromAttendedPct,
         value: `${ar(receivedFromAttendedPct)}٪`,
+        pct: s.attended > 0 ? receivedFromAttendedPct : Number.NaN,
         rows: [
           [REPORT_KPI_LABELS.receivedFamilies, ar(s.received)],
           [REPORT_KPI_LABELS.attendedFamilies, ar(s.attended)],
@@ -446,7 +720,15 @@ export function buildZadPresentationReport(
         label: REPORT_KPI_LABELS.piecesDispensed,
         value: ar(s.piecesDispensed),
         rows: top
-          .slice(0, 5)
+          .slice(0, 12)
+          .map(
+            (t): [string, string] => [
+              itemLabel(t.attributes, attrLabels),
+              ar(t.quantity),
+            ],
+          ),
+        items: top
+          .slice(0, 12)
           .map(
             (t): [string, string] => [
               itemLabel(t.attributes, attrLabels),
@@ -486,6 +768,11 @@ export function buildZadPresentationReport(
         label: REPORT_KPI_LABELS.platformRemaining,
         value: ar(s.platformRemaining ?? 0),
         delta: `مصروف ${ar(s.platformDispensed ?? 0)}`,
+        items: [
+          [REPORT_KPI_LABELS.platformContributed, ar(s.platformContributed ?? 0)],
+          [REPORT_KPI_LABELS.platformDispensed, ar(s.platformDispensed ?? 0)],
+          [REPORT_KPI_LABELS.platformRemaining, ar(s.platformRemaining ?? 0)],
+        ],
         rows: [
           [REPORT_KPI_LABELS.platformContributed, ar(s.platformContributed ?? 0)],
           [REPORT_KPI_LABELS.platformDispensed, ar(s.platformDispensed ?? 0)],
@@ -497,6 +784,11 @@ export function buildZadPresentationReport(
         label: REPORT_KPI_LABELS.storeContributed,
         value: ar(s.storeContributed ?? 0),
         delta: `متبقي ${ar(s.storeRemaining ?? 0)}`,
+        items: [
+          [REPORT_KPI_LABELS.storeContributed, ar(s.storeContributed ?? 0)],
+          [REPORT_KPI_LABELS.storeDispensed, ar(s.storeDispensed ?? 0)],
+          [REPORT_KPI_LABELS.storeRemaining, ar(s.storeRemaining ?? 0)],
+        ],
         rows: [
           [REPORT_KPI_LABELS.storeContributed, ar(s.storeContributed ?? 0)],
           [REPORT_KPI_LABELS.storeDispensed, ar(s.storeDispensed ?? 0)],
@@ -504,7 +796,7 @@ export function buildZadPresentationReport(
         ] as [string, string][],
         note: "حصر مساهمات المتاجر المشاركة في المخزون الموحّد.",
       },
-    ],
+    ]),
     dist: (assoc.length ? assoc : gender).slice(0, 6).map((row, i) => ({
       label: row.key,
       pct: Math.min(100, Math.max(0, row.percent)),

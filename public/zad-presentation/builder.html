@@ -364,15 +364,15 @@
     <div style="position: fixed; inset: 0; z-index: 100; background: {{ stageBg }}; display: flex; flex-direction: column;">
       <!-- progress -->
       <div style="height: 4px; background: rgba(255,255,255,0.12);"><div style="height: 100%; width: {{ progressPct }}; background: #e9b221; transition: width 0.35s ease;"></div></div>
-      <!-- slide -->
-      <div style="flex: 1; position: relative; overflow: hidden;">
-        <div class="zrp-logos" style="{{ logosWrapStyle }}">
+      <!-- slide: شريط شعارات ثابت الارتفاع ثم المحتوى تحته (بدون تداخل مطلق) -->
+      <div style="flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column;">
+        <div class="zrp-logos zrp-logos--master" style="{{ logosWrapStyle }}">
           <sc-for list="{{ logoSlots }}" as="lg" hint-placeholder-count="2">
             <span style="{{ lg.boxStyle }}"><img src="{{ lg.src }}" alt="" style="{{ lg.imgStyle }}"></span>
           </sc-for>
         </div>
 
-        <div class="zrp-slide" style="position: absolute; inset: 0; padding: 140px 8vw 90px; display: flex; flex-direction: column; justify-content: {{ slideJustify }}; overflow-y: auto; color: {{ textMain }};">
+        <div class="zrp-slide" style="flex: 1; min-height: 0; padding: 28px 8vw 40px; display: flex; flex-direction: column; justify-content: {{ slideJustify }}; overflow-y: auto; color: {{ textMain }};">
           <sc-if value="{{ sCover }}" hint-placeholder-val="{{ true }}">
             <div style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 20px;">
               <div style="width: 96px; height: 8px; border-radius: 99px; background: #e9b221;"></div>
@@ -383,7 +383,7 @@
           </sc-if>
           <sc-if value="{{ sSummary }}" hint-placeholder-val="{{ false }}">
             <div style="display: flex; flex-direction: column; gap: 24px;">
-              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">الملخّص التنفيذي</h2>
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">{{ summaryTitle }}</h2>
               <div style="display: flex; flex-direction: column; gap: 14px;">
                 <sc-for list="{{ summaryPoints }}" as="p" hint-placeholder-count="4">
                   <button onClick="{{ p.click }}" style="display: flex; flex-direction: column; gap: 0; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 14px; padding: 18px 20px; cursor: pointer; font-family: inherit; text-align: start; color: {{ textMain }};" style-hover="border-color: #e9b221;">
@@ -397,15 +397,45 @@
           </sc-if>
           <sc-if value="{{ sKpi }}" hint-placeholder-val="{{ false }}">
             <div style="display: flex; flex-direction: column; gap: 28px;">
-              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">المؤشرات الرئيسية</h2>
-              <div class="zrp-kpis" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;">
+              <h2 class="zrp-slide-title" style="margin: 0; font-size: 38px; font-weight: 800; color: {{ headMain }};">{{ kpiTitle }}</h2>
+              <div class="zrp-kpis" style="display: grid; grid-template-columns: {{ kpiGridCols }}; gap: 18px;">
                 <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
-                  <button onClick="{{ k.click }}" style="text-align: start; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; font-family: inherit; position: relative; color: {{ textMain }};" style-hover="border-color: #e9b221;">
+                  <button onClick="{{ k.click }}" style="text-align: start; background: {{ cardBg }}; border: 1px solid {{ borderMain }}; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; font-family: inherit; position: relative; color: {{ textMain }}; {{ k.spanStyle }}" style-hover="border-color: #e9b221;">
                     <span style="position: absolute; top: 14px; inset-inline-end: 14px; color: #e9b221; opacity: 0.8; display: flex;">{{ infoIcon }}</span>
                     <sc-if value="{{ k.isUp }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-up" style="margin-bottom: 6px; padding-bottom: 12px; border-bottom: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 7px; width: 100%;"><sc-for list="{{ k.rowsList }}" as="row" hint-placeholder-count="3"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 14px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 9px 11px; font-size: 12px; line-height: 1.55;">{{ k.note }}</div></div></sc-if>
                     <div style="font-size: 15px; opacity: 0.8; color: {{ textMain }};">{{ k.label }}</div>
-                    <div style="font-size: 44px; font-weight: 800; color: {{ headMain }}; line-height: 1;">{{ k.value }}</div>
-                    <div style="font-size: 14px; font-weight: 700; color: #e9b221;">{{ k.delta }}</div>
+                    <sc-if value="{{ k.isHero }}" hint-placeholder-val="{{ true }}">
+                      <div style="font-size: 52px; font-weight: 800; color: {{ headMain }}; line-height: 1;">{{ k.value }}</div>
+                      <div style="font-size: 14px; font-weight: 700; color: #e9b221;">{{ k.delta }}</div>
+                    </sc-if>
+                    <sc-if value="{{ k.isPair }}" hint-placeholder-val="{{ false }}">
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%;">
+                        <div style="background: {{ panelBg }}; border-radius: 12px; padding: 14px;"><div style="font-size: 12px; opacity: 0.75;">أسر</div><div style="font-size: 32px; font-weight: 800; color: {{ headMain }};">{{ k.familiesLabel }}</div></div>
+                        <div style="background: {{ panelBg }}; border-radius: 12px; padding: 14px;"><div style="font-size: 12px; opacity: 0.75;">أفراد</div><div style="font-size: 32px; font-weight: 800; color: {{ headMain }};">{{ k.individualsLabel }}</div></div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ k.isProgress }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size: 40px; font-weight: 800; color: {{ headMain }}; line-height: 1;">{{ k.pctLabel }}</div>
+                      <div style="margin-top: 8px; height: 10px; border-radius: 9999px; background: {{ panelBg }}; overflow: hidden; width: 100%;"><div style="height: 100%; width: {{ k.barW }}; border-radius: 9999px; background: linear-gradient(90deg, #951740, #e9b221);"></div></div>
+                    </sc-if>
+                    <sc-if value="{{ k.isMiniGrid }}" hint-placeholder-val="{{ false }}">
+                      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%;">
+                        <sc-for list="{{ k.itemObjs }}" as="it" hint-placeholder-count="3">
+                          <div style="background: {{ panelBg }}; border-radius: 10px; padding: 12px;"><div style="font-size: 12px; opacity: 0.75; line-height: 1.35;">{{ it.k }}</div><div style="font-size: 22px; font-weight: 800; color: {{ headMain }}; margin-top: 4px;">{{ it.v }}</div></div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ k.isRanking }}" hint-placeholder-val="{{ false }}">
+                      <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                        <sc-for list="{{ k.itemObjs }}" as="it" hint-placeholder-count="4">
+                          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid {{ borderMain }};"><span style="font-size: 15px; opacity: 0.85;">{{ it.rank }} · {{ it.k }}</span><span style="font-weight: 800; color: {{ headMain }};">{{ it.v }}</span></div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ k.isCard }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size: 44px; font-weight: 800; color: {{ headMain }}; line-height: 1;">{{ k.value }}</div>
+                      <div style="font-size: 14px; font-weight: 700; color: #e9b221;">{{ k.delta }}</div>
+                    </sc-if>
                     <sc-if value="{{ k.isDown }}" hint-placeholder-val="{{ false }}"><div class="zrp-exp-down" style="margin-top: 6px; padding-top: 12px; border-top: 1px solid {{ borderMain }}; display: flex; flex-direction: column; gap: 7px; width: 100%;"><sc-for list="{{ k.rowsList }}" as="row" hint-placeholder-count="3"><div style="display: flex; align-items: center; justify-content: space-between; font-size: 14px;"><span style="opacity: 0.8;">{{ row.k }}</span><span style="font-weight: 700; color: {{ headMain }};">{{ row.v }}</span></div></sc-for><div style="background: {{ panelBg }}; border-inline-start: 3px solid #e9b221; border-radius: 8px; padding: 9px 11px; font-size: 12px; line-height: 1.55;">{{ k.note }}</div></div></sc-if>
                   </button>
                 </sc-for>
@@ -624,7 +654,64 @@
 class Component extends DCLogic {
   state = { present: false, idx: 0, theme: 'dark', title: 'تقرير الأداء الاستراتيجي', period: 'الربع الثاني 2026م', orgName: 'جمعية الزاد للتمكين المستدام', deptName: 'إدارة الأداء والنمو', closingTitle: 'شكراً لكم', evidenceItems: null, mediaView: null, logos: null, logoPlacement: 'center', on: { summary: true, kpi: true, dist: true, funnel: true, progress: true, table: true, timeline: true, evidence: true, disb: true }, reveal: { summary: 'float', kpi: 'float', dist: 'float', funnel: 'float', progress: 'down', table: 'down', timeline: 'down', evidence: 'float', disb: 'float' }, detail: null, openKey: null };
   icon(p, fill) { return React.createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', width: 20, height: 20, viewBox: '0 0 24 24', fill: fill || 'none', stroke: fill ? 'none' : 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', dangerouslySetInnerHTML: { __html: p } }); }
-  deckKeys() { const o = this.state.on; const D = this.reportData(); const evN = this.evidenceList().length; const has = { summary: D.summary.length, kpi: D.kpis.length, dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: evN, disb: D.disb.length }; const order = ['summary','kpi','dist','funnel','progress','table','timeline','evidence','disb']; const mid = order.filter(k => o[k] && has[k]); return ['cover', ...mid, 'closing']; }
+  deckKeys() {
+    const o = this.state.on;
+    const D = this.reportData();
+    const evN = this.evidenceList().length;
+    const summaryPages = this.chunkList(D.summary || [], 3);
+    const kpiPages = this.chunkKpiPages(D.kpis || []);
+    const order = [];
+    if (o.summary && summaryPages.length) {
+      summaryPages.forEach((_, i) => order.push(i === 0 ? 'summary' : ('summary__' + (i + 1))));
+    }
+    if (o.kpi && kpiPages.length) {
+      kpiPages.forEach((_, i) => order.push(i === 0 ? 'kpi' : ('kpi__' + (i + 1))));
+    }
+    const rest = ['dist','funnel','progress','table','timeline','evidence','disb'];
+    const has = { dist: D.dist.length, funnel: D.funnel.length, progress: D.progress.length, table: D.programs.length, timeline: D.timeline.length, evidence: evN, disb: D.disb.length };
+    rest.forEach((k) => { if (o[k] && has[k]) order.push(k); });
+    return ['cover', ...order, 'closing'];
+  }
+  /** تقسيم مصفوفة — O(n) */
+  chunkList(list, limit) {
+    const arr = Array.isArray(list) ? list : [];
+    if (!arr.length) return [];
+    if (limit <= 0 || arr.length <= limit) return [arr];
+    const pages = [];
+    for (let i = 0; i < arr.length; i += limit) pages.push(arr.slice(i, i + limit));
+    return pages;
+  }
+  /**
+   * صفحات KPI: بطاقات hero/pair/progress/card ≤3؛ miniGrid/ranking شريحة كاملة.
+   * Time: O(n) — Space: O(n).
+   */
+  chunkKpiPages(kpis) {
+    const pages = [];
+    let buf = [];
+    const flush = () => { if (buf.length) { pages.push(buf); buf = []; } };
+    (kpis || []).forEach((k) => {
+      const kind = (k && k.kind) || 'card';
+      if (kind === 'miniGrid' || kind === 'ranking') {
+        flush();
+        pages.push([k]);
+        return;
+      }
+      buf.push(k);
+      if (buf.length >= 3) flush();
+    });
+    flush();
+    return pages;
+  }
+  slideBaseKey(cur) {
+    if (!cur) return cur;
+    const i = cur.indexOf('__');
+    return i >= 0 ? cur.slice(0, i) : cur;
+  }
+  slidePageIndex(cur) {
+    if (!cur || cur.indexOf('__') < 0) return 0;
+    const n = Number(cur.split('__')[1]);
+    return Number.isFinite(n) && n > 1 ? n - 1 : 0;
+  }
   componentDidMount() {
     const D = this.reportData();
     const raw = (typeof window !== 'undefined' && window.ZAD_REPORT) || {};
@@ -941,47 +1028,44 @@ class Component extends DCLogic {
       });
   }
   /**
-   * تخطيط الشعارات: صندوق ثابت متساوٍ لكل شعار داخل شريط علوي لا يغطي الشريحة.
+   * شريط شعارات ثابت الارتفاع داخل تدفق الصفحة — لا يغطي المحتوى.
    * Time/Space: O(1) — شعاران كحد أقصى.
    */
   buildLogoLayout(dark) {
     const placement = this.state.logoPlacement || 'center';
     const box = this.LOGO_BOX();
-    const topPx = dark ? 24 : 28;
-    const top = topPx + 'px';
     const active = this.logosList().map((l, i) => {
       const src = dark ? (l.night || l.day) : (l.day || l.night);
       return src ? { i, src } : null;
     }).filter(Boolean);
     const boxBase = 'width: ' + box + 'px; height: ' + box + 'px; flex-shrink: 0; display: block;';
     const imgStyle = 'width: 100%; height: 100%; object-fit: contain; display: block;';
-    // شريط الشعارات يشغل أعلى الشريحة فقط — يمنع تغطية المحتوى تحته
-    const bandStyle = 'position: absolute; top: 0; left: 0; right: 0; height: ' + (topPx + box + 16) + 'px; pointer-events: none; z-index: 3;';
+    const bandH = box + 28;
+    // شريط رئيسي ثابت — المحتوى دائماً تحته في flex column
+    const bandBase = 'flex: 0 0 ' + bandH + 'px; height: ' + bandH + 'px; display: flex; align-items: center; pointer-events: none; z-index: 3; padding: 12px 4vw 8px; box-sizing: border-box;';
     if (!active.length) {
-      return { logosWrapStyle: 'display: none;', logoSlots: [] };
+      return { logosWrapStyle: 'display: none; flex: 0 0 0;', logoSlots: [] };
     }
     if (placement === 'split') {
-      const slots = active.map((a, idx) => {
-        const side = idx === 0 ? 'right: 4vw; left: auto;' : 'left: 4vw; right: auto;';
-        return { src: a.src, boxStyle: 'position: absolute; top: ' + top + '; ' + side + ' ' + boxBase, imgStyle };
-      });
-      return { logosWrapStyle: bandStyle, logoSlots: slots };
+      return {
+        logosWrapStyle: bandBase + ' justify-content: space-between;',
+        logoSlots: active.map((a) => ({ src: a.src, boxStyle: boxBase, imgStyle })),
+      };
     }
     if (placement === 'rightCenter') {
-      const slots = active.map((a, idx) => {
-        if (idx === 0) return { src: a.src, boxStyle: 'position: absolute; top: ' + top + '; right: 4vw; left: auto; ' + boxBase, imgStyle };
-        return { src: a.src, boxStyle: 'position: absolute; top: ' + top + '; left: 50%; transform: translateX(-50%); ' + boxBase, imgStyle };
-      });
-      return { logosWrapStyle: bandStyle, logoSlots: slots };
+      return {
+        logosWrapStyle: bandBase + ' justify-content: flex-end; gap: 24px;',
+        logoSlots: active.map((a) => ({ src: a.src, boxStyle: boxBase, imgStyle })),
+      };
     }
     if (placement === 'topRight') {
       return {
-        logosWrapStyle: 'position: absolute; top: ' + top + '; right: 4vw; left: auto; transform: none; display: flex; align-items: center; gap: 16px; pointer-events: none; z-index: 3;',
+        logosWrapStyle: bandBase + ' justify-content: flex-end; gap: 16px;',
         logoSlots: active.map((a) => ({ src: a.src, boxStyle: boxBase, imgStyle })),
       };
     }
     return {
-      logosWrapStyle: 'position: absolute; top: ' + top + '; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; pointer-events: none; z-index: 3;',
+      logosWrapStyle: bandBase + ' justify-content: center; gap: 18px;',
       logoSlots: active.map((a) => ({ src: a.src, boxStyle: boxBase, imgStyle })),
     };
   }
@@ -992,6 +1076,14 @@ class Component extends DCLogic {
     const dark = this.state.theme === 'dark';
     const deck = this.deckKeys();
     const cur = deck[this.state.idx] || 'cover';
+    const base = this.slideBaseKey(cur);
+    const pageIdx = this.slidePageIndex(cur);
+    const summaryPages = this.chunkList(D.summary || [], 3);
+    const kpiPages = this.chunkKpiPages(D.kpis || []);
+    const summaryKpi = {
+      summaryPage: base === 'summary' ? (summaryPages[pageIdx] || []) : [],
+      kpiPage: base === 'kpi' ? (kpiPages[pageIdx] || []) : [],
+    };
     const t = (key, label, path) => {
       const on = !!this.state.on[key];
       const revOpts = [['float','عائمة'],['down','منزلقة']].map(([m,lbl]) => ({ lbl, on: this.state.reveal[key] === m,
@@ -1121,12 +1213,45 @@ class Component extends DCLogic {
         };
       }),
       // current slide flags
-      sCover: cur === 'cover', sSummary: cur === 'summary', sKpi: cur === 'kpi', sDist: cur === 'dist', sFunnel: cur === 'funnel', sProgress: cur === 'progress', sTable: cur === 'table', sTimeline: cur === 'timeline', sEvidence: cur === 'evidence', sDisb: cur === 'disb', sClosing: cur === 'closing',
+      sCover: cur === 'cover',
+      sSummary: base === 'summary',
+      sKpi: base === 'kpi',
+      sDist: cur === 'dist', sFunnel: cur === 'funnel', sProgress: cur === 'progress', sTable: cur === 'table', sTimeline: cur === 'timeline', sEvidence: cur === 'evidence', sDisb: cur === 'disb', sClosing: cur === 'closing',
       // الشرائح المعنونة تبدأ من أعلى حتى لا يرتفع العنوان إلى شريط الشعارات
       slideJustify: (cur === 'cover' || cur === 'closing') ? 'center' : 'flex-start',
+      summaryTitle: pageIdx > 0 ? ('الملخّص التنفيذي (' + this.arNumSafe(pageIdx + 1) + ')') : 'الملخّص التنفيذي',
+      kpiTitle: pageIdx > 0 ? ('المؤشرات الرئيسية (' + this.arNumSafe(pageIdx + 1) + ')') : 'المؤشرات الرئيسية',
+      kpiGridCols: (() => {
+        const page = summaryKpi.kpiPage;
+        if (!page.length) return 'repeat(3, 1fr)';
+        const kinds = page.map((k) => (k && k.kind) || 'card');
+        if (kinds.some((k) => k === 'miniGrid' || k === 'ranking')) return '1fr';
+        return 'repeat(' + Math.min(3, Math.max(1, page.length)) + ', 1fr)';
+      })(),
       // content
-      summaryPoints: D.summary.map((p,i) => ({ ...p, ...this.decorate('summary', i, { title: 'تفصيل النقطة', head: p.text, value: '', delta: '', rows: this.rowObjs(p.rows || []), note: p.note }) })),
-      kpis: D.kpis.map((k,i) => ({ ...k, ...this.decorate('kpi', i, { title: k.label, head: '', value: k.value, delta: k.delta, rows: this.rowObjs(k.rows || []), note: k.note }) })),
+      summaryPoints: summaryKpi.summaryPage.map((p,i) => ({ ...p, ...this.decorate('summary', i, { title: 'تفصيل النقطة', head: p.text, value: '', delta: '', rows: this.rowObjs(p.rows || []), note: p.note }) })),
+      kpis: summaryKpi.kpiPage.map((k,i) => {
+        const kind = (k && k.kind) || 'card';
+        const items = (k.items && k.items.length) ? k.items : (k.rows || []);
+        const pct = typeof k.pct === 'number' ? k.pct : 0;
+        return {
+          ...k,
+          kind,
+          isHero: kind === 'hero',
+          isPair: kind === 'pair',
+          isProgress: kind === 'progress',
+          isMiniGrid: kind === 'miniGrid',
+          isRanking: kind === 'ranking',
+          isCard: kind === 'card' || !kind,
+          familiesLabel: this.arNumSafe(k.families != null ? k.families : ((k.rows && k.rows[0]) ? k.rows[0][1] : k.value)),
+          individualsLabel: this.arNumSafe(k.individuals != null ? k.individuals : ((k.rows && k.rows[1]) ? k.rows[1][1] : '')),
+          pctLabel: (k.value && String(k.value).indexOf('٪') >= 0) ? k.value : (this.arNumSafe(pct) + '٪'),
+          barW: Math.max(0, Math.min(100, pct)) + '%',
+          itemObjs: items.map((r, ri) => ({ k: r[0], v: r[1], rank: this.arNumSafe(ri + 1) })),
+          spanStyle: (kind === 'miniGrid' || kind === 'ranking') ? 'grid-column: 1 / -1;' : '',
+          ...this.decorate('kpi', i, { title: k.label, head: '', value: k.value, delta: k.delta, rows: this.rowObjs(k.rows || []), note: k.note }),
+        };
+      }),
       progress: D.progress.map((p,i) => ({ ...p, ...this.decorate('progress', i, { title: 'نسبة الإنجاز', head: p.label, value: p.pct + '٪', delta: '', rows: this.rowObjs(p.rows || []), note: p.note }) })),
       programs: D.programs.map((r,i) => ({ ...r, ...this.decorate('table', i, { title: 'أداء البرنامج', head: r.prog, value: r.pct, delta: '', rows: this.rowObjs(r.rows || []), note: r.note }) })),
       disb: D.disb.map((d,i) => ({ ...d, ...this.decorate('disb', i, { title: d.label, head: '', value: d.amount + ' ر.س', delta: '', rows: this.rowObjs(d.rows || []), note: d.note }) })),

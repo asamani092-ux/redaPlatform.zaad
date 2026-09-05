@@ -5,11 +5,14 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/PageHeader";
 import {
   SURVEY_AUDIENCE_OPTIONS,
+  SURVEY_QUESTION_TYPE_OPTIONS,
+  SURVEY_TEXT_DEFAULTS,
   audienceLabel,
   newSurveyId,
   type SurveyAudience,
   type SurveyDefinition,
   type SurveyQuestion,
+  type SurveyQuestionType,
 } from "@/lib/survey-questions";
 import { sanitizeNumericInput, toIntOrNull } from "@/lib/num";
 import { PaginationBar } from "@/components/PaginationBar";
@@ -478,16 +481,53 @@ export default function SurveyPage() {
                         <select
                           className="input-field"
                           value={qq.type}
-                          onChange={(e) =>
-                            updateQuestion(idx, {
-                              type: e.target.value as SurveyQuestion["type"],
-                              min: e.target.value === "scale" ? (qq.min ?? 1) : undefined,
-                              max: e.target.value === "scale" ? (qq.max ?? 5) : undefined,
-                            })
-                          }
+                          onChange={(e) => {
+                            const type = e.target.value as SurveyQuestionType;
+                            const patch: Partial<SurveyQuestion> = { type };
+                            if (type === "scale") {
+                              patch.min = qq.min ?? 1;
+                              patch.max = qq.max ?? 5;
+                              patch.options = undefined;
+                            } else if (type === "rated_options") {
+                              patch.options = qq.options?.length
+                                ? qq.options
+                                : ["الخيار 1", "الخيار 2"];
+                              patch.min = undefined;
+                              patch.max = undefined;
+                            } else if (type === "choice_with_other") {
+                              patch.options = qq.options?.length
+                                ? qq.options
+                                : ["نعم", "لا"];
+                              patch.allowOther = qq.allowOther !== false;
+                              patch.maxLength =
+                                qq.maxLength ?? SURVEY_TEXT_DEFAULTS.maxLength;
+                              patch.minRows =
+                                qq.minRows ?? SURVEY_TEXT_DEFAULTS.minRows;
+                              patch.maxRows =
+                                qq.maxRows ?? SURVEY_TEXT_DEFAULTS.maxRows;
+                              patch.textExpand = qq.textExpand !== false;
+                              patch.min = undefined;
+                              patch.max = undefined;
+                            } else {
+                              patch.maxLength =
+                                qq.maxLength ?? SURVEY_TEXT_DEFAULTS.maxLength;
+                              patch.textExpand = qq.textExpand !== false;
+                              patch.minRows =
+                                qq.minRows ?? SURVEY_TEXT_DEFAULTS.minRows;
+                              patch.maxRows =
+                                qq.maxRows ?? SURVEY_TEXT_DEFAULTS.maxRows;
+                              patch.min = undefined;
+                              patch.max = undefined;
+                              patch.options = undefined;
+                            }
+                            updateQuestion(idx, patch);
+                          }}
                         >
-                          <option value="text">نصي</option>
-                          <option value="scale">تقييم رقمي</option>
+                          {SURVEY_QUESTION_TYPE_OPTIONS.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       {qq.type === "scale" ? (
@@ -542,6 +582,152 @@ export default function SurveyPage() {
                         </button>
                       </div>
                     </div>
+                    {qq.type === "rated_options" ||
+                    qq.type === "choice_with_other" ? (
+                      <div className="survey-options-editor">
+                        <label className="label-field">الخيارات</label>
+                        <div className="stack-gap">
+                          {(qq.options ?? []).map((opt, oi) => (
+                            <div key={`${qq.id}-opt-${oi}`} className="row-actions">
+                              <input
+                                className="input-field"
+                                value={opt}
+                                onChange={(e) => {
+                                  const options = [...(qq.options ?? [])];
+                                  options[oi] = e.target.value;
+                                  updateQuestion(idx, { options });
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="btn-danger btn-sm"
+                                onClick={() =>
+                                  updateQuestion(idx, {
+                                    options: (qq.options ?? []).filter(
+                                      (_, i) => i !== oi,
+                                    ),
+                                  })
+                                }
+                              >
+                                حذف
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            onClick={() =>
+                              updateQuestion(idx, {
+                                options: [
+                                  ...(qq.options ?? []),
+                                  `خيار ${(qq.options?.length ?? 0) + 1}`,
+                                ],
+                              })
+                            }
+                          >
+                            إضافة خيار
+                          </button>
+                        </div>
+                        {qq.type === "choice_with_other" ? (
+                          <label
+                            className="check-field"
+                            style={{ marginTop: "var(--space-2)" }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={qq.allowOther !== false}
+                              onChange={(e) =>
+                                updateQuestion(idx, {
+                                  allowOther: e.target.checked,
+                                })
+                              }
+                            />
+                            السماح بخيار «أخرى»
+                          </label>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {qq.type === "text" || qq.type === "choice_with_other" ? (
+                      <div
+                        className="form-grid form-grid--survey-q"
+                        style={{ marginTop: "var(--space-2)" }}
+                      >
+                        <div>
+                          <label className="label-field">الحد الأقصى للأحرف</label>
+                          <input
+                            className="input-field"
+                            dir="ltr"
+                            inputMode="numeric"
+                            value={String(
+                              qq.maxLength ?? SURVEY_TEXT_DEFAULTS.maxLength,
+                            )}
+                            onChange={(e) =>
+                              updateQuestion(idx, {
+                                maxLength:
+                                  toIntOrNull(
+                                    sanitizeNumericInput(e.target.value, false),
+                                  ) ?? SURVEY_TEXT_DEFAULTS.maxLength,
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="label-field">صفوف البداية</label>
+                          <input
+                            className="input-field"
+                            dir="ltr"
+                            inputMode="numeric"
+                            value={String(
+                              qq.minRows ?? SURVEY_TEXT_DEFAULTS.minRows,
+                            )}
+                            onChange={(e) =>
+                              updateQuestion(idx, {
+                                minRows:
+                                  toIntOrNull(
+                                    sanitizeNumericInput(e.target.value, false),
+                                  ) ?? SURVEY_TEXT_DEFAULTS.minRows,
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="label-field">أقصى صفوف</label>
+                          <input
+                            className="input-field"
+                            dir="ltr"
+                            inputMode="numeric"
+                            value={String(
+                              qq.maxRows ?? SURVEY_TEXT_DEFAULTS.maxRows,
+                            )}
+                            onChange={(e) =>
+                              updateQuestion(idx, {
+                                maxRows:
+                                  toIntOrNull(
+                                    sanitizeNumericInput(e.target.value, false),
+                                  ) ?? SURVEY_TEXT_DEFAULTS.maxRows,
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="full-on-mobile">
+                          <label
+                            className="check-field"
+                            style={{ marginTop: "1.6rem" }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={qq.textExpand !== false}
+                              onChange={(e) =>
+                                updateQuestion(idx, {
+                                  textExpand: e.target.checked,
+                                })
+                              }
+                            />
+                            توسيع تلقائي لمربع النص
+                          </label>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
                 {!selected.questions.length ? (
@@ -749,6 +935,23 @@ export default function SurveyPage() {
   );
 }
 
+function formatAnswerDisplay(v: unknown): string {
+  if (v == null) return "—";
+  if (typeof v === "string" || typeof v === "number") return String(v);
+  if (typeof v === "object" && !Array.isArray(v)) {
+    const obj = v as Record<string, unknown>;
+    if ("choice" in obj) {
+      const choice = String(obj.choice ?? "");
+      const other = typeof obj.otherText === "string" ? obj.otherText.trim() : "";
+      return other ? `${choice}: ${other}` : choice;
+    }
+    return Object.entries(obj)
+      .map(([k, val]) => `${k}: ${String(val)}`)
+      .join(" · ");
+  }
+  return String(v);
+}
+
 function AttrAnswers({
   answers,
   questions,
@@ -762,7 +965,7 @@ function AttrAnswers({
       {Object.entries(answers || {}).map(([k, v]) => (
         <span key={k} className="attr-chip">
           <b>{textFor(k)}</b>
-          <span>{String(v)}</span>
+          <span>{formatAnswerDisplay(v)}</span>
         </span>
       ))}
     </div>

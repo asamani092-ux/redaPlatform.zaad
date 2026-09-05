@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { findSurvey, parseSurveyCatalog } from "@/lib/survey-questions";
+import {
+  findSurvey,
+  normalizeSurveyAnswer,
+  parseSurveyCatalog,
+  validateSurveyAnswer,
+} from "@/lib/survey-questions";
 import { resolveSurveyMode, verifySurveyToken } from "@/lib/survey-link";
 
 type Ctx = { params: Promise<{ token: string }> };
@@ -85,7 +90,18 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 }
 
 const submitSchema = z.object({
-  answers: z.record(z.string(), z.union([z.string(), z.number()])),
+  answers: z.record(
+    z.string(),
+    z.union([
+      z.string(),
+      z.number(),
+      z.record(z.string(), z.number()),
+      z.object({
+        choice: z.string(),
+        otherText: z.string().optional(),
+      }),
+    ]),
+  ),
 });
 
 /** حفظ إجابات النموذج العام — بدون مصادقة. O(n) للأسئلة. */
@@ -104,19 +120,22 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: "بيانات غير صالحة" }, { status: 400 });
   }
 
+  const answersJson: Record<string, unknown> = {};
   for (const q of survey.questions) {
     const raw = body.data.answers[q.id];
-    if (raw === undefined || String(raw).trim() === "") {
+    const err = validateSurveyAnswer(q, raw);
+    if (err) {
+      return NextResponse.json({ error: err, questionId: q.id }, { status: 400 });
+    }
+    const normalized = normalizeSurveyAnswer(q, raw);
+    if (normalized == null) {
       return NextResponse.json(
-        { error: "يرجى الإجابة على جميع الأسئلة" },
+        { error: "يرجى الإجابة على جميع الأسئلة", questionId: q.id },
         { status: 400 },
       );
     }
+    answersJson[q.id] = normalized;
   }
-
-  const answersJson = Object.fromEntries(
-    Object.entries(body.data.answers).map(([k, v]) => [k, String(v)]),
-  );
 
   const response = await prisma.surveyResponse.upsert({
     where: {
