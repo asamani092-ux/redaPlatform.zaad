@@ -12,9 +12,10 @@ import {
   parseSurveyCatalog,
 } from "@/lib/survey-questions";
 import { resolveSurveyAudience } from "@/lib/survey-audience";
-import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
+import { buildSurveyMessage, resolveSurveyHeaderImageUrl, surveyTemplateParams } from "@/lib/survey-message";
 import { resolveSurveyDelivery } from "@/lib/survey-link";
 import { appOrigin } from "@/lib/app-url";
+import { getWhatsAppConfig } from "@/lib/whatsapp-config";
 
 const schema = z.object({
   surveyId: z.string().min(1),
@@ -71,6 +72,10 @@ export async function POST(req: NextRequest) {
     reason: string;
   }> = [];
 
+  const wa = await getWhatsAppConfig();
+  const surveyHeaderUrl =
+    resolveSurveyHeaderImageUrl(wa.surveyHeaderImageUrl) || undefined;
+
   for (const b of beneficiaries) {
     if (!b.mobile) {
       failed++;
@@ -110,6 +115,7 @@ export async function POST(req: NextRequest) {
       ),
       type: OutboundMessageType.SURVEY,
       createdById: authz.userId,
+      mediaUrl: surveyHeaderUrl,
       templateParams: surveyTemplateParams(
         b.name,
         exhibition.name,

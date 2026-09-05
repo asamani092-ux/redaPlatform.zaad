@@ -9,10 +9,11 @@ import { sendInviteWhatsApp } from "@/lib/invite-whatsapp";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
 import { findSurvey, parseSurveyCatalog } from "@/lib/survey-questions";
-import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
+import { buildSurveyMessage, resolveSurveyHeaderImageUrl, surveyTemplateParams } from "@/lib/survey-message";
 import { resolveSurveyDelivery } from "@/lib/survey-link";
 import { appOrigin } from "@/lib/app-url";
 import { isValidSaudiMobile, MOBILE_ERROR, normalizeMobile } from "@/lib/mobile";
+import { getWhatsAppConfig } from "@/lib/whatsapp-config";
 
 const schema = z.object({
   beneficiaryId: z.string().min(1),
@@ -175,6 +176,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: delivery.error }, { status: 400 });
   }
 
+  const wa = await getWhatsAppConfig();
   const msg = await sendWhatsAppMessage({
     exhibitionId: exhibition.id,
     beneficiaryId: beneficiary.id,
@@ -187,6 +189,8 @@ export async function POST(req: NextRequest) {
     ),
     type: OutboundMessageType.SURVEY,
     createdById: authz.userId,
+    mediaUrl:
+      resolveSurveyHeaderImageUrl(wa.surveyHeaderImageUrl) || undefined,
     templateParams: surveyTemplateParams(
       beneficiary.name,
       exhibition.name,

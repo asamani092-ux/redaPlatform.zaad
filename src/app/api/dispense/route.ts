@@ -17,11 +17,12 @@ import {
   parseSurveyCatalog,
   parseSurveyConfig,
 } from "@/lib/survey-questions";
-import { buildSurveyMessage, surveyTemplateParams } from "@/lib/survey-message";
+import { buildSurveyMessage, resolveSurveyHeaderImageUrl, surveyTemplateParams } from "@/lib/survey-message";
 import { resolveSurveyDelivery } from "@/lib/survey-link";
 import { appOrigin } from "@/lib/app-url";
 import { priorDispenseStats } from "@/lib/report-counts";
 import { createDispenseMovementsFifo } from "@/lib/store-ledger";
+import { getWhatsAppConfig } from "@/lib/whatsapp-config";
 
 const lineSchema = z.object({
   inventoryItemId: z.string(),
@@ -388,6 +389,9 @@ export async function POST(req: NextRequest) {
       } else {
         const errors: string[] = [];
         let lastStatus: string | null = null;
+        const wa = await getWhatsAppConfig();
+        const surveyHeaderUrl =
+          resolveSurveyHeaderImageUrl(wa.surveyHeaderImageUrl) || undefined;
         for (const survey of toSend) {
           const delivery = resolveSurveyDelivery({
             survey,
@@ -412,6 +416,7 @@ export async function POST(req: NextRequest) {
             ),
             type: OutboundMessageType.SURVEY,
             createdById: authz.userId,
+            mediaUrl: surveyHeaderUrl,
             templateParams: surveyTemplateParams(
               order.beneficiary.name,
               exhibition.name,

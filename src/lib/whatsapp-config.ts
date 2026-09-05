@@ -17,6 +17,8 @@ export type WhatsAppConfig = {
   inviteHeaderImageUrl: string | null;
   thanksTemplateId: string | null;
   surveyTemplateId: string | null;
+  /** صورة هيدر الاستبيان — إن خلاها يُستخدم بوستر الدعوة */
+  surveyHeaderImageUrl: string | null;
 };
 
 /** كاش طلب قصير لتفادي N قراءات AppConfig في البث الجماعي */
@@ -35,6 +37,10 @@ function envTemplates() {
       process.env.WHATSAPP_INVITE_HEADER_IMAGE_URL?.trim() || null,
     thanksTemplateId: process.env.WHATSAPP_THANKS_TEMPLATE_ID?.trim() || null,
     surveyTemplateId: process.env.WHATSAPP_SURVEY_TEMPLATE_ID?.trim() || null,
+    surveyHeaderImageUrl:
+      process.env.WHATSAPP_SURVEY_HEADER_IMAGE_URL?.trim() ||
+      process.env.WHATSAPP_INVITE_HEADER_IMAGE_URL?.trim() ||
+      null,
   };
 }
 
