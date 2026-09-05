@@ -17,7 +17,7 @@ ENV DATABASE_URL=postgresql://127.0.0.1:5432/build
 ENV AUTH_SECRET=build-time-placeholder-not-used-at-runtime
 RUN npx prisma generate && npm run build
 
-# Prisma CLI + tsx فقط — الإصدارات داخل JSON بلا رمز at-sign (Coolify يفسد package@version)
+# Prisma CLI + tsx فقط — الإصدارات داخل JSON (Coolify يفسد أي سطر فيه رمز at-sign)
 FROM node:22-alpine AS tools
 WORKDIR /tools
 RUN printf '%s' '{"private":true,"dependencies":{"prisma":"7.9.1","tsx":"4.23.1","typescript":"5.9.3"}}' > package.json \
