@@ -8,6 +8,7 @@ import {
   SURVEY_QUESTION_TYPE_OPTIONS,
   SURVEY_TEXT_DEFAULTS,
   audienceLabel,
+  formatSurveyAnswerDisplay,
   newSurveyId,
   type SurveyAudience,
   type SurveyDefinition,
@@ -988,23 +989,6 @@ export default function SurveyPage() {
   );
 }
 
-function formatAnswerDisplay(v: unknown): string {
-  if (v == null) return "—";
-  if (typeof v === "string" || typeof v === "number") return String(v);
-  if (typeof v === "object" && !Array.isArray(v)) {
-    const obj = v as Record<string, unknown>;
-    if ("choice" in obj) {
-      const choice = String(obj.choice ?? "");
-      const other = typeof obj.otherText === "string" ? obj.otherText.trim() : "";
-      return other ? `${choice}: ${other}` : choice;
-    }
-    return Object.entries(obj)
-      .map(([k, val]) => `${k}: ${String(val)}`)
-      .join(" · ");
-  }
-  return String(v);
-}
-
 function AttrAnswers({
   answers,
   questions,
@@ -1018,7 +1002,7 @@ function AttrAnswers({
       {Object.entries(answers || {}).map(([k, v]) => (
         <span key={k} className="attr-chip">
           <b>{textFor(k)}</b>
-          <span>{formatAnswerDisplay(v)}</span>
+          <span>{formatSurveyAnswerDisplay(v)}</span>
         </span>
       ))}
     </div>

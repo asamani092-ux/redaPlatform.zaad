@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/session";
 import { requireActiveExhibition } from "@/lib/exhibition";
 import {
   findSurvey,
+  formatSurveyAnswerDisplay,
   parseSurveyCatalog,
   type SurveyQuestion,
 } from "@/lib/survey-questions";
@@ -19,7 +20,7 @@ function formatAnswers(
   return entries
     .map(([k, v]) => {
       const label = questions.find((q) => q.id === k)?.text ?? k;
-      return `<div class="ans"><b>${escapeHtml(label)}:</b> ${escapeHtml(String(v ?? "—"))}</div>`;
+      return `<div class="ans"><b>${escapeHtml(label)}:</b> ${escapeHtml(formatSurveyAnswerDisplay(v))}</div>`;
     })
     .join("");
 }
