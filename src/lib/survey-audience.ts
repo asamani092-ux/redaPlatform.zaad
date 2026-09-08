@@ -1,5 +1,15 @@
 import { prisma } from "@/lib/prisma";
+import {
+  OutboundMessageStatus,
+  OutboundMessageType,
+} from "@/generated/prisma/enums";
 import type { SurveyAudience } from "@/lib/survey-questions";
+export {
+  SURVEY_BROADCAST_BATCH_SIZE,
+  buildSurveyBroadcastBatches,
+  sliceSurveyBroadcastBatch,
+  type SurveyBroadcastBatch,
+} from "@/lib/survey-broadcast-batches";
 
 export type AudienceBeneficiary = {
   id: string;
@@ -95,4 +105,39 @@ export async function countSurveyAudience(
     withMobile,
     withoutMobile: list.length - withMobile,
   };
+}
+
+/**
+ * مستهدفو البث بجوال — مع استبعاد من أُرسل لهم SURVEY بنجاح (SENT/STUBBED).
+ * Time: O(n) — Space: O(n).
+ */
+export async function listSurveyBroadcastTargets(
+  exhibitionId: string,
+  audience: SurveyAudience,
+  opts?: { includePreviouslySent?: boolean },
+): Promise<AudienceBeneficiary[]> {
+  const list = await resolveSurveyAudience(exhibitionId, audience);
+  const withMobile = list.filter((b) => !!b.mobile?.trim());
+  if (opts?.includePreviouslySent || withMobile.length === 0) {
+    return withMobile;
+  }
+
+  const sentRows = await prisma.outboundMessage.findMany({
+    where: {
+      exhibitionId,
+      type: OutboundMessageType.SURVEY,
+      status: {
+        in: [OutboundMessageStatus.SENT, OutboundMessageStatus.STUBBED],
+      },
+      beneficiaryId: { in: withMobile.map((b) => b.id) },
+    },
+    select: { beneficiaryId: true },
+    distinct: ["beneficiaryId"],
+  });
+  const sentSet = new Set(
+    sentRows
+      .map((r) => r.beneficiaryId)
+      .filter((id): id is string => typeof id === "string" && !!id),
+  );
+  return withMobile.filter((b) => !sentSet.has(b.id));
 }

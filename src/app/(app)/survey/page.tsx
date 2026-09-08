@@ -21,9 +21,9 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Chip } from "@/components/ui/Chip";
 import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
+import { SurveyBroadcastBatchesModal } from "@/components/SurveyBroadcastBatchesModal";
 
 type ResponseRow = {
   id: string;
@@ -68,13 +68,6 @@ export default function SurveyPage() {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"responses" | "admin">(isAdmin ? "admin" : "responses");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
-  const [broadcastCount, setBroadcastCount] = useState<{
-    total: number;
-    withMobile: number;
-    withoutMobile: number;
-    audienceLabel: string;
-  } | null>(null);
-  const [broadcastCountBusy, setBroadcastCountBusy] = useState(false);
   const [waLogOpen, setWaLogOpen] = useState(false);
   const toast = useToast();
 
@@ -204,57 +197,9 @@ export default function SurveyPage() {
     if (res.ok) void load(page, selectedId);
   }
 
-  async function openBroadcast() {
+  function openBroadcast() {
     if (!selected) return;
     setBroadcastOpen(true);
-    setBroadcastCount(null);
-    setBroadcastCountBusy(true);
-    const res = await fetch(
-      `/api/survey/broadcast?surveyId=${encodeURIComponent(selected.id)}`,
-    );
-    const json = await res.json().catch(() => ({}));
-    setBroadcastCountBusy(false);
-    if (!res.ok) {
-      setBroadcastCount(null);
-      toast.push({
-        title: "تعذّر حساب المستهدفين",
-        body: String(json.error || "حاول مرة أخرى"),
-        tone: "danger",
-      });
-      return;
-    }
-    setBroadcastCount({
-      total: Number(json.total ?? 0),
-      withMobile: Number(json.withMobile ?? 0),
-      withoutMobile: Number(json.withoutMobile ?? 0),
-      audienceLabel: String(json.audienceLabel ?? audienceLabel(selected.audience)),
-    });
-  }
-
-  async function broadcast() {
-    if (!selected || busy) return;
-    setBusy(true);
-    setMsg("");
-    setMsgError(false);
-    const res = await fetch("/api/survey/broadcast", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ surveyId: selected.id }),
-    });
-    const json = await res.json();
-    setBusy(false);
-    setBroadcastOpen(false);
-    const failed = Number(json.failed ?? 0);
-    const text = res.ok
-      ? `«${selected.title}» → ${json.audienceLabel ?? audienceLabel(selected.audience)}: نجح ${json.sent ?? 0} — فشل ${failed}`
-      : json.error || "فشل الإرسال الجماعي";
-    setMsg(text);
-    setMsgError(!res.ok || failed > 0);
-    toast.push({
-      title: res.ok ? "إرسال جماعي" : "فشل الإرسال",
-      body: text,
-      tone: !res.ok || failed > 0 ? "warning" : "success",
-    });
   }
 
 
@@ -350,7 +295,7 @@ export default function SurveyPage() {
               disabled={busy || !selected}
               onClick={() => void openBroadcast()}
             >
-              إرسال للمستفيدين
+              إرسال للمستفيدين (دفعات)
             </button>
             <button
               type="button"
@@ -953,37 +898,12 @@ export default function SurveyPage() {
       ) : null}
 
 
-      <ConfirmDialog
+      <SurveyBroadcastBatchesModal
         open={broadcastOpen}
-        title="إرسال الاستبيان للمستفيدين"
-        body={
-          selected
-            ? broadcastCountBusy
-              ? `جاري حساب عدد مستهدفي «${selected.title}»…`
-              : broadcastCount
-                ? `سيتم إرسال «${selected.title}» إلى فئة «${broadcastCount.audienceLabel}»: ${broadcastCount.withMobile} مستفيداً بجوال` +
-                  (broadcastCount.withoutMobile > 0
-                    ? ` (و${broadcastCount.withoutMobile} بلا جوال سيُتخطَّون كفشل).`
-                    : ".") +
-                  (broadcastCount.withMobile === 0
-                    ? " لا يوجد من يُرسل له حالياً."
-                    : " هل تريد المتابعة؟")
-                : `سيتم إرسال «${selected.title}» إلى: ${audienceLabel(selected.audience)}. هل تريد المتابعة؟`
-            : ""
-        }
-        confirmLabel="إرسال"
-        busy={busy || broadcastCountBusy}
-        onClose={() => {
-          setBroadcastOpen(false);
-          setBroadcastCount(null);
-        }}
-        onConfirm={() => {
-          if (broadcastCount && broadcastCount.withMobile === 0) {
-            setBroadcastOpen(false);
-            return;
-          }
-          void broadcast();
-        }}
+        surveyId={selected?.id ?? null}
+        surveyTitle={selected?.title ?? ""}
+        onClose={() => setBroadcastOpen(false)}
+        onToast={(t) => toast.push(t)}
       />
     </div>
   );

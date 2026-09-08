@@ -422,6 +422,7 @@ export async function POST(req: NextRequest) {
               exhibition.name,
               delivery.url,
             ),
+            surveyId: survey.id,
           });
           lastStatus = surveyMsg.status;
           if (surveyMsg.status === "FAILED") {

@@ -23,6 +23,8 @@ export type WhatsAppSendInput = {
   templateParams?: string[];
   /** معرّف قالب صريح (مثلاً قالب باركود الدعوة) */
   templateIdOverride?: string | null;
+  /** معرّف الاستبيان داخل كتالوج المعرض — يُحفظ في payload لمنع تكرار البث */
+  surveyId?: string | null;
 };
 
 function templateIdFor(
@@ -141,6 +143,7 @@ export async function sendWhatsAppMessage(input: WhatsAppSendInput) {
     templateParams,
     templateIdOverride: input.templateIdOverride ?? null,
     provider,
+    surveyId: input.surveyId?.trim() || null,
   };
 
   if (provider === "stub") {
