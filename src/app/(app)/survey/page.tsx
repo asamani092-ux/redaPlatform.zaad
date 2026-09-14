@@ -24,6 +24,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Chip } from "@/components/ui/Chip";
 import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
 import { SurveyBroadcastBatchesModal } from "@/components/SurveyBroadcastBatchesModal";
+import type { SurveyStatsResult } from "@/lib/survey-stats";
 
 type ResponseRow = {
   id: string;
@@ -66,9 +67,13 @@ export default function SurveyPage() {
   const [trialSelected, setTrialSelected] = useState<TrialBeneficiary | null>(null);
   const [trialBusy, setTrialBusy] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"responses" | "admin">(isAdmin ? "admin" : "responses");
+  const [tab, setTab] = useState<"responses" | "admin" | "stats">(
+    isAdmin ? "admin" : "responses",
+  );
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [waLogOpen, setWaLogOpen] = useState(false);
+  const [stats, setStats] = useState<SurveyStatsResult | null>(null);
+  const [statsBusy, setStatsBusy] = useState(false);
   const toast = useToast();
 
   const selected = surveys.find((s) => s.id === selectedId) ?? surveys[0] ?? null;
@@ -104,6 +109,34 @@ export default function SurveyPage() {
   useEffect(() => {
     if (!isAdmin && tab === "admin") setTab("responses");
   }, [isAdmin, tab]);
+
+  async function loadStats(surveyId?: string | null) {
+    const sid = surveyId ?? selectedId;
+    if (!sid) {
+      setStats(null);
+      return;
+    }
+    setStatsBusy(true);
+    const res = await fetch(
+      `/api/survey/stats?surveyId=${encodeURIComponent(sid)}&format=json`,
+    );
+    const json = await res.json();
+    setStatsBusy(false);
+    if (res.ok) {
+      setStats(json as SurveyStatsResult);
+    } else {
+      setStats(null);
+      toast.push({
+        title: json.error || "تعذر تحميل الإحصائيات",
+        tone: "danger",
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (tab === "stats") void loadStats(selectedId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, selectedId]);
 
   function patchSelected(patch: Partial<SurveyDefinition>) {
     if (!selected) return;
@@ -270,6 +303,7 @@ export default function SurveyPage() {
 
   const tabItems = [
     { id: "responses", label: "الردود" },
+    { id: "stats", label: "الإحصائيات" },
     ...(isAdmin ? [{ id: "admin", label: "إدارة الاستبيانات" }] : []),
   ];
 
@@ -330,6 +364,7 @@ export default function SurveyPage() {
             const id = e.target.value;
             setSelectedId(id);
             void load(1, id);
+            if (tab === "stats") void loadStats(id);
           }}
         >
           {!surveys.length ? <option value="">لا استبيانات</option> : null}
@@ -820,6 +855,124 @@ export default function SurveyPage() {
         </section>
       ) : null}
 
+      {tab === "stats" ? (
+        <section className="panel">
+          <div className="toolbar toolbar--between">
+            <h2 className="panel-title" style={{ margin: 0 }}>
+              إحصائيات {selected?.title ?? "الاستبيان"}
+              {stats ? ` (${stats.totalResponses})` : ""}
+            </h2>
+            <div className="row-actions">
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={!selected || statsBusy}
+                onClick={() =>
+                  window.open(
+                    `/api/survey/stats?surveyId=${encodeURIComponent(selected?.id ?? "")}&format=xlsx`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+              >
+                تصدير إكسل
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={!selected || statsBusy}
+                onClick={() =>
+                  window.open(
+                    `/api/survey/stats?surveyId=${encodeURIComponent(selected?.id ?? "")}&format=pdf`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+              >
+                طباعة التقرير
+              </button>
+            </div>
+          </div>
+
+          {statsBusy ? <p className="msg">جاري تحميل الإحصائيات…</p> : null}
+
+          {!statsBusy && !selected ? (
+            <EmptyState
+              title="اختر استبياناً"
+              body="حدد استبياناً من القائمة أعلاه لعرض إحصائياته."
+            />
+          ) : null}
+
+          {!statsBusy && selected && stats ? (
+            <div className="survey-stats-stack">
+              <div className="stat-grid">
+                <div className="stat-tile">
+                  <div className="value">{stats.totalResponses}</div>
+                  <div className="label">إجمالي الردود</div>
+                </div>
+                <div className="stat-tile">
+                  <div className="value">{stats.questions.length}</div>
+                  <div className="label">عدد الأسئلة</div>
+                </div>
+              </div>
+
+              {!stats.questions.length ? (
+                <EmptyState
+                  title="لا أسئلة"
+                  body="هذا الاستبيان بلا أسئلة داخلية (ربما رابط خارجي)."
+                />
+              ) : null}
+
+              {stats.questions.map((q) => (
+                <article key={q.questionId} className="survey-stats-question">
+                  <h3 className="survey-stats-question__title">{q.questionText}</h3>
+                  <p className="survey-stats-question__meta">
+                    مجيبون: {q.answeredCount}
+                  </p>
+
+                  {q.optionStats?.length ? (
+                    q.optionStats.map((opt) => (
+                      <div key={opt.option} className="survey-stats-option">
+                        <h4 className="survey-stats-option__title">{opt.option}</h4>
+                        <StatBuckets buckets={opt.buckets} />
+                      </div>
+                    ))
+                  ) : q.buckets.length ? (
+                    <StatBuckets buckets={q.buckets} />
+                  ) : q.questionType === "text" ? (
+                    <p className="survey-stats-question__meta">
+                      إجابات نصية: {q.answeredCount}
+                    </p>
+                  ) : null}
+
+                  {q.textReplies.length ? (
+                    <div className="survey-stats-texts">
+                      <h4 className="survey-stats-option__title">
+                        الردود النصية ({q.textReplies.length})
+                      </h4>
+                      <ul className="survey-stats-texts__list">
+                        {q.textReplies.map((t) => (
+                          <li key={`${t.responseId}-${t.text.slice(0, 12)}`}>
+                            <div className="survey-stats-texts__head">
+                              <strong>{t.beneficiaryName}</strong>
+                              <span className="meta-ltr">{t.nationalId}</span>
+                              <span className="meta-ltr">
+                                {new Date(t.createdAt).toLocaleString("ar-SA")}
+                              </span>
+                            </div>
+                            <p className="survey-stats-texts__body">{t.text}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       {tab === "responses" ? (
         <section className="panel">
           <div className="toolbar toolbar--between">
@@ -924,6 +1077,34 @@ function AttrAnswers({
           <b>{textFor(k)}</b>
           <span>{formatSurveyAnswerDisplay(v)}</span>
         </span>
+      ))}
+    </div>
+  );
+}
+
+function StatBuckets({
+  buckets,
+}: {
+  buckets: Array<{ label: string; count: number; percent: number }>;
+}) {
+  if (!buckets.length) return null;
+  return (
+    <div className="survey-stats-buckets">
+      {buckets.map((b) => (
+        <div key={b.label} className="survey-stats-bucket">
+          <div className="survey-stats-bucket__row">
+            <span>{b.label}</span>
+            <span>
+              {b.count} ({b.percent}%)
+            </span>
+          </div>
+          <div className="survey-stats-bucket__track" aria-hidden>
+            <div
+              className="survey-stats-bucket__fill"
+              style={{ width: `${Math.min(100, Math.max(0, b.percent))}%` }}
+            />
+          </div>
+        </div>
       ))}
     </div>
   );
