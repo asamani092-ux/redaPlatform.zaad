@@ -8,7 +8,11 @@ import {
   computeSurveyStats,
   type SurveyStatsResult,
 } from "@/lib/survey-stats";
-import { buildPrintDocument, escapeHtml } from "@/lib/print-html";
+import {
+  buildStatsReportSectionsHtml,
+  parseStatsViews,
+} from "@/lib/survey-stats-views";
+import { buildPrintDocument } from "@/lib/print-html";
 import { writeAuditLog } from "@/lib/audit";
 
 const MAX_RESPONSES = 10_000;
@@ -105,6 +109,7 @@ async function buildXlsxBuffer(
       "الخيار / القيمة",
       "العدد",
       "النسبة %",
+      "المتوسط",
       "عدد المجيبين",
     ]),
   );
@@ -119,6 +124,7 @@ async function buildXlsxBuffer(
             `${opt.option} → ${b.label}`,
             b.count,
             b.percent,
+            opt.average ?? "",
             opt.answeredCount,
           ]);
           row.eachCell((cell) => styleCell(cell));
@@ -132,6 +138,7 @@ async function buildXlsxBuffer(
           b.label,
           b.count,
           b.percent,
+          q.average ?? "",
           q.answeredCount,
         ]);
         row.eachCell((cell) => styleCell(cell));
@@ -143,6 +150,7 @@ async function buildXlsxBuffer(
         "—",
         q.answeredCount,
         q.answeredCount ? 100 : 0,
+        "",
         q.answeredCount,
       ]);
       row.eachCell((cell) => styleCell(cell));
@@ -174,56 +182,9 @@ async function buildXlsxBuffer(
 function buildStatsPrintHtml(
   exhibitionName: string,
   stats: SurveyStatsResult,
+  viewsParam: string | null,
 ): string {
-  const sections: string[] = [];
-
-  for (const q of stats.questions) {
-    let body = `<p class="muted">مجيبون: ${q.answeredCount}</p>`;
-
-    if (q.optionStats?.length) {
-      body += q.optionStats
-        .map((opt) => {
-          const rows = opt.buckets
-            .map(
-              (b) =>
-                `<tr><td>${escapeHtml(b.label)}</td><td>${b.count}</td><td>${b.percent}%</td></tr>`,
-            )
-            .join("");
-          return `<h3>${escapeHtml(opt.option)}</h3>
-            <table><thead><tr><th>التقييم</th><th>العدد</th><th>النسبة</th></tr></thead>
-            <tbody>${rows || `<tr><td colspan="3">لا بيانات</td></tr>`}</tbody></table>`;
-        })
-        .join("");
-    } else if (q.buckets.length) {
-      const rows = q.buckets
-        .map(
-          (b) =>
-            `<tr><td>${escapeHtml(b.label)}</td><td>${b.count}</td><td>${b.percent}%</td></tr>`,
-        )
-        .join("");
-      body += `<table><thead><tr><th>الإجابة</th><th>العدد</th><th>النسبة</th></tr></thead>
-        <tbody>${rows}</tbody></table>`;
-    }
-
-    if (q.textReplies.length) {
-      const rows = q.textReplies
-        .map(
-          (t) =>
-            `<tr><td>${escapeHtml(t.beneficiaryName)}</td><td class="ltr">${escapeHtml(t.nationalId)}</td><td>${escapeHtml(t.text)}</td><td class="ltr">${escapeHtml(new Date(t.createdAt).toLocaleString("ar-SA"))}</td></tr>`,
-        )
-        .join("");
-      body += `<h3>الردود النصية (${q.textReplies.length})</h3>
-        <table><thead><tr><th>المستفيد</th><th>الهوية</th><th>النص</th><th>التاريخ</th></tr></thead>
-        <tbody>${rows}</tbody></table>`;
-    } else if (q.questionType === "text") {
-      body += `<p>لا ردود نصية.</p>`;
-    }
-
-    sections.push(
-      `<section style="page-break-inside:avoid"><h2>${escapeHtml(q.questionText)}</h2>${body}</section>`,
-    );
-  }
-
+  const views = parseStatsViews(viewsParam);
   return buildPrintDocument({
     title: `إحصائيات: ${stats.surveyTitle}`,
     subtitle: `${exhibitionName} — عدد الردود: ${stats.totalResponses}`,
@@ -232,12 +193,7 @@ function buildStatsPrintHtml(
       { label: "الأسئلة", value: stats.questions.length },
     ],
     sectionsHtml: `
-      <style>
-        .muted { color: #6b6b6b; font-size: 12px; }
-        h3 { font-size: 13px; margin: 12px 0 6px; color: #444; }
-        @media print { section { page-break-inside: avoid; } }
-      </style>
-      ${sections.join("\n") || "<p>لا أسئلة في هذا الاستبيان.</p>"}
+      ${buildStatsReportSectionsHtml(stats, views)}
       <p class="no-print" style="margin-top:12px">
         <button type="button" onclick="window.print()" style="padding:8px 16px;cursor:pointer">طباعة</button>
       </p>`,
@@ -253,6 +209,7 @@ export async function GET(req: NextRequest) {
 
   const surveyId = req.nextUrl.searchParams.get("surveyId");
   const format = (req.nextUrl.searchParams.get("format") ?? "json").toLowerCase();
+  const viewsParam = req.nextUrl.searchParams.get("views");
 
   const loaded = await loadStats(surveyId);
   if ("error" in loaded) {
@@ -286,13 +243,17 @@ export async function GET(req: NextRequest) {
   }
 
   if (format === "pdf") {
-    const html = buildStatsPrintHtml(exhibitionName, stats);
+    const html = buildStatsPrintHtml(exhibitionName, stats, viewsParam);
     await writeAuditLog({
       userId: authz.userId,
       action: "SURVEY_STATS_PRINT",
       entityType: "SurveyResponse",
       entityId: stats.surveyId,
-      meta: { format: "pdf", totalResponses: stats.totalResponses },
+      meta: {
+        format: "pdf",
+        totalResponses: stats.totalResponses,
+        views: viewsParam,
+      },
     });
     return new NextResponse(html, {
       headers: {

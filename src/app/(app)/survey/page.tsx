@@ -25,6 +25,15 @@ import { Chip } from "@/components/ui/Chip";
 import { WhatsAppLogModal } from "@/components/WhatsAppLogModal";
 import { SurveyBroadcastBatchesModal } from "@/components/SurveyBroadcastBatchesModal";
 import type { SurveyStatsResult } from "@/lib/survey-stats";
+import {
+  SurveyStatsPanels,
+  SurveyStatsViewToggles,
+} from "@/components/survey/SurveyStatsViews";
+import {
+  allStatsViews,
+  serializeStatsViews,
+  type SurveyStatsViewId,
+} from "@/lib/survey-stats-views";
 
 type ResponseRow = {
   id: string;
@@ -74,6 +83,9 @@ export default function SurveyPage() {
   const [waLogOpen, setWaLogOpen] = useState(false);
   const [stats, setStats] = useState<SurveyStatsResult | null>(null);
   const [statsBusy, setStatsBusy] = useState(false);
+  const [statsViews, setStatsViews] = useState<Set<SurveyStatsViewId>>(() =>
+    allStatsViews(),
+  );
   const toast = useToast();
 
   const selected = surveys.find((s) => s.id === selectedId) ?? surveys[0] ?? null;
@@ -883,7 +895,7 @@ export default function SurveyPage() {
                 disabled={!selected || statsBusy}
                 onClick={() =>
                   window.open(
-                    `/api/survey/stats?surveyId=${encodeURIComponent(selected?.id ?? "")}&format=pdf`,
+                    `/api/survey/stats?surveyId=${encodeURIComponent(selected?.id ?? "")}&format=pdf&views=${encodeURIComponent(serializeStatsViews(statsViews))}`,
                     "_blank",
                     "noopener,noreferrer",
                   )
@@ -893,6 +905,8 @@ export default function SurveyPage() {
               </button>
             </div>
           </div>
+
+          <SurveyStatsViewToggles views={statsViews} onChange={setStatsViews} />
 
           {statsBusy ? <p className="msg">جاري تحميل الإحصائيات…</p> : null}
 
@@ -904,71 +918,14 @@ export default function SurveyPage() {
           ) : null}
 
           {!statsBusy && selected && stats ? (
-            <div className="survey-stats-stack">
-              <div className="stat-grid">
-                <div className="stat-tile">
-                  <div className="value">{stats.totalResponses}</div>
-                  <div className="label">إجمالي الردود</div>
-                </div>
-                <div className="stat-tile">
-                  <div className="value">{stats.questions.length}</div>
-                  <div className="label">عدد الأسئلة</div>
-                </div>
-              </div>
-
-              {!stats.questions.length ? (
-                <EmptyState
-                  title="لا أسئلة"
-                  body="هذا الاستبيان بلا أسئلة داخلية (ربما رابط خارجي)."
-                />
-              ) : null}
-
-              {stats.questions.map((q) => (
-                <article key={q.questionId} className="survey-stats-question">
-                  <h3 className="survey-stats-question__title">{q.questionText}</h3>
-                  <p className="survey-stats-question__meta">
-                    مجيبون: {q.answeredCount}
-                  </p>
-
-                  {q.optionStats?.length ? (
-                    q.optionStats.map((opt) => (
-                      <div key={opt.option} className="survey-stats-option">
-                        <h4 className="survey-stats-option__title">{opt.option}</h4>
-                        <StatBuckets buckets={opt.buckets} />
-                      </div>
-                    ))
-                  ) : q.buckets.length ? (
-                    <StatBuckets buckets={q.buckets} />
-                  ) : q.questionType === "text" ? (
-                    <p className="survey-stats-question__meta">
-                      إجابات نصية: {q.answeredCount}
-                    </p>
-                  ) : null}
-
-                  {q.textReplies.length ? (
-                    <div className="survey-stats-texts">
-                      <h4 className="survey-stats-option__title">
-                        الردود النصية ({q.textReplies.length})
-                      </h4>
-                      <ul className="survey-stats-texts__list">
-                        {q.textReplies.map((t) => (
-                          <li key={`${t.responseId}-${t.text.slice(0, 12)}`}>
-                            <div className="survey-stats-texts__head">
-                              <strong>{t.beneficiaryName}</strong>
-                              <span className="meta-ltr">{t.nationalId}</span>
-                              <span className="meta-ltr">
-                                {new Date(t.createdAt).toLocaleString("ar-SA")}
-                              </span>
-                            </div>
-                            <p className="survey-stats-texts__body">{t.text}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </article>
-              ))}
-            </div>
+            stats.questions.length ? (
+              <SurveyStatsPanels stats={stats} views={statsViews} />
+            ) : (
+              <EmptyState
+                title="لا أسئلة"
+                body="هذا الاستبيان بلا أسئلة داخلية (ربما رابط خارجي)."
+              />
+            )
           ) : null}
         </section>
       ) : null}
@@ -1077,34 +1034,6 @@ function AttrAnswers({
           <b>{textFor(k)}</b>
           <span>{formatSurveyAnswerDisplay(v)}</span>
         </span>
-      ))}
-    </div>
-  );
-}
-
-function StatBuckets({
-  buckets,
-}: {
-  buckets: Array<{ label: string; count: number; percent: number }>;
-}) {
-  if (!buckets.length) return null;
-  return (
-    <div className="survey-stats-buckets">
-      {buckets.map((b) => (
-        <div key={b.label} className="survey-stats-bucket">
-          <div className="survey-stats-bucket__row">
-            <span>{b.label}</span>
-            <span>
-              {b.count} ({b.percent}%)
-            </span>
-          </div>
-          <div className="survey-stats-bucket__track" aria-hidden>
-            <div
-              className="survey-stats-bucket__fill"
-              style={{ width: `${Math.min(100, Math.max(0, b.percent))}%` }}
-            />
-          </div>
-        </div>
       ))}
     </div>
   );

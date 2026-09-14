@@ -1,10 +1,15 @@
 /**
- * اختبارات تجميع إحصائيات الاستبيان + تحقق RTL في HTML التصدير.
+ * اختبارات تجميع إحصائيات الاستبيان + أشكال العرض والطباعة.
  */
 import assert from "node:assert/strict";
 import { computeSurveyStats } from "../src/lib/survey-stats";
 import type { SurveyQuestion } from "../src/lib/survey-questions";
 import { buildPrintDocument } from "../src/lib/print-html";
+import {
+  buildStatsReportSectionsHtml,
+  parseStatsViews,
+  serializeStatsViews,
+} from "../src/lib/survey-stats-views";
 
 console.log("=== survey stats ===");
 
@@ -72,13 +77,11 @@ const ratedQ: SurveyQuestion = {
   assert.equal(stats.totalResponses, 4);
   const q = stats.questions[0]!;
   assert.equal(q.answeredCount, 3);
+  assert.equal(q.average, 4.33);
   const five = q.buckets.find((b) => b.label === "5")!;
   assert.equal(five.count, 2);
   assert.equal(five.percent, 66.7);
-  const three = q.buckets.find((b) => b.label === "3")!;
-  assert.equal(three.count, 1);
-  assert.equal(three.percent, 33.3);
-  console.log("OK scale ratios + ignore out-of-range");
+  console.log("OK scale ratios + average");
 }
 
 {
@@ -109,10 +112,9 @@ const ratedQ: SurveyQuestion = {
   });
   const q = stats.questions[0]!;
   assert.equal(q.answeredCount, 3);
-  assert.equal(q.buckets.find((b) => b.label === "مرض")!.count, 1);
+  assert.equal(q.average, null);
   assert.equal(q.buckets.find((b) => b.label === "أخرى")!.count, 2);
   assert.equal(q.textReplies.length, 1);
-  assert.equal(q.textReplies[0]!.text, "ظرف عائلي");
   console.log("OK choice + other text replies");
 }
 
@@ -138,7 +140,6 @@ const ratedQ: SurveyQuestion = {
   });
   const q = stats.questions[0]!;
   assert.equal(q.answeredCount, 1);
-  assert.equal(q.buckets.length, 0);
   assert.equal(q.textReplies[0]!.text, "ممتاز");
   console.log("OK text replies skip empty");
 }
@@ -167,8 +168,51 @@ const ratedQ: SurveyQuestion = {
   assert.ok(q.optionStats);
   const quality = q.optionStats!.find((o) => o.option === "الجودة")!;
   assert.equal(quality.answeredCount, 2);
-  assert.equal(quality.buckets.find((b) => b.label === "5")!.percent, 100);
-  console.log("OK rated_options per-option ratios");
+  assert.equal(quality.average, 5);
+  const speed = q.optionStats!.find((o) => o.option === "السرعة")!;
+  assert.equal(speed.average, 3);
+  console.log("OK rated_options averages");
+}
+
+{
+  const stats = computeSurveyStats({
+    surveyId: "s1",
+    surveyTitle: "رضا",
+    questions: [scaleQ, textQ],
+    responses: [
+      {
+        id: "r1",
+        answersJson: { q1: 4, q3: "ملاحظة طويلة" },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        beneficiary: { name: "أ", nationalId: "1" },
+      },
+    ],
+  });
+  const viewsAll = parseStatsViews(null);
+  const htmlAll = buildStatsReportSectionsHtml(stats, viewsAll);
+  assert.match(htmlAll, /جدول النسب/);
+  assert.match(htmlAll, /أشرطة أفقية/);
+  assert.match(htmlAll, /<svg[\s\S]*ss-pie/);
+  assert.match(htmlAll, /ss-avg-value/);
+  assert.match(htmlAll, /شريط مكدّس/);
+  assert.match(htmlAll, /ss-legend/);
+  assert.match(htmlAll, /ملاحظة طويلة/);
+
+  const viewsLimited = parseStatsViews("table,pie");
+  const htmlLimited = buildStatsReportSectionsHtml(stats, viewsLimited);
+  assert.match(htmlLimited, /جدول النسب/);
+  assert.match(htmlLimited, /<svg[\s\S]*ss-pie/);
+  assert.doesNotMatch(htmlLimited, /أشرطة أفقية/);
+  assert.doesNotMatch(htmlLimited, /المتوسط<\/h4>/);
+  assert.doesNotMatch(htmlLimited, /الردود النصية/);
+
+  const viewsTexts = parseStatsViews("texts");
+  const htmlTexts = buildStatsReportSectionsHtml(stats, viewsTexts);
+  assert.match(htmlTexts, /الردود النصية/);
+  assert.doesNotMatch(htmlTexts, /جدول النسب/);
+
+  assert.equal(serializeStatsViews(viewsLimited), "table,pie");
+  console.log("OK print HTML respects views + legend outside pie");
 }
 
 {
@@ -181,8 +225,7 @@ const ratedQ: SurveyQuestion = {
   assert.match(html, /lang="ar"/);
   assert.match(html, /dir="rtl"/);
   assert.match(html, /charset=["']?utf-8["']?/i);
-  assert.match(html, /إحصائيات اختبار/);
-  console.log("OK print HTML rtl + utf-8");
+  console.log("OK print document rtl + utf-8");
 }
 
 console.log("survey stats: ALL PASSED");

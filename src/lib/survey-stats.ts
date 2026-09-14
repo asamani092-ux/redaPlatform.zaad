@@ -23,6 +23,8 @@ export type SurveyOptionStats = {
   option: string;
   answeredCount: number;
   buckets: SurveyStatBucket[];
+  /** متوسط التقييم 1–5 لهذا الخيار */
+  average: number | null;
 };
 
 export type SurveyQuestionStats = {
@@ -33,6 +35,8 @@ export type SurveyQuestionStats = {
   buckets: SurveyStatBucket[];
   optionStats?: SurveyOptionStats[];
   textReplies: SurveyTextReply[];
+  /** متوسط المقياس أو null إن لم ينطبق / لا مجيبين */
+  average: number | null;
 };
 
 export type SurveyStatsResult = {
@@ -52,6 +56,24 @@ export type SurveyStatsResponseRow = {
 function roundPercent(count: number, total: number): number {
   if (total <= 0) return 0;
   return Math.round((count / total) * 1000) / 10;
+}
+
+/** متوسط مرجح من الدلاء ذات التسميات الرقمية — O(k). */
+export function averageFromBuckets(
+  buckets: SurveyStatBucket[],
+  answeredCount: number,
+): number | null {
+  if (answeredCount <= 0) return null;
+  let sum = 0;
+  let used = 0;
+  for (const b of buckets) {
+    const n = Number(b.label);
+    if (!Number.isFinite(n) || b.count <= 0) continue;
+    sum += n * b.count;
+    used += b.count;
+  }
+  if (used <= 0) return null;
+  return Math.round((sum / used) * 100) / 100;
 }
 
 function bucketsFromCounts(
@@ -143,13 +165,15 @@ function aggregateScale(
     answeredCount++;
   }
 
+  const buckets = bucketsFromCounts(labels, counts, answeredCount);
   return {
     questionId: q.id,
     questionText: q.text,
     questionType: "scale",
     answeredCount,
-    buckets: bucketsFromCounts(labels, counts, answeredCount),
+    buckets,
     textReplies: [],
+    average: averageFromBuckets(buckets, answeredCount),
   };
 }
 
@@ -194,6 +218,7 @@ function aggregateChoice(
     answeredCount,
     buckets: bucketsFromCounts(labels, counts, answeredCount),
     textReplies,
+    average: null,
   };
 }
 
@@ -222,10 +247,12 @@ function aggregateRatedOptions(
       counts.set(key, (counts.get(key) ?? 0) + 1);
       answeredCount++;
     }
+    const buckets = bucketsFromCounts(ratingLabels, counts, answeredCount);
     return {
       option,
       answeredCount,
-      buckets: bucketsFromCounts(ratingLabels, counts, answeredCount),
+      buckets,
+      average: averageFromBuckets(buckets, answeredCount),
     };
   });
 
@@ -242,6 +269,7 @@ function aggregateRatedOptions(
     buckets: [],
     optionStats,
     textReplies: [],
+    average: null,
   };
 }
 
@@ -265,5 +293,6 @@ function aggregateText(
     answeredCount: textReplies.length,
     buckets: [],
     textReplies,
+    average: null,
   };
 }
