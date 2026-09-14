@@ -2103,3 +2103,85 @@ textarea.input-field {
     min-height: 48px;
   }
 }
+
+/* إحصائيات الاستبيان */
+.survey-stats-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+.survey-stats-question {
+  border-top: 1px solid var(--border, #e3dcd4);
+  padding-top: var(--space-3);
+}
+.survey-stats-question__title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--tmkeen-primary, #8b1538);
+}
+.survey-stats-question__meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted, #6b6b6b);
+}
+.survey-stats-option {
+  margin-bottom: var(--space-3);
+}
+.survey-stats-option__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+.survey-stats-buckets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.survey-stats-bucket__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+}
+.survey-stats-bucket__track {
+  height: 8px;
+  border-radius: 999px;
+  background: #f0ebe6;
+  overflow: hidden;
+}
+.survey-stats-bucket__fill {
+  height: 100%;
+  background: var(--tmkeen-primary, #8b1538);
+  border-radius: 999px;
+}
+.survey-stats-texts {
+  margin-top: var(--space-3);
+}
+.survey-stats-texts__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.survey-stats-texts__list > li {
+  border: 1px solid var(--border, #e3dcd4);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: #fbf9f6;
+}
+.survey-stats-texts__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+.survey-stats-texts__body {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
