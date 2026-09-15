@@ -23,7 +23,7 @@ const surveyQuestionSchema = z.object({
 const surveyDefSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
-  audience: z.enum(["attended_only", "received", "invited_absent"]),
+  audience: z.enum(["attended_only", "received", "invited_absent", "association_zad"]),
   questions: z.array(surveyQuestionSchema).default([]),
   externalUrl: z.string().nullable().optional(),
   autoSendOnDispense: z.boolean().optional(),

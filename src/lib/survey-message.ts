@@ -1,3 +1,4 @@
+import type { SurveyAudience } from "@/lib/survey-questions";
 /**
  * نص/متغيرات رسالة الاستبيان لواتساب.
  * Time: O(1) — Space: O(1).
@@ -72,4 +73,53 @@ export function surveyTemplateParams(
     sanitizeWaTemplateParam(exhibitionName || "المعرض"),
     sanitizeWaTemplateParam(resolveSurveyUrl(surveyUrl)),
   ];
+}
+
+
+/** متغيرات قالب استبيان جمعية الزاد: survey_url فقط — O(1) */
+export function surveyZadTemplateParams(
+  surveyUrl: string | null | undefined,
+): string[] {
+  return [sanitizeWaTemplateParam(resolveSurveyUrl(surveyUrl))];
+}
+
+export function isAssociationZadAudience(audience: SurveyAudience): boolean {
+  return audience === "association_zad";
+}
+
+/**
+ * خيارات إرسال واتساب حسب جمهور الاستبيان.
+ * الزاد: قالب خاص + متغير الرابط فقط وبلا هيدر.
+ * غيره: القالب العام بثلاثة متغيرات + هيدر.
+ * Time O(1) — Space O(1).
+ */
+export function resolveSurveyWhatsAppOptions(input: {
+  audience: SurveyAudience;
+  name: string;
+  exhibitionName: string;
+  surveyUrl: string;
+  surveyZadTemplateId: string | null;
+  surveyHeaderImageUrl: string | null;
+}): {
+  templateParams: string[];
+  mediaUrl: string | undefined;
+  templateIdOverride: string | null | undefined;
+} {
+  if (isAssociationZadAudience(input.audience)) {
+    return {
+      templateParams: surveyZadTemplateParams(input.surveyUrl),
+      mediaUrl: undefined,
+      templateIdOverride: input.surveyZadTemplateId,
+    };
+  }
+  return {
+    templateParams: surveyTemplateParams(
+      input.name,
+      input.exhibitionName,
+      input.surveyUrl,
+    ),
+    mediaUrl:
+      resolveSurveyHeaderImageUrl(input.surveyHeaderImageUrl) || undefined,
+    templateIdOverride: undefined,
+  };
 }

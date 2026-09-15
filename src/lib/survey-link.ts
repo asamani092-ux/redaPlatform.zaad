@@ -50,53 +50,40 @@ function fromB64url(input: string): Buffer | null {
   }
 }
 
-/** وضع التسليم: رابط خارجي أو أسئلة داخلية — لا جمع. O(n) للأسئلة. */
+/**
+ * وضع التسليم: الرابط الخارجي أولاً إن وُجد، وإلا الأسئلة الداخلية.
+ * يُسمح بالجمع؛ الأولوية للخارجي عند الإرسال. O(n) للأسئلة.
+ */
 export function resolveSurveyMode(
   survey: Pick<SurveyDefinition, "questions" | "externalUrl" | "active">,
 ): SurveyDeliveryMode {
   const hasExternal = Boolean(survey.externalUrl?.trim());
   const hasQuestions = survey.questions.some((q) => q.text.trim());
-  if (hasExternal && hasQuestions) return "invalid";
   if (hasExternal) return "external";
   if (hasQuestions) return "internal";
   return "invalid";
 }
 
-/** تحقق حفظ الاستبيان — O(n). */
+/** تحقق حفظ الاستبيان — يرفض فقط عند التفعيل بلا رابط ولا أسئلة. O(n). */
 export function validateSurveyExclusivity(
   survey: Pick<SurveyDefinition, "questions" | "externalUrl" | "active" | "title">,
 ): string | null {
   const mode = resolveSurveyMode(survey);
-  if (mode === "invalid") {
-    const hasExternal = Boolean(survey.externalUrl?.trim());
-    const hasQuestions = survey.questions.some((q) => q.text.trim());
-    if (hasExternal && hasQuestions) {
-      return `«${survey.title}»: لا يمكن الجمع بين الرابط الخارجي والأسئلة الداخلية`;
-    }
-    if (survey.active) {
-      return `«${survey.title}»: أضف أسئلة داخلية أو رابطاً خارجياً`;
-    }
+  if (mode === "invalid" && survey.active) {
+    return `«${survey.title}»: أضف أسئلة داخلية أو رابطاً خارجياً`;
   }
   return null;
 }
 
-/** فرض الحصرية قبل الحفظ: الخارجي يصفّر الأسئلة والعكس. O(n). */
+/** تطبيع قبل الحفظ: يبقي الرابط والأسئلة معاً دون تصفير. O(n). */
 export function enforceSurveyExclusivity(
   survey: SurveyDefinition,
 ): SurveyDefinition {
-  const hasExternal = Boolean(survey.externalUrl?.trim());
-  const hasQuestions = survey.questions.some((q) => q.text.trim());
-  if (hasExternal && !hasQuestions) {
-    return { ...survey, externalUrl: survey.externalUrl!.trim(), questions: [] };
-  }
-  if (hasQuestions && !hasExternal) {
-    return {
-      ...survey,
-      externalUrl: null,
-      questions: survey.questions.filter((q) => q.text.trim()),
-    };
-  }
-  return survey;
+  return {
+    ...survey,
+    externalUrl: survey.externalUrl?.trim() || null,
+    questions: survey.questions.filter((q) => q.text.trim()),
+  };
 }
 
 /** توقيع رمز نموذج المستفيد — O(1). */
@@ -157,7 +144,7 @@ export function resolveSurveyDelivery(input: {
     return {
       ok: false,
       mode: "invalid",
-      error: "الاستبيان يحتاج أسئلة داخلية أو رابطاً خارجياً — دون جمعهما",
+      error: "الاستبيان يحتاج أسئلة داخلية أو رابطاً خارجياً",
     };
   }
   if (!input.survey.active) {
