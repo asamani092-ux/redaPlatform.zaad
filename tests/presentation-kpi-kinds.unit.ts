@@ -198,9 +198,21 @@ console.log("=== presentation kpi kinds ===");
     storeDispensed: 8,
     storeRemaining: 12,
     topItems: [
-      { skuCode: "A", quantity: 40, attributes: { type: "قميص" } },
-      { skuCode: "B", quantity: 30, attributes: { type: "ثوب" } },
-      { skuCode: "C", quantity: 20, attributes: { type: "حذاء" } },
+      {
+        inventoryItemId: "A",
+        quantity: 40,
+        attributes: { type: "قميص" },
+      },
+      {
+        inventoryItemId: "B",
+        quantity: 30,
+        attributes: { type: "ثوب" },
+      },
+      {
+        inventoryItemId: "C",
+        quantity: 20,
+        attributes: { type: "حذاء" },
+      },
     ],
   });
 
