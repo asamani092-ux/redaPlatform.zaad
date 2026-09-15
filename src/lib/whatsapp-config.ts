@@ -63,7 +63,7 @@ export async function getWhatsAppConfig(): Promise<WhatsAppConfig> {
     process.env.WHATSAPP_SENDER?.trim() ||
     null;
 
-  // Coolify/env يتقدم إن وُجد؛ وإلا إعدادات الواجهة — O(1)
+  // Coolify/env يتقدم للاتصال؛ معرّفات القوالب: قاعدة البيانات أولاً ثم env — O(1)
   const value: WhatsAppConfig = {
     provider: (
       envProvider ||
@@ -75,6 +75,10 @@ export async function getWhatsAppConfig(): Promise<WhatsAppConfig> {
     sender: envSender || row?.whatsappSender || null,
     source: envProvider || envUrl || envToken ? "env" : row ? "database" : "env",
     ...templates,
+    surveyTemplateId:
+      row?.whatsappSurveyTemplateId?.trim() || templates.surveyTemplateId,
+    surveyZadTemplateId:
+      row?.whatsappSurveyZadTemplateId?.trim() || templates.surveyZadTemplateId,
   };
 
   if (value.provider === "zad" && !value.apiUrl) {

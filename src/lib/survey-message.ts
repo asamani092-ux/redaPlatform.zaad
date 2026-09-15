@@ -109,7 +109,7 @@ export function resolveSurveyWhatsAppOptions(input: {
     const zadTpl = input.surveyZadTemplateId?.trim() || null;
     if (!zadTpl) {
       throw new Error(
-        "قالب استبيان جمعية الزاد غير مضبوط — عيّن WHATSAPP_SURVEY_ZAD_TEMPLATE_ID في بيئة التشغيل",
+        "قالب استبيان جمعية الزاد غير مضبوط — احفظ معرّفه من الإعدادات ← ربط واتساب أو عيّن WHATSAPP_SURVEY_ZAD_TEMPLATE_ID",
       );
     }
     return {

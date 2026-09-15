@@ -376,6 +376,10 @@ model AppConfig {
   whatsappApiToken  String?
   /// رقم المرسل المسجل لدى المزوّد — للعرض والتوثيق
   whatsappSender    String?
+  /// معرّف قالب الاستبيان العام (ZAD) — يتجاوز env إن وُجد
+  whatsappSurveyTemplateId    String?
+  /// معرّف قالب استبيان مستفيدي جمعية الزاد (متغير الرابط فقط)
+  whatsappSurveyZadTemplateId String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }

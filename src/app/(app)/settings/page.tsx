@@ -54,6 +54,8 @@ export default function SettingsPage() {
     tokenMask: "",
     hasToken: false,
     sender: "",
+    surveyTemplateId: "",
+    surveyZadTemplateId: "",
   });
   const [waMsg, setWaMsg] = useState("");
   const [waMsgError, setWaMsgError] = useState(false);
@@ -74,6 +76,8 @@ export default function SettingsPage() {
             tokenMask: j.tokenMask ?? "",
             hasToken: !!j.hasToken,
             sender: j.sender ?? "",
+            surveyTemplateId: j.surveyTemplateId ?? "",
+            surveyZadTemplateId: j.surveyZadTemplateId ?? "",
           }));
         }
       })
@@ -191,6 +195,8 @@ export default function SettingsPage() {
         apiUrl: wa.apiUrl,
         apiToken: wa.token || null,
         sender: wa.sender,
+        surveyTemplateId: wa.surveyTemplateId,
+        surveyZadTemplateId: wa.surveyZadTemplateId,
       }),
     });
     const json = await res.json();
@@ -204,6 +210,8 @@ export default function SettingsPage() {
       token: "",
       tokenMask: json.tokenMask ?? "",
       hasToken: !!json.hasToken,
+      surveyTemplateId: json.surveyTemplateId ?? w.surveyTemplateId,
+      surveyZadTemplateId: json.surveyZadTemplateId ?? w.surveyZadTemplateId,
     }));
     setWaMsg("تم حفظ إعداد واتساب");
     toast.push({ title: "تم حفظ إعداد واتساب", tone: "success" });
@@ -685,7 +693,7 @@ export default function SettingsPage() {
             </select>
             {wa.provider === "zad" ? (
               <p className="field-hint" style={{ marginTop: 8 }}>
-                معرّفات القوالب من متغيرات البيئة: INVITE / THANKS / SURVEY. التوكن = apiKey.
+                معرّفات الدعوة/الشكر من البيئة؛ قوالب الاستبيان يمكن ضبطها أدناه أو عبر البيئة. التوكن = apiKey.
               </p>
             ) : null}
           </div>
@@ -727,6 +735,37 @@ export default function SettingsPage() {
               onChange={(e) => setWa((w) => ({ ...w, token: e.target.value }))}
             />
           </div>
+          {wa.provider === "zad" ? (
+            <>
+              <div className="full">
+                <label className="label-field">معرّف قالب الاستبيان العام</label>
+                <input
+                  className="input-field"
+                  dir="ltr"
+                  value={wa.surveyTemplateId}
+                  onChange={(e) =>
+                    setWa((w) => ({ ...w, surveyTemplateId: e.target.value }))
+                  }
+                  placeholder="WHATSAPP_SURVEY_TEMPLATE_ID"
+                />
+              </div>
+              <div className="full">
+                <label className="label-field">معرّف قالب استبيان جمعية الزاد</label>
+                <input
+                  className="input-field"
+                  dir="ltr"
+                  value={wa.surveyZadTemplateId}
+                  onChange={(e) =>
+                    setWa((w) => ({ ...w, surveyZadTemplateId: e.target.value }))
+                  }
+                  placeholder="معرّف القالب بمتغير الرابط فقط"
+                />
+                <p className="field-hint" style={{ marginTop: 8 }}>
+                  يُستخدم عند جمهور «مستفيدو جمعية الزاد». احفظه هنا أو عبر متغير البيئة.
+                </p>
+              </div>
+            </>
+          ) : null}
         </div>
         <div className="form-actions">
           <button type="button" className="btn-primary" disabled={waBusy} onClick={saveWhatsApp}>
