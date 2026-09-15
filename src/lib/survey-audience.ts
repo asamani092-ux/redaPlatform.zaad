@@ -5,6 +5,7 @@ import {
 } from "@/generated/prisma/enums";
 import {
   ASSOCIATION_ZAD_NAME,
+  isZadAssociationLabel,
   type SurveyAudience,
 } from "@/lib/survey-questions";
 export {
@@ -62,8 +63,27 @@ export async function resolveSurveyAudience(
 
   if (audience === "association_zad") {
     void exhibitionId; // جمهور عام لكل مستفيدي الجمعية — غير مقيّد بالمعرض
+    // يطابق associationId (خيار القائمة) وassociationOther (نص حر عند الاستيراد)
+    const zadOptions = await prisma.associationOption.findMany({
+      where: {
+        OR: [
+          { name: ASSOCIATION_ZAD_NAME },
+          { name: { contains: "الزاد" } },
+        ],
+      },
+      select: { id: true, name: true },
+    });
+    const zadIds = zadOptions
+      .filter((o) => isZadAssociationLabel(o.name))
+      .map((o) => o.id);
     const rows = await prisma.beneficiary.findMany({
-      where: { association: { name: ASSOCIATION_ZAD_NAME } },
+      where: {
+        OR: [
+          ...(zadIds.length ? [{ associationId: { in: zadIds } }] : []),
+          { associationOther: ASSOCIATION_ZAD_NAME },
+          { associationOther: { contains: "الزاد" } },
+        ],
+      },
       select,
     });
     return dedupe(rows);

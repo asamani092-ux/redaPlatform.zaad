@@ -57,6 +57,19 @@ export const SURVEY_QUESTION_TYPE_OPTIONS: Array<{
 /** اسم خيار جمعية الزاد في AssociationOption.name */
 export const ASSOCIATION_ZAD_NAME = "جمعية الزاد";
 
+/**
+ * هل تسمية الجمعية تشير لجمعية الزاد؟
+ * يشمل الاسم الرسمي والنصوص الحرة التي تحتوي «الزاد».
+ * Time O(len) — Space O(1).
+ */
+export function isZadAssociationLabel(raw: string | null | undefined): boolean {
+  const s = (raw ?? "").replace(/\s+/g, " ").trim();
+  if (!s) return false;
+  if (s === ASSOCIATION_ZAD_NAME) return true;
+  if (s.includes("غير الزاد") || s.includes("بدون الزاد")) return false;
+  return s.includes("الزاد");
+}
+
 export type SurveyAudience =
   | "attended_only"
   | "received"

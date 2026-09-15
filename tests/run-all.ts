@@ -41,6 +41,7 @@ run("D0 daily reports (unit)", "npx", ["tsx", "tests/daily-report.unit.ts"]);
 run("D0 report extended metrics (unit)", "npx", ["tsx", "tests/report-extended-metrics.unit.ts"]);
 run("D0 presentation kpi kinds (unit)", "npx", ["tsx", "tests/presentation-kpi-kinds.unit.ts"]);
 run("D0 survey delivery (unit)", "npx", ["tsx", "tests/survey-delivery.unit.ts"]);
+run("D0 survey zad audience (unit)", "npx", ["tsx", "tests/survey-zad-audience.unit.ts"]);
 run("D0 survey question types (unit)", "npx", ["tsx", "tests/survey-question-types.unit.ts"]);
 run("D0 survey settings schema (unit)", "npx", ["tsx", "tests/survey-settings-schema.unit.ts"]);
 run("D0 survey wa header (unit)", "npx", ["tsx", "tests/survey-wa-header.unit.ts"]);
