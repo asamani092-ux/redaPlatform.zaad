@@ -54,7 +54,14 @@ export const SURVEY_QUESTION_TYPE_OPTIONS: Array<{
 ];
 
 /** فئة المستفيدين للإرسال — يحدد من يستلم رابط الاستبيان */
-export type SurveyAudience = "attended_only" | "received" | "invited_absent";
+/** اسم خيار جمعية الزاد في AssociationOption.name */
+export const ASSOCIATION_ZAD_NAME = "جمعية الزاد";
+
+export type SurveyAudience =
+  | "attended_only"
+  | "received"
+  | "invited_absent"
+  | "association_zad";
 
 export const SURVEY_AUDIENCE_OPTIONS: Array<{
   id: SurveyAudience;
@@ -75,6 +82,11 @@ export const SURVEY_AUDIENCE_OPTIONS: Array<{
     id: "invited_absent",
     label: "دُعي ولم يحضر",
     hint: "مدعو ولم يُسجَّل حضوره — مناسب لأسباب عدم الحضور",
+  },
+  {
+    id: "association_zad",
+    label: "مستفيدو جمعية الزاد",
+    hint: "كل مستفيد مرتبط بجمعية الزاد — نفس مسار الدفعات الحالي",
   },
 ];
 
@@ -296,7 +308,12 @@ export function formatSurveyAnswerDisplay(v: unknown): string {
 }
 
 function asAudience(raw: unknown): SurveyAudience {
-  if (raw === "attended_only" || raw === "invited_absent" || raw === "received") {
+  if (
+    raw === "attended_only" ||
+    raw === "invited_absent" ||
+    raw === "received" ||
+    raw === "association_zad"
+  ) {
     return raw;
   }
   if (raw === "attended") return "attended_only";
@@ -389,14 +406,12 @@ export function serializeSurveyCatalog(catalog: SurveyCatalog): SurveyCatalog {
     surveys: catalog.surveys.map((s) => {
       const externalUrl = s.externalUrl?.trim() || null;
       const questions = s.questions.filter((q) => q.text.trim());
-      // حصرية: رابط خارجي أو أسئلة داخلية — لا جمع
-      const exclusiveQuestions = externalUrl ? [] : questions;
-      const exclusiveUrl = exclusiveQuestions.length ? null : externalUrl;
+      // يُسمح بالجمع: الخارجي له الأولوية عند الإرسال، والأسئلة تُستخدم عند غيابه
       return {
         ...s,
         title: s.title.trim() || "استبيان",
-        questions: exclusiveQuestions,
-        externalUrl: exclusiveUrl,
+        questions,
+        externalUrl,
         autoSendOnDispense:
           s.audience === "received" ? s.autoSendOnDispense : false,
       };

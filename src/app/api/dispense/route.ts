@@ -17,7 +17,7 @@ import {
   parseSurveyCatalog,
   parseSurveyConfig,
 } from "@/lib/survey-questions";
-import { buildSurveyMessage, resolveSurveyHeaderImageUrl, surveyTemplateParams } from "@/lib/survey-message";
+import { buildSurveyMessage, resolveSurveyWhatsAppOptions } from "@/lib/survey-message";
 import { resolveSurveyDelivery } from "@/lib/survey-link";
 import { appOrigin } from "@/lib/app-url";
 import { priorDispenseStats } from "@/lib/report-counts";
@@ -390,8 +390,6 @@ export async function POST(req: NextRequest) {
         const errors: string[] = [];
         let lastStatus: string | null = null;
         const wa = await getWhatsAppConfig();
-        const surveyHeaderUrl =
-          resolveSurveyHeaderImageUrl(wa.surveyHeaderImageUrl) || undefined;
         for (const survey of toSend) {
           const delivery = resolveSurveyDelivery({
             survey,
@@ -404,6 +402,14 @@ export async function POST(req: NextRequest) {
             lastStatus = "FAILED";
             continue;
           }
+          const waOpts = resolveSurveyWhatsAppOptions({
+            audience: survey.audience,
+            name: order.beneficiary.name,
+            exhibitionName: exhibition.name,
+            surveyUrl: delivery.url,
+            surveyZadTemplateId: wa.surveyZadTemplateId,
+            surveyHeaderImageUrl: wa.surveyHeaderImageUrl,
+          });
           const surveyMsg = await sendWhatsAppMessage({
             exhibitionId: exhibition.id,
             beneficiaryId: order.beneficiaryId,
@@ -416,12 +422,9 @@ export async function POST(req: NextRequest) {
             ),
             type: OutboundMessageType.SURVEY,
             createdById: authz.userId,
-            mediaUrl: surveyHeaderUrl,
-            templateParams: surveyTemplateParams(
-              order.beneficiary.name,
-              exhibition.name,
-              delivery.url,
-            ),
+            mediaUrl: waOpts.mediaUrl,
+            templateParams: waOpts.templateParams,
+            templateIdOverride: waOpts.templateIdOverride,
             surveyId: survey.id,
           });
           lastStatus = surveyMsg.status;

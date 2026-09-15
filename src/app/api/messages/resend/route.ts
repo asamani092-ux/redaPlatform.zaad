@@ -9,7 +9,7 @@ import { sendInviteWhatsApp } from "@/lib/invite-whatsapp";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { OutboundMessageType } from "@/generated/prisma/enums";
 import { findSurvey, parseSurveyCatalog } from "@/lib/survey-questions";
-import { buildSurveyMessage, resolveSurveyHeaderImageUrl, surveyTemplateParams } from "@/lib/survey-message";
+import { buildSurveyMessage, resolveSurveyWhatsAppOptions } from "@/lib/survey-message";
 import { resolveSurveyDelivery } from "@/lib/survey-link";
 import { appOrigin } from "@/lib/app-url";
 import { isValidSaudiMobile, MOBILE_ERROR, normalizeMobile } from "@/lib/mobile";
@@ -177,6 +177,14 @@ export async function POST(req: NextRequest) {
   }
 
   const wa = await getWhatsAppConfig();
+  const waOpts = resolveSurveyWhatsAppOptions({
+    audience: survey.audience,
+    name: beneficiary.name,
+    exhibitionName: exhibition.name,
+    surveyUrl: delivery.url,
+    surveyZadTemplateId: wa.surveyZadTemplateId,
+    surveyHeaderImageUrl: wa.surveyHeaderImageUrl,
+  });
   const msg = await sendWhatsAppMessage({
     exhibitionId: exhibition.id,
     beneficiaryId: beneficiary.id,
@@ -189,13 +197,9 @@ export async function POST(req: NextRequest) {
     ),
     type: OutboundMessageType.SURVEY,
     createdById: authz.userId,
-    mediaUrl:
-      resolveSurveyHeaderImageUrl(wa.surveyHeaderImageUrl) || undefined,
-    templateParams: surveyTemplateParams(
-      beneficiary.name,
-      exhibition.name,
-      delivery.url,
-    ),
+    mediaUrl: waOpts.mediaUrl,
+    templateParams: waOpts.templateParams,
+    templateIdOverride: waOpts.templateIdOverride,
     surveyId: survey.id,
   });
 

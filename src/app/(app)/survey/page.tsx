@@ -155,22 +155,14 @@ export default function SurveyPage() {
     setSurveys((list) =>
       list.map((s) => {
         if (s.id !== selected.id) return s;
-        let next: SurveyDefinition = { ...s, ...patch };
-        const url = (patch.externalUrl !== undefined ? patch.externalUrl : next.externalUrl)?.trim() || null;
-        const questions = patch.questions !== undefined ? patch.questions : next.questions;
-        const hasUrl = Boolean(url);
-        const hasQuestions = questions.some((q) => q.text.trim());
-        if (hasUrl && hasQuestions) {
-          // آخر تعديل يفوز: إن مُرّر رابط صُفّرت الأسئلة، وإن مُرّرت أسئلة صُفّر الرابط
-          if (patch.externalUrl !== undefined && hasUrl) {
-            next = { ...next, externalUrl: url, questions: [] };
-          } else if (patch.questions !== undefined) {
-            next = { ...next, questions, externalUrl: null };
-          }
-        } else {
-          next = { ...next, externalUrl: url, questions };
-        }
-        return next;
+        const next: SurveyDefinition = { ...s, ...patch };
+        const url =
+          (patch.externalUrl !== undefined ? patch.externalUrl : next.externalUrl)?.trim() ||
+          null;
+        const questions =
+          patch.questions !== undefined ? patch.questions : next.questions;
+        // يُسمح بالجمع: الخارجي له الأولوية عند الإرسال
+        return { ...next, externalUrl: url, questions };
       }),
     );
   }
@@ -449,20 +441,13 @@ export default function SurveyPage() {
                     dir="ltr"
                     placeholder="https://forms.gle/..."
                     value={selected.externalUrl ?? ""}
-                    disabled={selected.questions.some((q) => q.text.trim())}
                     onChange={(e) =>
                       patchSelected({ externalUrl: e.target.value || null })
                     }
                   />
-                  {selected.questions.some((q) => q.text.trim()) ? (
-                    <p className="page-header__desc">
-                      معطّل لأن الاستبيان يحتوي أسئلة داخلية — احذف الأسئلة لاستخدام رابط خارجي.
-                    </p>
-                  ) : (
-                    <p className="page-header__desc">
-                      إن وُضع رابط خارجي تُرسله الرسالة مباشرة ولا تُحفظ الردود في المنصة.
-                    </p>
-                  )}
+                  <p className="page-header__desc">
+                    إن وُجد رابط خارجي فهو الأولوية عند الإرسال؛ وإلا يُنشأ رابط فريد لكل مستفيد من الأسئلة الداخلية.
+                  </p>
                 </div>
                 {selected.audience === "received" ? (
                   <div className="full">
@@ -762,8 +747,8 @@ export default function SurveyPage() {
                     title="لا أسئلة بعد"
                     body={
                       selected.externalUrl?.trim()
-                        ? "هذا الاستبيان على وضع الرابط الخارجي — احذف الرابط لإضافة أسئلة داخلية."
-                        : "أضف أسئلة داخلية أو ضع رابط نموذج خارجي (لا يمكن الجمع)."
+                        ? "يمكنك إضافة أسئلة داخلية مع الإبقاء على الرابط الخارجي (الأولوية للرابط عند الإرسال)."
+                        : "أضف أسئلة داخلية و/أو رابطاً خارجياً — الخارجي له الأولوية عند الإرسال."
                     }
                   />
                 ) : null}
@@ -842,7 +827,6 @@ export default function SurveyPage() {
                   type="button"
                   className="btn-secondary"
                   onClick={addQuestion}
-                  disabled={Boolean(selected.externalUrl?.trim())}
                 >
                   إضافة سؤال
                 </button>

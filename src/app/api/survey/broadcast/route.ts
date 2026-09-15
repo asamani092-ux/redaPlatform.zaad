@@ -19,8 +19,7 @@ import {
 } from "@/lib/survey-audience";
 import {
   buildSurveyMessage,
-  resolveSurveyHeaderImageUrl,
-  surveyTemplateParams,
+  resolveSurveyWhatsAppOptions,
 } from "@/lib/survey-message";
 import { resolveSurveyDelivery } from "@/lib/survey-link";
 import { appOrigin } from "@/lib/app-url";
@@ -34,7 +33,7 @@ const postSchema = z.object({
   includePreviouslySent: z.boolean().optional(),
   /** توافق خلفي: إن وُجد يتجاهل فئة مستفيدي الاستبيان */
   audience: z
-    .enum(["attended", "received", "attended_only", "invited_absent"])
+    .enum(["attended", "received", "attended_only", "invited_absent", "association_zad"])
     .optional(),
 });
 
@@ -48,6 +47,7 @@ function resolveAudienceFromBody(
     audience = "attended_only";
   }
   if (override === "invited_absent") audience = "invited_absent";
+  if (override === "association_zad") audience = "association_zad";
   return audience;
 }
 
@@ -196,8 +196,6 @@ export async function POST(req: NextRequest) {
   }> = [];
 
   const wa = await getWhatsAppConfig();
-  const surveyHeaderUrl =
-    resolveSurveyHeaderImageUrl(wa.surveyHeaderImageUrl) || undefined;
 
   for (let i = 0; i < batch.length; i++) {
     const b = batch[i]!;
@@ -225,6 +223,14 @@ export async function POST(req: NextRequest) {
           reason: delivery.error,
         });
       } else {
+        const waOpts = resolveSurveyWhatsAppOptions({
+          audience: survey.audience,
+          name: b.name,
+          exhibitionName: exhibition.name,
+          surveyUrl: delivery.url,
+          surveyZadTemplateId: wa.surveyZadTemplateId,
+          surveyHeaderImageUrl: wa.surveyHeaderImageUrl,
+        });
         const msg = await sendWhatsAppMessage({
           exhibitionId: exhibition.id,
           beneficiaryId: b.id,
@@ -237,12 +243,9 @@ export async function POST(req: NextRequest) {
           ),
           type: OutboundMessageType.SURVEY,
           createdById: authz.userId,
-          mediaUrl: surveyHeaderUrl,
-          templateParams: surveyTemplateParams(
-            b.name,
-            exhibition.name,
-            delivery.url,
-          ),
+          mediaUrl: waOpts.mediaUrl,
+          templateParams: waOpts.templateParams,
+          templateIdOverride: waOpts.templateIdOverride,
           surveyId: survey.id,
         });
         if (msg.status === "FAILED") {

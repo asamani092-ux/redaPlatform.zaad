@@ -3,13 +3,18 @@ import {
   OutboundMessageStatus,
   OutboundMessageType,
 } from "@/generated/prisma/enums";
-import type { SurveyAudience } from "@/lib/survey-questions";
+import {
+  ASSOCIATION_ZAD_NAME,
+  type SurveyAudience,
+} from "@/lib/survey-questions";
 export {
   SURVEY_BROADCAST_BATCH_SIZE,
   buildSurveyBroadcastBatches,
   sliceSurveyBroadcastBatch,
   type SurveyBroadcastBatch,
 } from "@/lib/survey-broadcast-batches";
+
+/** اسم خيار الجمعية لمستفيدي الزاد — ثابت للمطابقة مع البذرة */
 
 export type AudienceBeneficiary = {
   id: string;
@@ -53,6 +58,15 @@ export async function resolveSurveyAudience(
         .filter((a) => !receivedSet.has(a.beneficiaryId))
         .map((a) => a.beneficiary),
     );
+  }
+
+  if (audience === "association_zad") {
+    void exhibitionId; // جمهور عام لكل مستفيدي الجمعية — غير مقيّد بالمعرض
+    const rows = await prisma.beneficiary.findMany({
+      where: { association: { name: ASSOCIATION_ZAD_NAME } },
+      select,
+    });
+    return dedupe(rows);
   }
 
   // invited_absent: مدعو ولم يحضر
