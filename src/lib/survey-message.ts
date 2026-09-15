@@ -106,10 +106,16 @@ export function resolveSurveyWhatsAppOptions(input: {
   templateIdOverride: string | null | undefined;
 } {
   if (isAssociationZadAudience(input.audience)) {
+    const zadTpl = input.surveyZadTemplateId?.trim() || null;
+    if (!zadTpl) {
+      throw new Error(
+        "قالب استبيان جمعية الزاد غير مضبوط — عيّن WHATSAPP_SURVEY_ZAD_TEMPLATE_ID في بيئة التشغيل",
+      );
+    }
     return {
       templateParams: surveyZadTemplateParams(input.surveyUrl),
       mediaUrl: undefined,
-      templateIdOverride: input.surveyZadTemplateId,
+      templateIdOverride: zadTpl,
     };
   }
   return {

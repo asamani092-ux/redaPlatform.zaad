@@ -223,43 +223,53 @@ export async function POST(req: NextRequest) {
           reason: delivery.error,
         });
       } else {
-        const waOpts = resolveSurveyWhatsAppOptions({
-          audience: survey.audience,
-          name: b.name,
-          exhibitionName: exhibition.name,
-          surveyUrl: delivery.url,
-          surveyZadTemplateId: wa.surveyZadTemplateId,
-          surveyHeaderImageUrl: wa.surveyHeaderImageUrl,
-        });
-        const msg = await sendWhatsAppMessage({
-          exhibitionId: exhibition.id,
-          beneficiaryId: b.id,
-          mobile: b.mobile,
-          body: buildSurveyMessage(
-            b.name,
-            exhibition.name,
-            delivery.url,
-            survey.title,
-          ),
-          type: OutboundMessageType.SURVEY,
-          createdById: authz.userId,
-          mediaUrl: waOpts.mediaUrl,
-          templateParams: waOpts.templateParams,
-          templateIdOverride: waOpts.templateIdOverride,
-          surveyId: survey.id,
-        });
-        if (msg.status === "FAILED") {
+        try {
+          const waOpts = resolveSurveyWhatsAppOptions({
+            audience: survey.audience,
+            name: b.name,
+            exhibitionName: exhibition.name,
+            surveyUrl: delivery.url,
+            surveyZadTemplateId: wa.surveyZadTemplateId,
+            surveyHeaderImageUrl: wa.surveyHeaderImageUrl,
+          });
+          const msg = await sendWhatsAppMessage({
+            exhibitionId: exhibition.id,
+            beneficiaryId: b.id,
+            mobile: b.mobile,
+            body: buildSurveyMessage(
+              b.name,
+              exhibition.name,
+              delivery.url,
+              survey.title,
+            ),
+            type: OutboundMessageType.SURVEY,
+            createdById: authz.userId,
+            mediaUrl: waOpts.mediaUrl,
+            templateParams: waOpts.templateParams,
+            templateIdOverride: waOpts.templateIdOverride,
+            surveyId: survey.id,
+          });
+          if (msg.status === "FAILED") {
+            failed++;
+            errors.push({
+              beneficiaryId: b.id,
+              beneficiaryName: b.name,
+              mobile: b.mobile,
+              reason: msg.errorMessage || "فشل إرسال واتساب",
+            });
+          } else if (msg.status === "STUBBED") {
+            stubbed++;
+          } else {
+            sent++;
+          }
+        } catch (err) {
           failed++;
           errors.push({
             beneficiaryId: b.id,
             beneficiaryName: b.name,
             mobile: b.mobile,
-            reason: msg.errorMessage || "فشل إرسال واتساب",
+            reason: err instanceof Error ? err.message : "فشل إعداد رسالة الاستبيان",
           });
-        } else if (msg.status === "STUBBED") {
-          stubbed++;
-        } else {
-          sent++;
         }
       }
     }

@@ -136,6 +136,22 @@ assert(zadOpts.templateParams.length === 1, "zad wa params length");
 assert(zadOpts.mediaUrl === undefined, "zad no header");
 assert(zadOpts.templateIdOverride === "tpl-zad", "zad template override");
 
+let missingTplThrew = false;
+try {
+  resolveSurveyWhatsAppOptions({
+    audience: "association_zad",
+    name: "أحمد",
+    exhibitionName: "معرض",
+    surveyUrl: "https://forms.example/zad",
+    surveyZadTemplateId: null,
+    surveyHeaderImageUrl: null,
+  });
+} catch (err) {
+  missingTplThrew =
+    err instanceof Error && err.message.includes("WHATSAPP_SURVEY_ZAD_TEMPLATE_ID");
+}
+assert(missingTplThrew, "missing zad template id must throw");
+
 const normalOpts = resolveSurveyWhatsAppOptions({
   audience: "received",
   name: "أحمد",
