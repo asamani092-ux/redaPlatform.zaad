@@ -110,14 +110,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: delivery.error }, { status: 400 });
     }
     const wa = await getWhatsAppConfig();
-    const waOpts = resolveSurveyWhatsAppOptions({
-      audience: survey.audience,
-      name: beneficiary.name,
-      exhibitionName: exhibition.name,
-      surveyUrl: delivery.url,
-      surveyZadTemplateId: wa.surveyZadTemplateId,
-      surveyHeaderImageUrl: wa.surveyHeaderImageUrl,
-    });
+    let waOpts;
+    try {
+      waOpts = resolveSurveyWhatsAppOptions({
+        audience: survey.audience,
+        name: beneficiary.name,
+        exhibitionName: exhibition.name,
+        surveyUrl: delivery.url,
+        surveyZadTemplateId: wa.surveyZadTemplateId,
+        surveyHeaderImageUrl: wa.surveyHeaderImageUrl,
+      });
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error:
+            err instanceof Error
+              ? err.message
+              : "فشل إعداد رسالة الاستبيان",
+        },
+        { status: 400 },
+      );
+    }
     const msg = await sendWhatsAppMessage({
       exhibitionId: exhibition.id,
       beneficiaryId: beneficiary.id,

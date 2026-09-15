@@ -402,14 +402,27 @@ export async function POST(req: NextRequest) {
             lastStatus = "FAILED";
             continue;
           }
-          const waOpts = resolveSurveyWhatsAppOptions({
-            audience: survey.audience,
-            name: order.beneficiary.name,
-            exhibitionName: exhibition.name,
-            surveyUrl: delivery.url,
-            surveyZadTemplateId: wa.surveyZadTemplateId,
-            surveyHeaderImageUrl: wa.surveyHeaderImageUrl,
-          });
+          let waOpts;
+          try {
+            waOpts = resolveSurveyWhatsAppOptions({
+              audience: survey.audience,
+              name: order.beneficiary.name,
+              exhibitionName: exhibition.name,
+              surveyUrl: delivery.url,
+              surveyZadTemplateId: wa.surveyZadTemplateId,
+              surveyHeaderImageUrl: wa.surveyHeaderImageUrl,
+            });
+          } catch (err) {
+            errors.push(
+              `${survey.title}: ${
+                err instanceof Error
+                  ? err.message
+                  : "فشل إعداد رسالة الاستبيان"
+              }`,
+            );
+            lastStatus = "FAILED";
+            continue;
+          }
           const surveyMsg = await sendWhatsAppMessage({
             exhibitionId: exhibition.id,
             beneficiaryId: order.beneficiaryId,

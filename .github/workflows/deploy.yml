@@ -77,8 +77,9 @@ jobs:
         env:
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
         run: |
-          if [ -n "$COOLIFY_WEBHOOK" ]; then
-            curl -fsS -X POST "$COOLIFY_WEBHOOK"
-          else
-            echo "COOLIFY_WEBHOOK not set — skip remote deploy trigger"
+          if [ -z "$COOLIFY_WEBHOOK" ]; then
+            echo "::error::COOLIFY_WEBHOOK secret is empty — production was NOT redeployed. Set the Coolify deploy webhook as a repository secret, or redeploy manually in Coolify."
+            exit 1
           fi
+          curl -fsS -X POST "$COOLIFY_WEBHOOK"
+          echo "Coolify deploy webhook triggered"
