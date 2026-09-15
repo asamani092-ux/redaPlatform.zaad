@@ -15,6 +15,8 @@ const putSchema = z.object({
   /** فارغ = الإبقاء على التوكن المحفوظ */
   apiToken: z.string().optional().nullable(),
   sender: z.string().optional().nullable(),
+  surveyTemplateId: z.string().optional().nullable(),
+  surveyZadTemplateId: z.string().optional().nullable(),
 });
 
 export async function GET() {
@@ -31,6 +33,8 @@ export async function GET() {
     hasToken: !!config.apiToken,
     sender: config.sender ?? "",
     source: config.source,
+    surveyTemplateId: config.surveyTemplateId ?? "",
+    surveyZadTemplateId: config.surveyZadTemplateId ?? "",
   });
 }
 
@@ -75,6 +79,14 @@ export async function PUT(req: NextRequest) {
       ? body.data.apiToken.trim()
       : (current?.whatsappApiToken ?? null),
     whatsappSender: body.data.sender?.trim() || null,
+    whatsappSurveyTemplateId:
+      body.data.surveyTemplateId !== undefined
+        ? body.data.surveyTemplateId?.trim() || null
+        : (current?.whatsappSurveyTemplateId ?? null),
+    whatsappSurveyZadTemplateId:
+      body.data.surveyZadTemplateId !== undefined
+        ? body.data.surveyZadTemplateId?.trim() || null
+        : (current?.whatsappSurveyZadTemplateId ?? null),
   };
 
   const saved = await prisma.appConfig.upsert({
@@ -101,6 +113,8 @@ export async function PUT(req: NextRequest) {
       apiUrl: saved.whatsappApiUrl,
       token: maskToken(saved.whatsappApiToken),
       sender: saved.whatsappSender,
+      surveyTemplateId: saved.whatsappSurveyTemplateId,
+      surveyZadTemplateId: saved.whatsappSurveyZadTemplateId,
     },
   });
 
@@ -113,5 +127,7 @@ export async function PUT(req: NextRequest) {
     tokenMask: maskToken(saved.whatsappApiToken),
     hasToken: !!saved.whatsappApiToken,
     sender: saved.whatsappSender ?? "",
+    surveyTemplateId: saved.whatsappSurveyTemplateId ?? "",
+    surveyZadTemplateId: saved.whatsappSurveyZadTemplateId ?? "",
   });
 }

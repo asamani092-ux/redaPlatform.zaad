@@ -86,7 +86,7 @@ export const SURVEY_AUDIENCE_OPTIONS: Array<{
   {
     id: "association_zad",
     label: "مستفيدو جمعية الزاد",
-    hint: "كل مستفيد مرتبط بجمعية الزاد — نفس مسار الدفعات؛ يتطلب WHATSAPP_SURVEY_ZAD_TEMPLATE_ID",
+    hint: "كل مستفيد مرتبط بجمعية الزاد — نفس مسار الدفعات؛ اضبط معرّف قالب الزاد من إعدادات واتساب",
   },
 ];
 
