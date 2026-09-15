@@ -14,7 +14,7 @@ import {
 import {
   SURVEY_BROADCAST_BATCH_SIZE,
   buildSurveyBroadcastBatches,
-  listSurveyBroadcastTargets,
+  loadSurveyBroadcastPreview,
   sliceSurveyBroadcastBatch,
 } from "@/lib/survey-audience";
 import {
@@ -95,9 +95,11 @@ export async function GET(req: NextRequest) {
     req.nextUrl.searchParams.get("audience") ?? undefined,
   );
 
-  const targets = await listSurveyBroadcastTargets(exhibition.id, audience, {
+  const preview = await loadSurveyBroadcastPreview(exhibition.id, audience, {
     includePreviouslySent,
+    surveyId: survey.id,
   });
+  const targets = preview.targets;
   const batches = buildSurveyBroadcastBatches(
     targets.length,
     SURVEY_BROADCAST_BATCH_SIZE,
@@ -113,9 +115,11 @@ export async function GET(req: NextRequest) {
     batches,
     orderedIds: targets.map((t) => t.id),
     includePreviouslySent,
-    total: targets.length,
-    withMobile: targets.length,
-    withoutMobile: 0,
+    matchedTotal: preview.matchedTotal,
+    total: preview.matchedTotal,
+    withMobile: preview.withMobile,
+    withoutMobile: preview.withoutMobile,
+    alreadySent: preview.alreadySent,
   });
 }
 
@@ -156,9 +160,11 @@ export async function POST(req: NextRequest) {
   const audience = resolveAudienceFromBody(survey.audience, body.data.audience);
   const includePreviouslySent = body.data.includePreviouslySent === true;
 
-  const targets = await listSurveyBroadcastTargets(exhibition.id, audience, {
+  const preview = await loadSurveyBroadcastPreview(exhibition.id, audience, {
     includePreviouslySent,
+    surveyId: survey.id,
   });
+  const targets = preview.targets;
   const byId = new Map(targets.map((t) => [t.id, t]));
 
   let batch = [] as typeof targets;

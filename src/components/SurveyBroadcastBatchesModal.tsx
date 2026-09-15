@@ -16,6 +16,10 @@ type BroadcastPreview = {
   audienceLabel: string;
   batchSize: number;
   remaining: number;
+  matchedTotal: number;
+  withMobile: number;
+  withoutMobile: number;
+  alreadySent: number;
   batches: SurveyBroadcastBatch[];
   orderedIds: string[];
   includePreviouslySent: boolean;
@@ -76,6 +80,10 @@ export function SurveyBroadcastBatchesModal({
         audienceLabel: String(json.audienceLabel || ""),
         batchSize: Number(json.batchSize ?? SURVEY_BROADCAST_BATCH_SIZE),
         remaining: orderedIds.length,
+        matchedTotal: Number(json.matchedTotal ?? json.total ?? orderedIds.length),
+        withMobile: Number(json.withMobile ?? orderedIds.length),
+        withoutMobile: Number(json.withoutMobile ?? 0),
+        alreadySent: Number(json.alreadySent ?? 0),
         batches,
         orderedIds,
         includePreviouslySent: include,
@@ -184,6 +192,7 @@ export function SurveyBroadcastBatchesModal({
         ...prev,
         orderedIds,
         remaining: orderedIds.length,
+        alreadySent: prev.alreadySent + beneficiaryIds.length,
         batches: buildSurveyBroadcastBatches(orderedIds.length, prev.batchSize),
       };
     });
@@ -204,6 +213,22 @@ export function SurveyBroadcastBatchesModal({
           {preview ? (
             <p className="muted" style={{ margin: 0 }}>
               الفئة: <strong>{preview.audienceLabel}</strong>
+              {" — "}
+              مطابق: <strong>{preview.matchedTotal}</strong>
+              {" — "}
+              بجوال: <strong>{preview.withMobile}</strong>
+              {preview.withoutMobile > 0 ? (
+                <>
+                  {" — "}
+                  بلا جوال: <strong>{preview.withoutMobile}</strong>
+                </>
+              ) : null}
+              {!preview.includePreviouslySent ? (
+                <>
+                  {" — "}
+                  سبق إرسال هذا الاستبيان: <strong>{preview.alreadySent}</strong>
+                </>
+              ) : null}
               {" — "}
               متبقٍ: <strong>{preview.remaining}</strong>
               {" — "}

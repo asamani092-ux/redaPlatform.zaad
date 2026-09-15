@@ -47,6 +47,7 @@ run("D0 survey settings schema (unit)", "npx", ["tsx", "tests/survey-settings-sc
 run("D0 survey wa header (unit)", "npx", ["tsx", "tests/survey-wa-header.unit.ts"]);
 run("D0 survey audience count (unit)", "npx", ["tsx", "tests/survey-audience-count.unit.ts"]);
 run("D0 survey broadcast batches (unit)", "npx", ["tsx", "tests/survey-broadcast-batches.unit.ts"]);
+run("D0 survey broadcast exclude (unit)", "npx", ["tsx", "tests/survey-broadcast-exclude.unit.ts"]);
 run("D0 survey stats (unit)", "npx", ["tsx", "tests/survey-stats.unit.ts"]);
 run("D1 entitlement", "npx", ["tsx", "tests/entitlement.integration.ts"]);
 run("D1 attendance/dispense", "npx", ["tsx", "tests/attendance-dispense.integration.ts"]);
