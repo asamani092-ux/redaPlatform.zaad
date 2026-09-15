@@ -8,12 +8,19 @@ import {
   isZadAssociationLabel,
   type SurveyAudience,
 } from "@/lib/survey-questions";
+import {
+  excludePreviouslySentTargets,
+} from "@/lib/survey-broadcast-exclude";
 export {
   SURVEY_BROADCAST_BATCH_SIZE,
   buildSurveyBroadcastBatches,
   sliceSurveyBroadcastBatch,
   type SurveyBroadcastBatch,
 } from "@/lib/survey-broadcast-batches";
+export {
+  excludePreviouslySentTargets,
+  surveyIdFromPayload,
+} from "@/lib/survey-broadcast-exclude";
 
 /** اسم خيار الجمعية لمستفيدي الزاد — ثابت للمطابقة مع البذرة */
 
@@ -141,19 +148,37 @@ export async function countSurveyAudience(
   };
 }
 
+export type SurveyBroadcastPreview = {
+  matchedTotal: number;
+  withMobile: number;
+  withoutMobile: number;
+  alreadySent: number;
+  targets: AudienceBeneficiary[];
+};
+
 /**
- * مستهدفو البث بجوال — مع استبعاد من أُرسل لهم SURVEY بنجاح (SENT/STUBBED).
+ * معاينة بث الاستبيان مع تفصيل العدد واستبعاد حسب surveyId في payloadJson.
  * Time: O(n) — Space: O(n).
  */
-export async function listSurveyBroadcastTargets(
+export async function loadSurveyBroadcastPreview(
   exhibitionId: string,
   audience: SurveyAudience,
-  opts?: { includePreviouslySent?: boolean },
-): Promise<AudienceBeneficiary[]> {
+  opts?: { includePreviouslySent?: boolean; surveyId?: string | null },
+): Promise<SurveyBroadcastPreview> {
   const list = await resolveSurveyAudience(exhibitionId, audience);
-  const withMobile = list.filter((b) => !!b.mobile?.trim());
-  if (opts?.includePreviouslySent || withMobile.length === 0) {
-    return withMobile;
+  const withMobileList = list.filter((b) => !!b.mobile?.trim());
+  const matchedTotal = list.length;
+  const withMobile = withMobileList.length;
+  const withoutMobile = matchedTotal - withMobile;
+
+  if (withMobileList.length === 0) {
+    return {
+      matchedTotal,
+      withMobile,
+      withoutMobile,
+      alreadySent: 0,
+      targets: withMobileList,
+    };
   }
 
   const sentRows = await prisma.outboundMessage.findMany({
@@ -163,15 +188,35 @@ export async function listSurveyBroadcastTargets(
       status: {
         in: [OutboundMessageStatus.SENT, OutboundMessageStatus.STUBBED],
       },
-      beneficiaryId: { in: withMobile.map((b) => b.id) },
+      beneficiaryId: { in: withMobileList.map((b) => b.id) },
     },
-    select: { beneficiaryId: true },
-    distinct: ["beneficiaryId"],
+    select: { beneficiaryId: true, payloadJson: true },
   });
-  const sentSet = new Set(
-    sentRows
-      .map((r) => r.beneficiaryId)
-      .filter((id): id is string => typeof id === "string" && !!id),
+
+  const { remaining, alreadySent } = excludePreviouslySentTargets(
+    withMobileList,
+    sentRows,
+    opts?.surveyId,
   );
-  return withMobile.filter((b) => !sentSet.has(b.id));
+
+  return {
+    matchedTotal,
+    withMobile,
+    withoutMobile,
+    alreadySent,
+    targets: opts?.includePreviouslySent ? withMobileList : remaining,
+  };
+}
+
+/**
+ * مستهدفو البث بجوال — استبعاد من أُرسل لهم نفس الاستبيان (SENT/STUBBED).
+ * Time: O(n) — Space: O(n).
+ */
+export async function listSurveyBroadcastTargets(
+  exhibitionId: string,
+  audience: SurveyAudience,
+  opts?: { includePreviouslySent?: boolean; surveyId?: string | null },
+): Promise<AudienceBeneficiary[]> {
+  const preview = await loadSurveyBroadcastPreview(exhibitionId, audience, opts);
+  return preview.targets;
 }
